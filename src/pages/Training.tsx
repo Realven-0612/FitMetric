@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { motion, AnimatePresence } from "motion/react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "../lib/i18n";
+import { heartRateService } from "../services/heartRateService";
 import {
   Select,
   SelectContent,
@@ -41,6 +42,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useStore } from "../lib/store";
+import { generateAIContent } from "../lib/ai";
+
+export interface LoggedSet {
+  weight: number;
+  reps: number;
+  completed: boolean;
+  timestamp: number;
+}
+
+export interface TrainingLogs {
+  [exerciseName: string]: LoggedSet[];
+}
 
 export interface Exercise {
   name: string;
@@ -191,24 +205,91 @@ const VIDEO_LIBRARY: Record<string, string> = {
 
 export default function Training() {
   const { t } = useTranslation();
+  const { 
+    profile, 
+    workoutPlan: plan, 
+    setWorkoutPlan: setPlan,
+    exerciseWeights, 
+    updateExerciseWeight,
+    sessionLogs,
+    logSet: storeLogSet,
+    clearSessionLogs
+  } = useStore();
+
   const [selectedDay, setSelectedDay] = useState(() =>
     new Date().getDay() === 0 ? 6 : new Date().getDay() - 1,
   );
   const [isGenerating, setIsGenerating] = useState(false);
   const [open, setOpen] = useState(false);
-  const [plan, setPlan] = useState<WorkoutPlan | null>(null);
-  const [profile, setProfile] = useState<any>(null);
 
   // Customization state
   const [focus, setFocus] = useState("");
   const [frequency, setFrequency] = useState("4");
   const [equipment, setEquipment] = useState("gym");
   const [goal, setGoal] = useState("hypertrophy");
-  const [exerciseWeights, setExerciseWeights] = useState<
-    Record<string, number>
-  >({});
+  
+  const [timerActive, setTimerActive] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [timerTotal, setTimerTotal] = useState(0);
   const [activeVideoIndex, setActiveVideoIndex] = useState<number | null>(null);
+  const [heartRate, setHeartRate] = useState<number | null>(null);
+  const [hrConnected, setHrConnected] = useState(false);
   const hasTriggeredAutoGenerate = useRef(false);
+
+  const haptic = (pattern: number | number[] = 10) => {
+    if ("vibrate" in navigator) {
+      navigator.vibrate(pattern);
+    }
+  };
+
+  const toggleHeartRate = async () => {
+    if (hrConnected) {
+      heartRateService.disconnect();
+      setHrConnected(false);
+      setHeartRate(null);
+      toast.info(t('hr_disconnected'));
+    } else {
+      try {
+        await heartRateService.connect((update) => {
+          setHeartRate(update.heartRate);
+        });
+        setHrConnected(true);
+        toast.success(t('hr_connected'));
+      } catch (err) {
+        toast.error(t('hr_connect_failed'));
+      }
+    }
+  };
+
+  const applyAllRecommendedWeights = () => {
+    if (!currentDayData?.exercises) return;
+    currentDayData.exercises.forEach(ex => {
+      if (ex.rec) {
+        updateExerciseWeight(ex.id, ex.rec);
+      }
+    });
+    toast.success(t('apply_all'));
+  };
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (timerActive && timerSeconds > 0) {
+      interval = setInterval(() => {
+        setTimerSeconds((prev) => {
+          if (prev <= 1) {
+            setTimerActive(false);
+            toast.info(t('next_set_ready'), {
+              icon: <Zap className="w-4 h-4 text-cyan-400" />,
+              duration: 5000
+            });
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [timerActive, timerSeconds]);
 
   useEffect(() => {
     const handleRemoteRequest = () => {
@@ -226,45 +307,22 @@ export default function Training() {
     return () => {
       window.removeEventListener('request_workout_generation', handleRemoteRequest);
     };
-  }, [profile, goal, equipment, frequency]); // Dependencies that handleGenerate uses
+  }, [profile, goal, equipment, frequency]);
 
   useEffect(() => {
-    const weightsStr = localStorage.getItem("exercise_weights");
-    if (weightsStr) {
-      try {
-        setExerciseWeights(JSON.parse(weightsStr));
-      } catch (e) {}
+    if (profile?.primaryGoal) {
+      if (profile.primaryGoal.includes("Fat")) setGoal("fatloss");
+      else if (profile.primaryGoal.includes("Muscle")) setGoal("hypertrophy");
+      else if (profile.primaryGoal.includes("Strength")) setGoal("strength");
     }
-
-    const pStr = localStorage.getItem("user_profile");
-    if (pStr) {
-      const p = JSON.parse(pStr);
-      setProfile(p);
-      if (p.primaryGoal) {
-        if (p.primaryGoal.includes("Fat")) setGoal("fatloss");
-        else if (p.primaryGoal.includes("Muscle")) setGoal("hypertrophy");
-        else if (p.primaryGoal.includes("Strength")) setGoal("strength");
-      }
-    }
-
-    const wStr = localStorage.getItem("workout_plan");
-    if (wStr) {
-      try {
-        const w = JSON.parse(wStr);
-        if (w && w.days && w.days.length === 7) {
-          setPlan(w);
-        }
-      } catch (e) {}
-    }
-  }, []);
+  }, [profile]);
 
   useEffect(() => {
     if (
       profile &&
       !plan &&
       !isGenerating &&
-      !hasTriggeredAutoGenerate.current &&
-      !localStorage.getItem("workout_plan")
+      !hasTriggeredAutoGenerate.current
     ) {
       hasTriggeredAutoGenerate.current = true;
       handleGenerate(false);
@@ -272,31 +330,19 @@ export default function Training() {
   }, [profile, plan, isGenerating]);
 
   const handleWeightChange = (exName: string, delta: number) => {
-    setExerciseWeights((prev) => {
-      const current = prev[exName] || 0;
-      let newW = current + delta;
-
-      // Handle floating point weirdness
-      newW = Math.max(0, Math.round(newW * 10) / 10);
-
-      const updated = { ...prev, [exName]: newW };
-      localStorage.setItem("exercise_weights", JSON.stringify(updated));
-      return updated;
-    });
+    haptic(5);
+    const current = exerciseWeights[exName] || 0;
+    let newW = current + delta;
+    newW = Math.max(0, Math.round(newW * 10) / 10);
+    updateExerciseWeight(exName, newW);
   };
 
   const applyRecommendedWeight = (ex: any) => {
     if (!ex.recommendedWeight) return;
-    
-    // Improved extraction: look for decimal or integer
     const match = ex.recommendedWeight.match(/(\d+(\.\d+)?)/);
     if (match) {
       const weight = parseFloat(match[1]);
-      setExerciseWeights((prev) => {
-        const updated = { ...prev, [ex.name]: weight };
-        localStorage.setItem("exercise_weights", JSON.stringify(updated));
-        return updated;
-      });
+      updateExerciseWeight(ex.name, weight);
       toast.success(`${t('suggested')} ${ex.name}: ${weight}kg`, {
         icon: <Sparkles className="w-4 h-4 text-cyan-400" />
       });
@@ -305,33 +351,30 @@ export default function Training() {
     }
   };
 
-  const applyAllRecommendedWeights = () => {
-    if (!currentDayData) return;
-    
-    let count = 0;
-    const newWeights = { ...exerciseWeights };
-    
-    currentDayData.exercises.forEach(ex => {
-      if (ex.recommendedWeight) {
-        const match = ex.recommendedWeight.match(/(\d+(\.\d+)?)/);
-        if (match) {
-          newWeights[ex.name] = parseFloat(match[1]);
-          count++;
-        }
-      }
-    });
+  const logSet = (exName: string, weight: number, reps: number, restSeconds: number = 60) => {
+    haptic([15, 10, 15]);
+    storeLogSet(exName, { weight, reps, completed: true, timestamp: Date.now() });
 
-    if (count > 0) {
-      setExerciseWeights(newWeights);
-      localStorage.setItem("exercise_weights", JSON.stringify(newWeights));
-      toast.success(`${t('apply_all')}: ${count} ${t('exercises_label').toLowerCase()}`);
-    } else {
-      toast.info("No recommendations found for this session.");
+    setTimerSeconds(restSeconds);
+    setTimerTotal(restSeconds);
+    setTimerActive(true);
+    
+    if (weight > (exerciseWeights[exName] || 0)) {
+      updateExerciseWeight(exName, weight);
     }
   };
 
+  const calculateVolume = () => {
+    let total = 0;
+    Object.values(sessionLogs).forEach(sets => {
+      sets.forEach(s => {
+        total += s.weight * s.reps;
+      });
+    });
+    return total;
+  };
+
   const handleGenerate = async (isAutoRefresh = false, overrideFocus?: string) => {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     setIsGenerating(true);
 
     try {
@@ -367,61 +410,53 @@ export default function Training() {
          IMPORTANT: If an exercise exists in "Current Personal Best Weights", recommend a weight that is 2.5% to 5% higher (Progressive Overload). 
          If it's a new exercise, estimate based on the user's weight (e.g. Bench Press often starts around 40-50% bodyweight for beginners, Squat 60-70%).`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              progressionGuide: { type: Type.STRING },
-              days: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    dayName: { type: Type.STRING },
-                    focusName: { type: Type.STRING },
-                    description: { type: Type.STRING },
-                    warmup: {
-                      type: Type.ARRAY,
-                      items: { type: Type.STRING },
+      const schema = {
+        type: "object",
+        properties: {
+          progressionGuide: { type: "string" },
+          days: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                dayName: { type: "string" },
+                focusName: { type: "string" },
+                description: { type: "string" },
+                warmup: {
+                  type: "array",
+                  items: { type: "string" },
+                },
+                cooldown: {
+                  type: "array",
+                  items: { type: "string" },
+                },
+                exercises: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      name: { type: "string" },
+                      muscle: { type: "string" },
+                      sets: { type: "string" },
+                      load: { type: "string" },
+                      rest: { type: "string" },
+                      youtubeQuery: { type: "string" },
+                      recommendedWeight: { type: "string" },
                     },
-                    cooldown: {
-                      type: Type.ARRAY,
-                      items: { type: Type.STRING },
-                    },
-                    exercises: {
-                      type: Type.ARRAY,
-                      items: {
-                        type: Type.OBJECT,
-                        properties: {
-                          name: { type: Type.STRING },
-                          muscle: { type: Type.STRING },
-                          sets: { type: Type.STRING },
-                          load: { type: Type.STRING },
-                          rest: { type: Type.STRING },
-                          youtubeQuery: { type: Type.STRING },
-                          recommendedWeight: { type: Type.STRING },
-                        },
-                        required: ["name", "muscle", "sets"],
-                      },
-                    },
+                    required: ["name", "muscle", "sets"],
                   },
-                  required: ["dayName", "focusName", "exercises"],
                 },
               },
+              required: ["dayName", "focusName", "exercises"],
             },
-            required: ["progressionGuide", "days"],
           },
         },
-      });
+        required: ["progressionGuide", "days"],
+      };
 
-      if (response.text) {
-        const result = JSON.parse(response.text);
+      const result = await generateAIContent(prompt, schema, "gemini-2.0-flash");
 
-        // Ensure 7 days
+      if (result) {
         const validDays = [];
         for (let i = 0; i < 7; i++) {
           const d = result.days[i] || { focusName: "Ngày nghỉ", exercises: [] };
@@ -440,7 +475,6 @@ export default function Training() {
         };
 
         setPlan(newPlan);
-        localStorage.setItem("workout_plan", JSON.stringify(newPlan));
         window.dispatchEvent(new Event("workout_plan_updated"));
 
         if (!isAutoRefresh) {
@@ -471,7 +505,7 @@ export default function Training() {
       completedSessions: (plan.completedSessions || 0) + 1,
     };
     setPlan(newPlan);
-    localStorage.setItem("workout_plan", JSON.stringify(newPlan));
+    haptic([30, 20, 30, 20, 50]);
     toast.success("Đã hoàn thành buổi tập! Tiếp tục cố gắng nhé!");
 
     // Auto upgrade check (every 14 sessions)
@@ -626,6 +660,11 @@ export default function Training() {
         </div>
 
         <div className="flex flex-wrap gap-3">
+          <div className="bg-black/50 border border-white/10 rounded-2xl p-4 flex flex-col justify-center">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t('volume_load')}</span>
+            <span className="text-xl font-black text-cyan-400">{calculateVolume().toLocaleString()} <span className="text-xs text-slate-500 italic uppercase">kg</span></span>
+          </div>
+
           {plan && (
             <div className="flex items-center gap-2">
               <Dialog>
@@ -960,253 +999,281 @@ export default function Training() {
             </div>
 
             {/* Protocol View */}
-            <Card className="bg-[#0a0c10]/90 backdrop-blur-xl border-white/5 rounded-[2rem] shadow-2xl overflow-hidden relative min-h-[500px]">
-              <div className="absolute top-0 right-0 p-16 opacity-[0.03] pointer-events-none">
-                <Trophy className="w-64 h-64 blur-3xl fill-current text-white" />
-              </div>
-
-              <div className="p-6 md:p-10 relative z-10 w-full">
-                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6 mb-8 w-full">
-                  <div className="flex-1 min-w-0 pr-0 lg:pr-8">
-                    <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-slate-300 font-bold uppercase tracking-wider text-[10px] px-3 py-1.5 rounded-full mb-4">
-                      <Calendar className="w-3 h-3" /> {t(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'][selectedDay] as any)}{" "}
-                      {t('operation')}
-                    </div>
-                    <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight md:leading-tight">
-                      {currentDayData?.focusName}
-                    </h2>
-                    {currentDayData?.description && (
-                      <p className="text-slate-400 font-medium text-sm md:text-base mt-4 max-w-full leading-relaxed">
-                        {currentDayData.description}
-                      </p>
-                    )}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={selectedDay}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                className="w-full"
+              >
+                <Card className="bg-[#0a0c10]/90 backdrop-blur-xl border-white/5 rounded-[2rem] shadow-2xl overflow-hidden relative min-h-[500px]">
+                  <div className="absolute top-0 right-0 p-16 opacity-[0.03] pointer-events-none">
+                    <Trophy className="w-64 h-64 blur-3xl fill-current text-white" />
                   </div>
 
-                  {!isRestDay && (
-                    <div className="flex flex-wrap gap-3">
-                      <Button
-                        onClick={applyAllRecommendedWeights}
-                        variant="outline"
-                        className="border-cyan-500/30 bg-cyan-500/5 text-cyan-400 hover:bg-cyan-500 hover:text-black font-black uppercase tracking-widest text-[10px] h-12 px-5 rounded-xl transition-all"
-                      >
-                        <Trophy className="w-4 h-4 mr-2" /> {t('apply_all')}
-                      </Button>
-                      <Button
-                        onClick={markSessionComplete}
-                        className="bg-cyan-500 text-black hover:bg-cyan-400 font-black uppercase tracking-widest text-[10px] h-12 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(34,211,238,0.2)] group"
-                      >
-                        <CheckCircle2 className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />{" "}
-                        {t('complete_session')}
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                  <div className="p-6 md:p-10 relative z-10 w-full">
+                    <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6 mb-8 w-full">
+                      <div className="flex-1 min-w-0 pr-0 lg:pr-8">
+                        <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-slate-300 font-bold uppercase tracking-wider text-[10px] px-3 py-1.5 rounded-full mb-4">
+                          <Calendar className="w-3 h-3" /> {t(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'][selectedDay] as any)}{" "}
+                          {t('operation')}
+                        </div>
+                        <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight md:leading-tight">
+                          {currentDayData?.focusName}
+                        </h2>
+                        {currentDayData?.description && (
+                          <p className="text-slate-400 font-medium text-sm md:text-base mt-4 max-w-full leading-relaxed">
+                            {currentDayData.description}
+                          </p>
+                        )}
+                      </div>
 
-                {isRestDay ? (
-                  <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl bg-black/40 border border-white/5 mx-auto max-w-lg mt-10">
-                    <div className="w-20 h-20 rounded-full border border-white/10 flex items-center justify-center mb-6 bg-[#111] shadow-inner text-slate-500">
-                      <Zap className="w-8 h-8 opacity-50" />
-                    </div>
-                    <h3 className="text-white font-black tracking-widest uppercase text-xl mb-3">
-                      {t('active_recovery')}
-                    </h3>
-                    <p className="text-slate-400 text-sm max-w-xs mx-auto font-medium">
-                      {t('active_recovery_desc')}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-6">
-                    {currentDayData?.warmup &&
-                      currentDayData.warmup.length > 0 && (
-                        <div className="bg-[#111111]/80 border border-orange-500/20 rounded-[1.5rem] overflow-hidden flex flex-col group shadow-sm mb-2">
-                          <div className="p-5 md:p-6 bg-orange-500/5">
-                            <h3 className="text-orange-400 font-black tracking-widest uppercase text-sm mb-4 flex items-center gap-2">
-                              <Flame className="w-4 h-4" /> {t('dynamic_warmup')}
-                            </h3>
-                            <ul className="space-y-2">
-                              {currentDayData.warmup.map((wu, i) => (
-                                <li
-                                  key={i}
-                                  className="flex gap-3 items-start text-sm text-slate-300 font-medium"
-                                >
-                                  <div className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 shrink-0"></div>
-                                  <span className="leading-relaxed">{wu}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
+                      {!isRestDay && (
+                        <div className="flex flex-wrap gap-3">
+                          {hrConnected ? (
+                            <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 px-4 rounded-xl h-12">
+                              <Activity className="w-5 h-5 text-red-500 animate-pulse" />
+                              <div className="flex flex-col">
+                                <span className="text-[10px] font-black text-red-400 uppercase tracking-widest leading-none">{t('heart_rate')}</span>
+                                <span className="text-xl font-black text-white leading-none mt-1">{heartRate || '--'} <small className="text-[8px] opacity-50">BPM</small></span>
+                              </div>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={toggleHeartRate}
+                                className="w-8 h-8 rounded-lg hover:bg-red-500/10 text-red-400/50 hover:text-red-400"
+                              >
+                                <Unlink className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              onClick={toggleHeartRate}
+                              variant="outline"
+                              className="border-red-500/30 bg-red-500/5 text-red-400 hover:bg-red-500 hover:text-white font-black uppercase tracking-widest text-[10px] h-12 px-5 rounded-xl transition-all"
+                            >
+                              <Activity className="w-4 h-4 mr-2" /> {t('connect_hr')}
+                            </Button>
+                          )}
+                          
+                          <Button
+                            onClick={applyAllRecommendedWeights}
+                            variant="outline"
+                            className="border-cyan-500/30 bg-cyan-500/5 text-cyan-400 hover:bg-cyan-500 hover:text-black font-black uppercase tracking-widest text-[10px] h-12 px-5 rounded-xl transition-all"
+                          >
+                            <Trophy className="w-4 h-4 mr-2" /> {t('apply_all')}
+                          </Button>
+                          <Button
+                            onClick={markSessionComplete}
+                            className="bg-cyan-500 text-black hover:bg-cyan-400 font-black uppercase tracking-widest text-[10px] h-12 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(34,211,238,0.2)] group"
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />{" "}
+                            {t('complete_session')}
+                          </Button>
                         </div>
                       )}
+                    </div>
 
-                    {currentDayData?.exercises.map((ex, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-[#111111] border border-white/5 hover:border-white/10 transition-all rounded-[1.5rem] overflow-hidden flex flex-col group shadow-sm"
-                      >
-                        <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center gap-5 relative">
-                          <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-cyan-500/0 group-hover:bg-cyan-500 transition-colors"></div>
-
-                          <div className="w-14 h-14 rounded-2xl bg-black border border-white/10 flex items-center justify-center shadow-inner shrink-0 relative overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>
-                            <span className="text-slate-500 font-black text-xl group-hover:text-cyan-400 transition-colors">
-                              {idx + 1}
-                            </span>
-                          </div>
-
-                          <div className="flex-1">
-                            <h3 className="text-white font-black text-xl leading-tight mb-2">
-                              {ex.name}
-                            </h3>
-                            <div className="flex flex-wrap items-center gap-3">
-                              <span className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md">
-                                {ex.muscle}
-                              </span>
-                              {ex.load && (
-                                <span className="text-[12px] text-slate-400 font-medium flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-md">
-                                  <TrendingUp className="w-3 h-3 text-slate-500" />{" "}
-                                  {ex.load}
-                                </span>
-                              )}
+                    {isRestDay ? (
+                      <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl bg-black/40 border border-white/5 mx-auto max-w-lg mt-10">
+                        <div className="w-20 h-20 rounded-full border border-white/10 flex items-center justify-center mb-6 bg-[#111] shadow-inner text-slate-500">
+                          <Zap className="w-8 h-8 opacity-50" />
+                        </div>
+                        <h3 className="text-white font-black tracking-widest uppercase text-xl mb-3">
+                          {t('active_recovery')}
+                        </h3>
+                        <p className="text-slate-400 text-sm max-w-xs mx-auto font-medium">
+                          {t('active_recovery_desc')}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-6">
+                        {currentDayData?.warmup &&
+                          currentDayData.warmup.length > 0 && (
+                            <div className="bg-[#111111]/80 border border-orange-500/20 rounded-[1.5rem] overflow-hidden flex flex-col group shadow-sm mb-2">
+                              <div className="p-5 md:p-6 bg-orange-500/5">
+                                <h3 className="text-orange-400 font-black tracking-widest uppercase text-sm mb-4 flex items-center gap-2">
+                                  <Flame className="w-4 h-4" /> {t('dynamic_warmup')}
+                                </h3>
+                                <ul className="space-y-2">
+                                  {currentDayData.warmup.map((wu, i) => (
+                                    <li
+                                      key={i}
+                                      className="flex gap-3 items-start text-sm text-slate-300 font-medium"
+                                    >
+                                      <div className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 shrink-0"></div>
+                                      <span className="leading-relaxed">{wu}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
                             </div>
-                          </div>
+                          )}
 
-                          <div className="grid grid-cols-2 md:flex md:items-center gap-4 md:gap-6 bg-black/40 md:bg-transparent rounded-xl p-4 md:p-0 border md:border-none border-white/5 mt-2 md:mt-0">
-                            <div className="flex flex-col">
-                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">
-                                {t('volume_label')}
-                              </span>
-                              <span className="text-white font-black text-sm">
-                                {ex.sets}
-                              </span>
-                            </div>
-                            {ex.rest && (
-                              <div className="flex flex-col">
-                                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">
-                                  {t('rest_label')}
-                                </span>
-                                <span className="text-slate-300 font-black text-sm">
-                                  {ex.rest}
+                        {currentDayData?.exercises.map((ex, idx) => (
+                          <motion.div
+                            key={idx}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            className="bg-[#111111] border border-white/5 hover:border-white/10 transition-all rounded-[1.5rem] overflow-hidden flex flex-col group shadow-sm"
+                          >
+                            <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center gap-5 relative">
+                              <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-cyan-500/0 group-hover:bg-cyan-500 transition-colors"></div>
+
+                              <div className="w-14 h-14 rounded-2xl bg-black border border-white/10 flex items-center justify-center shadow-inner shrink-0 relative overflow-hidden">
+                                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>
+                                <span className="text-slate-500 font-black text-xl group-hover:text-cyan-400 transition-colors">
+                                  {idx + 1}
                                 </span>
                               </div>
-                            )}
-                            {ex.recommendedWeight && (
-                              <button 
-                                onClick={() => applyRecommendedWeight(ex)}
-                                className="flex flex-col text-left group/suggest hover:bg-cyan-500/5 p-1 rounded-lg transition-colors cursor-pointer"
-                              >
-                                <span className="text-[10px] text-cyan-500 font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                                  {t('suggested')} <CheckCircle2 className="w-2.5 h-2.5 opacity-0 group-hover/suggest:opacity-100 transition-opacity" />
-                                </span>
-                                <span className="text-cyan-300 font-black text-sm flex items-center gap-1 underline decoration-cyan-500/30 underline-offset-4">
-                                  {ex.recommendedWeight}
-                                </span>
-                              </button>
-                            )}
-                            <div className="flex flex-col col-span-2 md:col-span-1 mt-2 md:mt-0">
-                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5 flex items-center justify-between gap-2">
-                                {t('weight_kg')}
+
+                              <div className="flex-1">
+                                <h3 className="text-white font-black text-xl leading-tight mb-2">
+                                  {ex.name}
+                                </h3>
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <span className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md">
+                                    {ex.muscle}
+                                  </span>
+                                  {ex.load && (
+                                    <span className="text-[12px] text-slate-400 font-medium flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-md">
+                                      <TrendingUp className="w-3 h-3 text-slate-500" />{" "}
+                                      {ex.load}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 md:flex md:items-center gap-4 md:gap-6 bg-black/40 md:bg-transparent rounded-xl p-4 md:p-0 border md:border-none border-white/5 mt-2 md:mt-0">
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">
+                                    {t('volume_label')}
+                                  </span>
+                                  <span className="text-white font-black text-sm">
+                                    {ex.sets}
+                                  </span>
+                                </div>
+                                {ex.rest && (
+                                  <div className="flex flex-col">
+                                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">
+                                      {t('rest_label')}
+                                    </span>
+                                    <span className="text-slate-300 font-black text-sm">
+                                      {ex.rest}
+                                    </span>
+                                  </div>
+                                )}
                                 {ex.recommendedWeight && (
                                   <button 
                                     onClick={() => applyRecommendedWeight(ex)}
-                                    className="text-[9px] text-cyan-500/80 font-black animate-pulse hover:text-cyan-400 hover:scale-105 transition-all cursor-pointer"
-                                    title={t('use_recommended')}
+                                    className="flex flex-col text-left group/suggest hover:bg-cyan-500/5 p-1 rounded-lg transition-colors cursor-pointer"
                                   >
-                                    REC: {ex.recommendedWeight}
+                                    <span className="text-[10px] text-cyan-500 font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                                      {t('suggested')} <CheckCircle2 className="w-2.5 h-2.5 opacity-0 group-hover/suggest:opacity-100 transition-opacity" />
+                                    </span>
+                                    <span className="text-cyan-300 font-black text-sm flex items-center gap-1 underline decoration-cyan-500/30 underline-offset-4">
+                                      {ex.recommendedWeight}
+                                    </span>
                                   </button>
                                 )}
-                              </span>
-                              <div className="flex items-center gap-1 bg-black/50 border border-white/10 rounded-lg w-max p-0.5 shadow-inner">
-                                <button
+                                <div className="flex flex-col col-span-2 md:col-span-1 mt-2 md:mt-0">
+                                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5 flex items-center justify-between gap-2">
+                                    {t('weight_kg_alt')}
+                                    {ex.recommendedWeight && (
+                                      <button 
+                                        onClick={() => applyRecommendedWeight(ex)}
+                                        className="text-[9px] text-cyan-500/80 font-black animate-pulse hover:text-cyan-400 hover:scale-105 transition-all cursor-pointer"
+                                        title={t('use_recommended')}
+                                      >
+                                        REC: {ex.recommendedWeight}
+                                      </button>
+                                    )}
+                                  </span>
+                                  
+                                  <SetLogger 
+                                    exercise={ex} 
+                                    currentWeight={exerciseWeights[ex.name] || 0}
+                                    logs={sessionLogs[ex.name] || []}
+                                    onLog={(w, r) => {
+                                      const isHeavy = ex.name.toLowerCase().includes('squat') || ex.name.toLowerCase().includes('deadlift') || ex.name.toLowerCase().includes('bench');
+                                      logSet(ex.name, w, r, isHeavy ? 180 : 90);
+                                    }}
+                                    haptic={haptic}
+                                  />
+                                </div>
+                                <Button
                                   onClick={() =>
-                                    handleWeightChange(ex.name, -1.25)
+                                    setActiveVideoIndex(
+                                      activeVideoIndex === idx ? null : idx,
+                                    )
                                   }
-                                  className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 rounded-md transition-colors text-lg font-medium"
+                                  variant="ghost"
+                                  size="icon"
+                                  className={`mt-2 md:mt-0 w-8 h-8 rounded-full transition-colors flex-shrink-0 border ${activeVideoIndex === idx ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/30 hover:text-cyan-300" : "text-slate-400 border-white/5 hover:text-white hover:bg-white/10"}`}
                                 >
-                                  -
-                                </button>
-                                <span className="text-white font-black text-sm w-12 text-center select-none">
-                                  {exerciseWeights[ex.name] || 0}
-                                </span>
-                                <button
-                                  onClick={() =>
-                                    handleWeightChange(ex.name, 1.25)
-                                  }
-                                  className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 rounded-md transition-colors text-lg font-medium"
-                                >
-                                  +
-                                </button>
-                                {ex.recommendedWeight && (
-                                  <button
-                                    onClick={() => applyRecommendedWeight(ex)}
-                                    title={t('use_recommended')}
-                                    className="ml-1 w-7 h-7 flex items-center justify-center text-cyan-400 hover:text-white hover:bg-cyan-500/20 rounded-md transition-colors"
-                                  >
-                                    <Sparkles className="w-4 h-4" />
-                                  </button>
-                                )}
+                                  {activeVideoIndex === idx ? (
+                                    <ChevronUp className="w-4 h-4" />
+                                  ) : (
+                                    <PlayCircle className="w-4 h-4" />
+                                  )}
+                                </Button>
                               </div>
                             </div>
-                            <Button
-                              onClick={() =>
-                                setActiveVideoIndex(
-                                  activeVideoIndex === idx ? null : idx,
-                                )
-                              }
-                              variant="ghost"
-                              size="icon"
-                              className={`mt-2 md:mt-0 w-8 h-8 rounded-full transition-colors flex-shrink-0 border ${activeVideoIndex === idx ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/30 hover:text-cyan-300" : "text-slate-400 border-white/5 hover:text-white hover:bg-white/10"}`}
-                            >
-                              {activeVideoIndex === idx ? (
-                                <ChevronUp className="w-4 h-4" />
-                              ) : (
-                                <PlayCircle className="w-4 h-4" />
-                              )}
-                            </Button>
-                          </div>
-                        </div>
 
-                        {/* Video Embed Section */}
-                        {activeVideoIndex === idx && (
-                          <div className="border-t border-white/5 bg-black/80 px-5 md:px-6 py-4 animate-in slide-in-from-top-2 fade-in duration-200">
-                            <div className="flex items-center gap-2 mb-3">
-                              <PlayCircle className="w-4 h-4 text-cyan-400" />
-                              <span className="text-xs font-bold text-slate-300 uppercase tracking-widest">
-                                {t('demonstration')}
-                              </span>
-                            </div>
-                            <div className="relative w-full max-w-2xl mx-auto rounded-xl overflow-hidden bg-black aspect-video border border-white/10 shadow-lg">
-                              {getEmbeddedVideo(ex.name, ex.youtubeQuery)}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-
-                    {currentDayData?.cooldown &&
-                      currentDayData.cooldown.length > 0 && (
-                        <div className="bg-[#111111]/80 border border-blue-500/20 rounded-[1.5rem] overflow-hidden flex flex-col group shadow-sm mt-2">
-                          <div className="p-5 md:p-6 bg-blue-500/5">
-                            <h3 className="text-blue-400 font-black tracking-widest uppercase text-sm mb-4 flex items-center gap-2">
-                              <Wind className="w-4 h-4" /> {t('static_cooldown')}
-                            </h3>
-                            <ul className="space-y-2">
-                              {currentDayData.cooldown.map((cd, i) => (
-                                <li
-                                  key={i}
-                                  className="flex gap-3 items-start text-sm text-slate-300 font-medium"
+                            {/* Video Embed Section */}
+                            <AnimatePresence>
+                              {activeVideoIndex === idx && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: "auto", opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  className="border-t border-white/5 bg-black/80 px-5 md:px-6 py-4 overflow-hidden"
                                 >
-                                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0"></div>
-                                  <span className="leading-relaxed">{cd}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      )}
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <PlayCircle className="w-4 h-4 text-cyan-400" />
+                                    <span className="text-xs font-bold text-slate-300 uppercase tracking-widest">
+                                      {t('demonstration')}
+                                    </span>
+                                  </div>
+                                  <div className="relative w-full max-w-2xl mx-auto rounded-xl overflow-hidden bg-black aspect-video border border-white/10 shadow-lg">
+                                    {getEmbeddedVideo(ex.name, ex.youtubeQuery)}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </motion.div>
+                        ))}
+
+                        {currentDayData?.cooldown &&
+                          currentDayData.cooldown.length > 0 && (
+                            <div className="bg-[#111111]/80 border border-blue-500/20 rounded-[1.5rem] overflow-hidden flex flex-col group shadow-sm mt-2">
+                              <div className="p-5 md:p-6 bg-blue-500/5">
+                                <h3 className="text-blue-400 font-black tracking-widest uppercase text-sm mb-4 flex items-center gap-2">
+                                  <Wind className="w-4 h-4" /> {t('static_cooldown')}
+                                </h3>
+                                <ul className="space-y-2">
+                                  {currentDayData.cooldown.map((cd, i) => (
+                                    <li
+                                      key={i}
+                                      className="flex gap-3 items-start text-sm text-slate-300 font-medium"
+                                    >
+                                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0"></div>
+                                      <span className="leading-relaxed">{cd}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          )}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </Card>
+                </Card>
+              </motion.div>
+            </AnimatePresence>
           </div>
 
           {/* Right Column: Stats & Progression */}
@@ -1291,6 +1358,111 @@ export default function Training() {
           </div>
         </div>
       )}
+      {plan && <RestTimerUI />}
+    </div>
+  );
+}
+
+function SetLogger({ exercise, currentWeight, logs, onLog, haptic }: { 
+  exercise: Exercise; 
+  currentWeight: number; 
+  logs: LoggedSet[]; 
+  onLog: (weight: number, reps: number) => void;
+  haptic: (pattern?: number | number[]) => void;
+}) {
+  const { t } = useTranslation();
+  const [weight, setWeight] = useState(currentWeight || 0);
+  const [reps, setReps] = useState(10);
+
+  useEffect(() => {
+    if (currentWeight > 0) setWeight(currentWeight);
+  }, [currentWeight]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 bg-black/50 border border-white/10 rounded-lg p-0.5 shadow-inner">
+          <Input 
+            type="number" 
+            value={weight} 
+            onChange={(e) => setWeight(parseFloat(e.target.value) || 0)}
+            className="w-16 h-8 bg-transparent border-none text-center text-sm font-black focus-visible:ring-0 text-white p-0"
+          />
+          <span className="text-[8px] font-black text-slate-600 uppercase pr-1 italic">kg</span>
+        </div>
+        <div className="flex items-center gap-1 bg-black/50 border border-white/10 rounded-lg p-0.5 shadow-inner">
+          <button 
+            onClick={() => { haptic(5); setReps(Math.max(1, reps - 1)); }}
+            className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-white"
+          >-</button>
+          <span className="w-8 text-center text-sm font-black text-white">{reps}</span>
+          <button 
+            onClick={() => { haptic(5); setReps(reps + 1); }}
+            className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-white"
+          >+</button>
+        </div>
+        <Button 
+          onClick={() => { haptic(10); onLog(weight, reps); }}
+          size="sm"
+          className="bg-cyan-500 hover:bg-cyan-400 text-black font-black text-[10px] h-8 px-3 rounded-lg"
+        >
+          {t('log_set')}
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        {logs.map((set, i) => (
+          <div key={i} className="flex items-center gap-1 bg-white/5 border border-white/5 rounded px-2 py-1 group animate-in zoom-in-50 duration-300">
+            <span className="text-[9px] font-black text-slate-500">{i + 1}</span>
+            <span className="text-[10px] font-black text-white">{set.weight}<span className="text-slate-600 italic">kg</span></span>
+            <span className="text-[10px] font-black text-cyan-400">×{set.reps}</span>
+          </div>
+        ))}
+        {Array.from({ length: Math.max(0, parseInt(exercise.sets) - logs.length) }).map((_, i) => (
+          <div key={`empty-${i}`} className="w-6 h-6 border border-white/5 border-dashed rounded flex items-center justify-center">
+            <span className="text-[8px] font-black text-slate-700">{logs.length + i + 1}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RestTimerUI() {
+  const { t } = useTranslation();
+  const [seconds, setSeconds] = useState(0);
+  const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    let interval: any;
+    if (active) {
+      interval = setInterval(() => setSeconds(s => s + 1), 1000);
+    }
+    return () => clearInterval(interval);
+  }, [active]);
+
+  if (!active && seconds === 0) return (
+    <Button 
+      onClick={() => setActive(true)}
+      className="fixed bottom-24 right-6 bg-cyan-600 text-white rounded-full p-4 shadow-xl z-50 overflow-hidden group hover:scale-110 transition-all border border-cyan-400/50"
+    >
+      <Zap className="w-6 h-6" />
+    </Button>
+  );
+
+  return (
+    <div className="fixed bottom-24 right-6 bg-[#0a0a0c] border border-cyan-500/30 rounded-3xl p-4 shadow-2xl z-50 flex items-center gap-4 animate-in slide-in-from-right-4">
+      <div className="text-2xl font-black text-cyan-400 font-mono w-16 text-center">
+        {Math.floor(seconds / 60)}:{(seconds % 60).toString().padStart(2, '0')}
+      </div>
+      <div className="flex gap-2">
+        <Button size="icon" onClick={() => setActive(!active)} variant="ghost" className="text-white hover:bg-white/10">
+          <Play className="w-4 h-4" />
+        </Button>
+        <Button size="icon" onClick={() => { setActive(false); setSeconds(0); }} variant="ghost" className="text-red-400 hover:bg-red-500/10">
+          <RotateCcw className="w-4 h-4" />
+        </Button>
+      </div>
     </div>
   );
 }

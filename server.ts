@@ -1,7 +1,8 @@
+import path from "path";
 import express from "express";
 import { createServer as createViteServer } from "vite";
-import path from "path";
 import cors from "cors";
+import axios from "axios";
 
 async function startServer() {
   const app = express();
@@ -10,94 +11,94 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
 
-  // Strava Auth Endpoint
+  const STRAVA_CLIENT_ID = process.env.STRAVA_CLIENT_ID;
+  const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET;
+  const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
+  const REDIRECT_URI = `${APP_URL}/api/strava/callback`;
+
+  // Strava Auth Initializer
   app.get("/api/strava/auth", (req, res) => {
-    const redirectUri = `${process.env.APP_URL}/api/strava/callback`;
-    const clientId = process.env.STRAVA_CLIENT_ID;
-    
-    if (!clientId) {
-      return res.status(500).json({ error: "STRAVA_CLIENT_ID not configured" });
+    if (!STRAVA_CLIENT_ID) {
+      return res.status(500).json({ error: "Strava Client ID not configured" });
     }
-
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: 'code',
-      scope: 'read,activity:read_all',
-    });
-
-    const authUrl = `https://www.strava.com/oauth/authorize?${params}`;
+    const scope = "activity:read_all";
+    const authUrl = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=${scope}`;
     res.json({ url: authUrl });
   });
 
-  // Strava Callback
-  app.get('/api/strava/callback', async (req, res) => {
-    const { code, error } = req.query;
-
-    if (error) {
-      return res.send(`
-        <html><body>
-          <script>
-            if (window.opener) {
-              window.opener.postMessage({ type: 'STRAVA_AUTH_ERROR', error: '${error}' }, '*');
-              window.close();
-            }
-          </script>
-          <p>Auth error: ${error}</p>
-        </body></html>
-      `);
-    }
+  // Strava Callback Handler
+  app.get("/api/strava/callback", async (req, res) => {
+    const { code } = req.query;
+    if (!code) return res.status(400).send("No code provided");
 
     try {
-      // Exchange code for tokens
-      const response = await fetch('https://www.strava.com/oauth/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_id: process.env.STRAVA_CLIENT_ID,
-          client_secret: process.env.STRAVA_CLIENT_SECRET,
-          code,
-          grant_type: 'authorization_code'
-        })
+      const response = await axios.post("https://www.strava.com/oauth/token", {
+        client_id: STRAVA_CLIENT_ID,
+        client_secret: STRAVA_CLIENT_SECRET,
+        code,
+        grant_type: "authorization_code",
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Token exchange failed');
-      }
-
-      // Send tokens to parent window
-      res.send(`
-        <html><body>
-          <script>
-            if (window.opener) {
-              window.opener.postMessage({ type: 'STRAVA_AUTH_SUCCESS', payload: ${JSON.stringify(data)} }, '*');
-              window.close();
-            } else {
-              window.location.href = '/';
-            }
-          </script>
-          <p>Authentication successful. You can close this window.</p>
-        </body></html>
-      `);
-
-    } catch (err) {
-      res.send(`
-        <html><body>
-          <script>
-            if (window.opener) {
-              window.opener.postMessage({ type: 'STRAVA_AUTH_ERROR', error: 'Failed to exchange token' }, '*');
-              window.close();
-            }
-          </script>
-          <p>Auth error: Failed to exchange token</p>
-        </body></html>
-      `);
+      // Pass the token data to the parent window and close this popup
+      const script = `
+        <script>
+          window.opener.postMessage({ type: 'STRAVA_AUTH_SUCCESS', payload: ${JSON.stringify(response.data)} }, '*');
+          window.close();
+        </script>
+      `;
+      res.send(script);
+    } catch (error: any) {
+      console.error("Strava Auth Error:", error.response?.data || error.message);
+      const script = `
+        <script>
+          window.opener.postMessage({ type: 'STRAVA_AUTH_ERROR', error: 'Failed to exchange token' }, '*');
+          window.close();
+        </script>
+      `;
+      res.send(script);
     }
   });
 
-  // Vite middleware
+  // Fetch Today's Strava Activities
+  app.post("/api/strava/activities", async (req, res) => {
+    const { accessToken } = req.body;
+    if (!accessToken) return res.status(401).json({ error: "No access token" });
+
+    try {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const afterTimestamp = Math.floor(startOfDay.getTime() / 1000);
+
+      const response = await axios.get(`https://www.strava.com/api/v3/athlete/activities`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { after: afterTimestamp }
+      });
+
+      // Sum calories if available, or estimate based on distance/type if needed
+      // Strava API activities often don't include calories unless they come from a device with HR
+      // but 'kilojoules' for rides or we can use a basic MET estimation
+      const activities = response.data.map((act: any) => ({
+        id: act.id,
+        name: act.name,
+        type: act.type,
+        distance: act.distance,
+        moving_time: act.moving_time,
+        calories: act.calories || (act.kilojoules ? act.kilojoules / 4.184 : 0) // rough estimate for kJ to kcal
+      }));
+
+      res.json({ activities });
+    } catch (error: any) {
+      console.error("Strava Fetch Error:", error.response?.data || error.message);
+      res.status(500).json({ error: "Failed to fetch activities" });
+    }
+  });
+
+  // API routes
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok" });
+  });
+
+  // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -105,10 +106,10 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static("dist"));
-    // Use get * to ensure React Router handles all other routes
-    app.get('*', (req, res) => {
-      res.sendFile(path.resolve("dist/index.html"));
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
     });
   }
 

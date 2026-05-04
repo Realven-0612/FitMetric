@@ -67,8 +67,8 @@ export default function Library() {
       (ex.n.toLowerCase().includes(searchTerm.toLowerCase()) || 
        ex.m.toLowerCase().includes(searchTerm.toLowerCase()) ||
        ex.l.toLowerCase().includes(searchTerm.toLowerCase())) &&
-      (muscleFilter === "all" || ex.m.toLowerCase() === t(muscleFilter).toLowerCase()) &&
-      (styleFilter === "all" || ex.l.toLowerCase() === t(styleFilter).toLowerCase()) &&
+      (muscleFilter === "all" || ex.m.toLowerCase() === t(muscleFilter as any).toLowerCase()) &&
+      (styleFilter === "all" || ex.l.toLowerCase() === t(styleFilter as any).toLowerCase()) &&
       (diffFilter === "all" || ex.d.toString() === diffFilter) &&
       (effFilter === "all" || ex.e.toString() === effFilter)
   ).sort((a, b) => {
@@ -107,7 +107,7 @@ export default function Library() {
             onChange={(e) => setMuscleFilter(e.target.value)}
             className="w-full sm:w-36 h-12 rounded-2xl bg-black/40 border border-white/5 text-white px-4 text-sm font-bold focus:ring-cyan-500/50 outline-none appearance-none cursor-pointer"
           >
-            <option value="all">{t('all')}</option>
+            <option value="all">{t('all' as any)}</option>
             <option value="chest">{t('chest')}</option>
             <option value="back">{t('back')}</option>
             <option value="legs">{t('legs')}</option>
@@ -124,7 +124,7 @@ export default function Library() {
             onChange={(e) => setStyleFilter(e.target.value)}
             className="w-full sm:w-36 h-12 rounded-2xl bg-black/40 border border-white/5 text-white px-4 text-sm font-bold focus:ring-cyan-500/50 outline-none appearance-none cursor-pointer"
           >
-            <option value="all">{t('all')}</option>
+            <option value="all">{t('all' as any)}</option>
             <option value="gym">{t('gym')}</option>
             <option value="calisthenics">{t('calisthenics')}</option>
             <option value="band">{t('band')}</option>
@@ -138,7 +138,7 @@ export default function Library() {
             onChange={(e) => setDiffFilter(e.target.value)}
             className="w-full sm:w-28 h-12 rounded-2xl bg-black/40 border border-white/5 text-white px-4 text-sm font-bold focus:ring-cyan-500/50 outline-none appearance-none cursor-pointer"
           >
-            <option value="all">{t('all')}</option>
+            <option value="all">{t('all' as any)}</option>
             <option value="1">1</option>
             <option value="2">2</option>
             <option value="3">3</option>
@@ -154,7 +154,7 @@ export default function Library() {
             onChange={(e) => setEffFilter(e.target.value)}
             className="w-full sm:w-28 h-12 rounded-2xl bg-black/40 border border-white/5 text-white px-4 text-sm font-bold focus:ring-cyan-500/50 outline-none appearance-none cursor-pointer"
           >
-            <option value="all">{t('all')}</option>
+            <option value="all">{t('all' as any)}</option>
             <option value="1">1</option>
             <option value="2">2</option>
             <option value="3">3</option>

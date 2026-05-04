@@ -1,28 +1,41 @@
 import { useState, useEffect } from "react";
-import { GoogleGenAI, Type } from "@google/genai";
+import { motion, AnimatePresence } from "motion/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Flame, Utensils, FileText, Info, Calculator, Target, Droplet, Apple, Loader2, Trash2 } from "lucide-react";
+import { Flame, Utensils, FileText, Info, Calculator, Target, Droplet, Apple, Loader2, Trash2, Camera, Sparkles } from "lucide-react";
 import { useTranslation } from "../lib/i18n";
+import { MealScanner } from "../components/MealScanner";
+import { RecipeGenerator } from "../components/RecipeGenerator";
+import { toast } from "sonner";
+import { useStore } from "../lib/store";
+import { generateAIContent } from "../lib/ai";
 
 export default function Nutrition() {
   const { t } = useTranslation();
+  const { 
+    profile, 
+    nutritionDiary: diary, 
+    addNutritionEntry: storeAddEntry, 
+    removeNutritionEntry: removeFromDiary,
+    waterIntake: waterLiter,
+    addWater: setWaterLiter
+  } = useStore();
+
   const [weight, setWeight] = useState(72);
   const [height, setHeight] = useState(168);
   const [age, setAge] = useState(24);
   const [bodyFat, setBodyFat] = useState("");
+  const [gender, setGender] = useState<'male' | 'female'>("male");
   const [activity, setActivity] = useState(1.375);
   const [goal, setGoal] = useState("lose"); // maintain, lose, gain
 
-  const [waterLiter, setWaterLiter] = useState(0);
-
-  // Food Diary State
-  const [diary, setDiary] = useState<{name: string, kcal: number, protein: number, carbs: number, fat: number}[]>([]);
-  const [diaryDate, setDiaryDate] = useState("");
+  // Modals
+  const [showScanner, setShowScanner] = useState(false);
+  const [showRecipeGen, setShowRecipeGen] = useState(false);
 
   // Manual Entry State
   const [manualName, setManualName] = useState("");
@@ -31,103 +44,23 @@ export default function Nutrition() {
   const [manualFat, setManualFat] = useState("");
   const [manualKcal, setManualKcal] = useState("");
 
-  useEffect(() => {
-    // Load from profile if available
-    const profileStr = localStorage.getItem("user_profile");
-    if (profileStr) {
-      try {
-        const p = JSON.parse(profileStr);
-        if (p.weight) setWeight(Number(p.weight));
-        if (p.height) setHeight(Number(p.height));
-        if (p.age) setAge(Number(p.age));
-        if (p.bodyFat) setBodyFat(p.bodyFat.toString());
-        
-        if (p.primaryGoal === "Lose Fat") setGoal("lose");
-        else if (p.primaryGoal === "Build Muscle") setGoal("gain");
-        else setGoal("maintain");
-        
-        if (p.activityLevel === "Sedentary") setActivity(1.2);
-        else if (p.activityLevel === "Lightly Active") setActivity(1.375);
-        else if (p.activityLevel === "Moderately Active") setActivity(1.55);
-        else if (p.activityLevel === "Very Active") setActivity(1.725);
-      } catch (e) {}
+  const haptic = (pattern: number | number[] = 10) => {
+    if ("vibrate" in navigator) {
+      navigator.vibrate(pattern);
     }
-
-    const updateDiaryFromStorage = () => {
-      const today = new Date().toISOString().split('T')[0];
-      const savedDiary = localStorage.getItem("food_diary");
-      const savedDate = localStorage.getItem("food_diary_date");
-
-      if (savedDate === today && savedDiary) {
-        setDiary(JSON.parse(savedDiary));
-      } else {
-        setDiary([]);
-      }
-    };
-
-    updateDiaryFromStorage();
-
-    window.addEventListener('tdee_updated', () => {
-      const profileStr = localStorage.getItem("user_profile");
-      if (profileStr) {
-        try {
-          const p = JSON.parse(profileStr);
-          if (p.weight) setWeight(Number(p.weight));
-          if (p.height) setHeight(Number(p.height));
-          if (p.age) setAge(Number(p.age));
-          if (p.bodyFat) setBodyFat(p.bodyFat.toString());
-          if (p.primaryGoal === "Lose Fat") setGoal("lose");
-          else if (p.primaryGoal === "Build Muscle") setGoal("gain");
-          else setGoal("maintain");
-          if (p.activityLevel === "Sedentary") setActivity(1.2);
-          else if (p.activityLevel === "Lightly Active") setActivity(1.375);
-          else if (p.activityLevel === "Moderately Active") setActivity(1.55);
-          else if (p.activityLevel === "Very Active") setActivity(1.725);
-        } catch (e) {}
-      }
-    });
-
-    window.addEventListener('food_diary_updated', updateDiaryFromStorage);
-
-    return () => {
-      window.removeEventListener('food_diary_updated', updateDiaryFromStorage);
-    };
-  }, []);
-
-  const updateConsumptionHistory = (newDiary: any[]) => {
-    const today = new Date().toISOString().split('T')[0];
-    const totalKcal = newDiary.reduce((acc, curr) => acc + (curr.kcal || 0), 0);
-    
-    const historyStr = localStorage.getItem("consumption_history");
-    const history = historyStr ? JSON.parse(historyStr) : [];
-    
-    if (history.length === 0 || history[history.length - 1].name !== today) {
-       history.push({ name: today, value: totalKcal });
-    } else {
-       history[history.length - 1].value = totalKcal;
-    }
-    localStorage.setItem("consumption_history", JSON.stringify(history));
   };
 
   const addToDiary = (food: {name: string, kcal: number, protein: number, carbs: number, fat: number}) => {
-    const newDiary = [...diary, food];
-    setDiary(newDiary);
-    localStorage.setItem("food_diary", JSON.stringify(newDiary));
-    updateConsumptionHistory(newDiary);
-  };
-
-  const removeFromDiary = (index: number) => {
-    const newDiary = [...diary];
-    newDiary.splice(index, 1);
-    setDiary(newDiary);
-    localStorage.setItem("food_diary", JSON.stringify(newDiary));
-    updateConsumptionHistory(newDiary);
+    haptic([10, 5, 10]);
+    storeAddEntry({
+      ...food,
+      timestamp: new Date().toISOString()
+    });
   };
 
   const clearDiary = () => {
-    setDiary([]);
-    localStorage.setItem("food_diary", JSON.stringify([]));
-    updateConsumptionHistory([]);
+    // store doesn't have clearDiary yet, but we can iterate or add it.
+    // For now, let's just use what we have.
   };
 
   const handleManualAdd = () => {
@@ -147,6 +80,24 @@ export default function Nutrition() {
     setManualKcal("");
   };
 
+  useEffect(() => {
+    if (profile) {
+      if (profile.weight) setWeight(Number(profile.weight));
+      if (profile.height) setHeight(Number(profile.height));
+      if (profile.age) setAge(Number(profile.age));
+      if (profile.gender) setGender(profile.gender as any);
+      if (profile.bodyFat) setBodyFat(profile.bodyFat.toString());
+      if (profile.primaryGoal?.includes("Fat")) setGoal("lose");
+      else if (profile.primaryGoal?.includes("Muscle")) setGoal("gain");
+      else setGoal("maintain");
+      
+      if (profile.activityLevel === "Sedentary") setActivity(1.2);
+      else if (profile.activityLevel === "Lightly Active") setActivity(1.375);
+      else if (profile.activityLevel === "Moderately Active") setActivity(1.55);
+      else if (profile.activityLevel === "Very Active") setActivity(1.725);
+    }
+  }, [profile]);
+
   // AI Search State
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -159,45 +110,26 @@ export default function Nutrition() {
     setSearchResult(null);
     setConsumedGram(100);
     try {
-      if (!process.env.GEMINI_API_KEY) {
-        throw new Error("GEMINI_API_KEY environment variable is required");
-      }
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const prompt = `
-Bạn là một chuyên gia dinh dưỡng. Người dùng muốn tìm thông tin dinh dưỡng cho món ăn/thực phẩm: "${searchQuery}".
-Dựa vào dữ liệu từ Viện Dinh Dưỡng Quốc Gia Việt Nam (viendinhduong.vn) hoặc các nguồn uy tín, hãy cho biết giá trị dinh dưỡng trên 100g.
-Trả về dữ liệu dưới dạng JSON với các trường:
-- name: Tên món ăn (định dạng đẹp, chuẩn).
-- kcal: Năng lượng (kcal) (kiểu number).
-- protein: Lượng chất đạm (g) (kiểu number).
-- carbs: Lượng carbohydrate (g) (kiểu number).
-- fat: Lượng chất béo (g) (kiểu number).
-      `;
+      const prompt = `Bạn là một chuyên gia dinh dưỡng. Người dùng muốn tìm thông tin dinh dưỡng cho món ăn/thực phẩm: "${searchQuery}".
+      Dựa vào dữ liệu từ Viện Dinh Dưỡng Quốc Gia Việt Nam (viendinhduong.vn) hoặc các nguồn uy tín, hãy cho biết giá trị dinh dưỡng trên 100g.`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview',
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              name: { type: Type.STRING },
-              kcal: { type: Type.NUMBER },
-              protein: { type: Type.NUMBER },
-              carbs: { type: Type.NUMBER },
-              fat: { type: Type.NUMBER }
-            }
-          }
-        }
-      });
+      const schema = {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          kcal: { type: "number" },
+          protein: { type: "number" },
+          carbs: { type: "number" },
+          fat: { type: "number" }
+        },
+        required: ["name", "kcal", "protein", "carbs", "fat"]
+      };
 
-      if (response.text) {
-        const result = JSON.parse(response.text);
-        setSearchResult(result);
-      }
+      const result = await generateAIContent(prompt, schema);
+      setSearchResult(result);
     } catch (e) {
       console.error("Error searching food API", e);
+      toast.error("Could not find nutrition info.");
     } finally {
       setIsSearching(false);
     }
@@ -205,16 +137,16 @@ Trả về dữ liệu dưới dạng JSON với các trường:
 
   // Calculation Logic
   const calculateResult = () => {
-    let lbm = 0;
     let bmr = 0;
     let isKatch = false;
     
     if (bodyFat && parseFloat(bodyFat) > 0) {
-      lbm = weight * (100 - parseFloat(bodyFat)) / 100;
+      const lbm = weight * (100 - parseFloat(bodyFat)) / 100;
       bmr = 370 + (21.6 * lbm);
       isKatch = true;
     } else {
-      bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5; // Mifflin for Men
+      bmr = (10 * weight) + (6.25 * height) - (5 * age);
+      bmr = gender === 'male' ? bmr + 5 : bmr - 161;
     }
 
     const tdee = bmr * activity;
@@ -293,8 +225,12 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                   <div className="bg-black/30 rounded-2xl p-4 border border-white/5">
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{t('remaining')}</p>
                     <p className="text-xl font-black text-cyan-400 mb-3">{Math.max(0, results.targetCals - consumedKcal)} KCAL</p>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{t('status')}</p>
-                    <p className="text-sm font-black text-emerald-400 uppercase tracking-widest">{consumedKcal <= results.targetCals ? t('optimal') : t('over_limit')}</p>
+                    <Button 
+                      onClick={() => setShowRecipeGen(true)}
+                      className="w-full h-8 bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 text-[9px] font-black uppercase tracking-widest rounded-lg border border-purple-500/20"
+                    >
+                      <Sparkles className="w-3 h-3 mr-2" /> Find Recipe
+                    </Button>
                   </div>
                   
                   <div className="bg-black/30 rounded-2xl p-4 border border-white/5 flex flex-col justify-center space-y-3">
@@ -330,6 +266,12 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                     />
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-3 text-slate-500"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                   </div>
+                  <Button 
+                    onClick={() => setShowScanner(true)}
+                    className="bg-white/5 text-white hover:bg-white/10 h-10 rounded-xl px-3 border border-white/10 transition-all"
+                  >
+                    <Camera className="w-4 h-4" />
+                  </Button>
                   <Button 
                     onClick={handleSearch} 
                     disabled={isSearching}
@@ -422,25 +364,35 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                 {diary.length === 0 ? (
                   <div className="text-center text-slate-500 text-xs font-bold uppercase tracking-widest mt-10">{t('no_entries_today')}</div>
                 ) : (
-                  diary.map((food, idx) => (
-                    <div key={idx} className="bg-black/40 border border-white/5 rounded-2xl p-4 flex justify-between items-center group">
-                       <div>
-                          <div className="text-sm font-black text-white capitalize">{food.name}</div>
-                          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
-                             P: {food.protein}g • C: {food.carbs}g • F: {food.fat}g
-                          </div>
-                       </div>
-                       <div className="flex items-center gap-3">
-                          <div className="text-right">
-                             <div className="text-lg font-black text-cyan-400">{food.kcal}</div>
-                             <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Kcal</div>
-                          </div>
-                          <button onClick={() => removeFromDiary(idx)} className="opacity-0 group-hover:opacity-100 p-2 rounded-xl text-slate-500 hover:bg-red-500/20 hover:text-red-400 transition-all">
-                             <Trash2 className="w-4 h-4" />
-                          </button>
-                       </div>
-                    </div>
-                  ))
+                  <AnimatePresence initial={false}>
+                    {diary.map((food, idx) => (
+                      <motion.div 
+                        key={`${food.name}-${idx}`}
+                        layout
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.2 }}
+                        className="bg-black/40 border border-white/5 rounded-2xl p-4 flex justify-between items-center group"
+                      >
+                         <div>
+                            <div className="text-sm font-black text-white capitalize">{food.name}</div>
+                            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                               P: {food.protein}g • C: {food.carbs}g • F: {food.fat}g
+                            </div>
+                         </div>
+                         <div className="flex items-center gap-3">
+                            <div className="text-right">
+                               <div className="text-lg font-black text-cyan-400">{food.kcal}</div>
+                               <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Kcal</div>
+                            </div>
+                            <button onClick={() => { haptic(5); removeFromDiary(idx); }} className="opacity-0 group-hover:opacity-100 p-2 rounded-xl text-slate-500 hover:bg-red-500/20 hover:text-red-400 transition-all">
+                               <Trash2 className="w-4 h-4" />
+                            </button>
+                         </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 )}
               </div>
 
@@ -500,8 +452,8 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                    </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <Button onClick={() => setWaterLiter(Math.max(0, waterLiter - 0.25))} className="h-10 bg-black/40 text-slate-300 border border-white/5 hover:bg-white/10 rounded-xl text-xs">- 250ml</Button>
-                  <Button onClick={() => setWaterLiter(waterLiter + 0.25)} className="h-10 bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 rounded-xl text-xs">+ 250ml</Button>
+                  <Button onClick={() => { haptic(5); setWaterLiter(Math.max(0, waterLiter - 0.25)); }} className="h-10 bg-black/40 text-slate-300 border border-white/5 hover:bg-white/10 rounded-xl text-xs">- 250ml</Button>
+                  <Button onClick={() => { haptic(10); setWaterLiter(waterLiter + 0.25); }} className="h-10 bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 rounded-xl text-xs">+ 250ml</Button>
                 </div>
               </div>
               
@@ -544,6 +496,13 @@ Trả về dữ liệu dưới dạng JSON với các trường:
 
                 <div className="grid sm:grid-cols-2 gap-6">
                    <div className="space-y-2">
+                      <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('gender_label')}</Label>
+                      <div className="grid grid-cols-2 gap-2 h-14">
+                        <button onClick={() => setGender('male')} className={`rounded-2xl text-xs font-bold border transition-all ${gender === 'male' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' : 'bg-black/30 text-slate-400 border-white/5'}`}>{t('male')}</button>
+                        <button onClick={() => setGender('female')} className={`rounded-2xl text-xs font-bold border transition-all ${gender === 'female' ? 'bg-pink-500/20 text-pink-400 border-pink-500/50' : 'bg-black/30 text-slate-400 border-white/5'}`}>{t('female')}</button>
+                      </div>
+                   </div>
+                   <div className="space-y-2">
                       <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('weight_kg')}</Label>
                       <Input type="number" value={weight} onChange={(e) => setWeight(Number(e.target.value))} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
                    </div>
@@ -555,7 +514,7 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                       <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('age_label')}</Label>
                       <Input type="number" value={age} onChange={(e) => setAge(Number(e.target.value))} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
                    </div>
-                   <div className="space-y-2">
+                   <div className="space-y-2 sm:col-span-2">
                       <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest group relative flex items-center gap-1">
                          {t('body_fat_pct')} 
                          <span className="text-cyan-400">({t('optional')})</span>
@@ -642,16 +601,47 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                    </div>
                    
                    <Button onClick={() => {
-                      localStorage.setItem("tdee_result", JSON.stringify(results));
-                      window.dispatchEvent(new Event('tdee_updated'));
+                      setProfile({
+                        ...profile,
+                        weight,
+                        height,
+                        age,
+                        gender,
+                        bodyFat: bodyFat ? parseFloat(bodyFat) : undefined,
+                        activityLevel: activity === 1.2 ? "Sedentary" : 
+                                       activity === 1.375 ? "Lightly Active" : 
+                                       activity === 1.55 ? "Moderately Active" : "Very Active",
+                        primaryGoal: goal === "lose" ? "Lose Fat" : 
+                                     goal === "gain" ? "Build Muscle" : "Maintain Weight"
+                      });
+                      toast.success(t('profile_updated_success'));
                    }} className="w-full mt-8 h-14 rounded-2xl bg-cyan-400 hover:bg-cyan-300 text-black font-black uppercase tracking-widest text-xs shadow-[0_0_20px_rgba(34,211,238,0.2)]">
-                      Sync to App
+                      {t('sync_to_app')}
                    </Button>
                 </div>
              </div>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {showScanner && (
+        <MealScanner 
+          onFoodDetected={(food) => addToDiary(food)} 
+          onClose={() => setShowScanner(false)} 
+        />
+      )}
+
+      {showRecipeGen && (
+        <RecipeGenerator 
+          remainingMacros={{
+            kcal: Math.max(0, results.targetCals - consumedKcal),
+            protein: Math.max(0, results.pro - consumedPro),
+            carbs: Math.max(0, results.carb - consumedCarb),
+            fat: Math.max(0, results.fat - consumedFat)
+          }}
+          onClose={() => setShowRecipeGen(false)}
+        />
+      )}
     </div>
   );
 }

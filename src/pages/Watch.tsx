@@ -21,11 +21,11 @@ export default function Watch() {
       if (event.data?.type === "STRAVA_AUTH_SUCCESS") {
         localStorage.setItem("strava_token", JSON.stringify(event.data.payload));
         setStravaConnected(true);
-        toast.success(t('strava_connected_successfully', { defaultValue: 'Strava connected successfully!' }));
+        toast.success(t('strava_connected_successfully'));
       }
 
       if (event.data?.type === "STRAVA_AUTH_ERROR") {
-        toast.error(`${t('strava_connection_failed', { defaultValue: 'Strava connection failed' })}: ${event.data.error}`);
+        toast.error(`${t('strava_connection_failed')}: ${event.data.error}`);
       }
     };
 
@@ -41,17 +41,17 @@ export default function Watch() {
       if (data.url) {
         window.open(data.url, "strava_auth", "width=600,height=700");
       } else {
-        toast.error(t('strava_not_configured', { defaultValue: 'Strava client not configured on server.' }));
+        toast.error(t('strava_not_configured'));
       }
     } catch (err) {
-      toast.error(t('strava_init_failed', { defaultValue: 'Failed to initiate Strava connection.' }));
+      toast.error(t('strava_init_failed'));
     }
   };
 
   const disconnectStrava = () => {
     localStorage.removeItem("strava_token");
     setStravaConnected(false);
-    toast.info(t('strava_disconnected', { defaultValue: 'Strava disconnected.' }));
+    toast.info(t('strava_disconnected'));
   };
 
   return (
