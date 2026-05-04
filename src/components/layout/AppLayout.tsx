@@ -61,7 +61,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
               <div className="border-l border-white/10 pl-4">
                 <h1 className="text-2xl font-black tracking-tight text-white mt-0.5">
-                  Fit<span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 font-light">Metric</span>
+                  Fit<span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">Metric</span>
                 </h1>
               </div>
             </div>

@@ -285,10 +285,10 @@ export default function Training() {
     });
   };
 
-  const applyRecommendedWeight = (ex: Exercise) => {
+  const applyRecommendedWeight = (ex: any) => {
     if (!ex.recommendedWeight) return;
     
-    // Try to extract number from string like "20kg" or "15kg per dumbbell"
+    // Improved extraction: look for decimal or integer
     const match = ex.recommendedWeight.match(/(\d+(\.\d+)?)/);
     if (match) {
       const weight = parseFloat(match[1]);
@@ -297,7 +297,9 @@ export default function Training() {
         localStorage.setItem("exercise_weights", JSON.stringify(updated));
         return updated;
       });
-      toast.success(`${t('suggested')} ${ex.name}: ${weight}kg`);
+      toast.success(`${t('suggested')} ${ex.name}: ${weight}kg`, {
+        icon: <Sparkles className="w-4 h-4 text-cyan-400" />
+      });
     } else {
       toast.info(`"${ex.recommendedWeight}"`);
     }
@@ -1101,8 +1103,17 @@ export default function Training() {
                               </button>
                             )}
                             <div className="flex flex-col col-span-2 md:col-span-1 mt-2 md:mt-0">
-                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5 flex items-center justify-between gap-2">
                                 {t('weight_kg')}
+                                {ex.recommendedWeight && (
+                                  <button 
+                                    onClick={() => applyRecommendedWeight(ex)}
+                                    className="text-[9px] text-cyan-500/80 font-black animate-pulse hover:text-cyan-400 hover:scale-105 transition-all cursor-pointer"
+                                    title={t('use_recommended')}
+                                  >
+                                    REC: {ex.recommendedWeight}
+                                  </button>
+                                )}
                               </span>
                               <div className="flex items-center gap-1 bg-black/50 border border-white/10 rounded-lg w-max p-0.5 shadow-inner">
                                 <button
@@ -1124,6 +1135,15 @@ export default function Training() {
                                 >
                                   +
                                 </button>
+                                {ex.recommendedWeight && (
+                                  <button
+                                    onClick={() => applyRecommendedWeight(ex)}
+                                    title={t('use_recommended')}
+                                    className="ml-1 w-7 h-7 flex items-center justify-center text-cyan-400 hover:text-white hover:bg-cyan-500/20 rounded-md transition-colors"
+                                  >
+                                    <Sparkles className="w-4 h-4" />
+                                  </button>
+                                )}
                               </div>
                             </div>
                             <Button

@@ -309,7 +309,7 @@ export default function Dashboard() {
                       {weight} <span className="text-sm text-slate-500">kg</span>
                     </div>
                     <div className="text-[10px] text-slate-500 font-medium font-mono uppercase">
-                      {t('update_stats')}
+                      {nextWeightHint ? `${t('suggested')}: ${nextWeightHint}` : t('update_stats')}
                     </div>
                  </div>
               </div>
