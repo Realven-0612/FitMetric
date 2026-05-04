@@ -8,22 +8,28 @@ import Profile from "./pages/Profile";
 import Library from "./pages/Library";
 import Watch from "./pages/Watch";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "./components/AuthProvider";
+import { TranslationProvider } from "./lib/i18n";
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AppLayout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/training" element={<Training />} />
-          <Route path="/library" element={<Library />} />
-          <Route path="/scanner" element={<Scanner />} />
-          <Route path="/nutrition" element={<Nutrition />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/watch" element={<Watch />} />
-        </Routes>
-      </AppLayout>
-      <Toaster />
-    </BrowserRouter>
+    <TranslationProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppLayout>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/training" element={<Training />} />
+              <Route path="/library" element={<Library />} />
+              <Route path="/scanner" element={<Scanner />} />
+              <Route path="/nutrition" element={<Nutrition />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/watch" element={<Watch />} />
+            </Routes>
+          </AppLayout>
+          <Toaster />
+        </BrowserRouter>
+      </AuthProvider>
+    </TranslationProvider>
   );
 }

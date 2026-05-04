@@ -3,8 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Activity, Link2, Unlink, Watch as WatchIcon } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "../lib/i18n";
 
 export default function Watch() {
+  const { t } = useTranslation();
   const [stravaConnected, setStravaConnected] = useState(false);
 
   useEffect(() => {
@@ -19,17 +21,17 @@ export default function Watch() {
       if (event.data?.type === "STRAVA_AUTH_SUCCESS") {
         localStorage.setItem("strava_token", JSON.stringify(event.data.payload));
         setStravaConnected(true);
-        toast.success("Strava connected successfully!");
+        toast.success(t('strava_connected_successfully', { defaultValue: 'Strava connected successfully!' }));
       }
 
       if (event.data?.type === "STRAVA_AUTH_ERROR") {
-        toast.error(`Strava connection failed: ${event.data.error}`);
+        toast.error(`${t('strava_connection_failed', { defaultValue: 'Strava connection failed' })}: ${event.data.error}`);
       }
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  }, [t]);
 
   const connectStrava = async () => {
     try {
@@ -39,17 +41,17 @@ export default function Watch() {
       if (data.url) {
         window.open(data.url, "strava_auth", "width=600,height=700");
       } else {
-        toast.error("Strava client not configured on server.");
+        toast.error(t('strava_not_configured', { defaultValue: 'Strava client not configured on server.' }));
       }
     } catch (err) {
-      toast.error("Failed to initiate Strava connection.");
+      toast.error(t('strava_init_failed', { defaultValue: 'Failed to initiate Strava connection.' }));
     }
   };
 
   const disconnectStrava = () => {
     localStorage.removeItem("strava_token");
     setStravaConnected(false);
-    toast.info("Strava disconnected.");
+    toast.info(t('strava_disconnected', { defaultValue: 'Strava disconnected.' }));
   };
 
   return (
@@ -60,8 +62,8 @@ export default function Watch() {
                <WatchIcon className="w-7 h-7 text-orange-400" />
             </div>
             <div>
-               <h1 className="text-xl font-black text-white uppercase tracking-wider">WEARABLES</h1>
-               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Device Connectivity & Sync</p>
+               <h1 className="text-xl font-black text-white uppercase tracking-wider">{t('wearables')}</h1>
+               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{t('device_connectivity')}</p>
             </div>
          </div>
       </div>
@@ -71,9 +73,9 @@ export default function Watch() {
           <div className="absolute top-0 right-0 w-32 h-32 bg-[#fc4c02]/10 rounded-full blur-[60px] pointer-events-none"></div>
           <CardHeader className="border-b border-white/5 pb-4">
             <CardTitle className="flex items-center gap-2 text-[#fc4c02] text-sm font-black uppercase tracking-wider">
-              <Activity className="w-5 h-5"/> Strava Integration
+              <Activity className="w-5 h-5"/> {t('strava_integration')}
             </CardTitle>
-            <CardDescription className="text-orange-200/60 font-medium">Sync your runs and rides to fuel the AI engine.</CardDescription>
+            <CardDescription className="text-orange-200/60 font-medium">{t('strava_sync_desc')}</CardDescription>
           </CardHeader>
           <CardContent className="p-6">
             {stravaConnected ? (
@@ -85,25 +87,25 @@ export default function Watch() {
                     <div>
                        <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.6)] animate-pulse"></div>
-                          <span className="font-bold text-white text-sm">Status: Connected</span>
+                          <span className="font-bold text-white text-sm">{t('strava_connected_status')}</span>
                        </div>
-                       <span className="text-[10px] uppercase font-bold tracking-widest text-[#fc4c02]">Data syncing real-time</span>
+                       <span className="text-[10px] uppercase font-bold tracking-widest text-[#fc4c02]">{t('strava_syncing')}</span>
                     </div>
                  </div>
                  <Button onClick={disconnectStrava} variant="outline" className="w-full hover:bg-red-500/10 hover:text-red-400 border-white/5 bg-black/20 text-slate-300 rounded-xl font-bold uppercase tracking-widest text-xs h-12">
-                   <Unlink className="w-4 h-4 mr-2"/> Disconnect Strava
+                   <Unlink className="w-4 h-4 mr-2"/> {t('disconnect_strava')}
                  </Button>
               </div>
             ) : (
               <div className="space-y-4 relative z-10">
                  <p className="text-sm text-slate-300 font-medium leading-relaxed mb-6">
-                    Connecting Strava allows the AI Coach to dynamically adjust your training volume based on your actual activity levels.
+                    {t('strava_connect_desc')}
                  </p>
                  <Button onClick={connectStrava} className="w-full bg-[#fc4c02] text-white hover:bg-[#fc4c02]/80 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-[#fc4c02]/20 border-none h-12 text-xs">
-                   <Link2 className="w-4 h-4 mr-2"/> Connect with Strava
+                   <Link2 className="w-4 h-4 mr-2"/> {t('connect_strava_btn')}
                  </Button>
                  <div className="p-4 bg-black/40 rounded-xl border border-white/5 text-[10px] font-medium text-slate-400 leading-relaxed uppercase tracking-wide">
-                    <strong className="text-orange-400">Developer Note:</strong> To enable this, set `STRAVA_CLIENT_ID` and `STRAVA_CLIENT_SECRET` in your environment and add the callback URL to your Strava API settings.
+                    <strong className="text-orange-400">Developer Note:</strong> {t('strava_dev_note').replace('Developer Note:', '')}
                  </div>
               </div>
             )}

@@ -72,6 +72,15 @@ export default function Scanner() {
 
       const data = JSON.parse(response.text.trim());
       setAnalysis(data);
+      
+      const history = JSON.parse(localStorage.getItem('scan_history') || '[]');
+      history.unshift({ // Add to beginning of history
+         date: new Date().toISOString(),
+         image: image,
+         ...data
+      });
+      localStorage.setItem('scan_history', JSON.stringify(history));
+      
       toast.success("Analysis complete!");
     } catch (err) {
       console.error(err);
@@ -88,19 +97,50 @@ export default function Scanner() {
           {/* Left panel - Image loading or input area */}
           <div className={`p-6 flex-1 flex flex-col justify-center items-center ${analysis ? 'lg:border-r border-white/10 lg:w-1/2' : 'w-full'} transition-all`}>
             {!image && !useWebcam && (
-              <div className="w-full max-w-lg aspect-square flex flex-col items-center justify-center border-2 border-dashed border-white/20 rounded-[2rem] bg-slate-900/40 hover:bg-slate-900/60 transition-colors p-8 text-center gap-6 group">
+              <div className="w-full max-w-lg aspect-square flex flex-col items-center justify-center border-2 border-dashed border-white/20 rounded-[2rem] bg-slate-900/40 hover:bg-slate-900/60 hover:border-primary/50 transition-all p-8 text-center gap-8 group cursor-pointer relative"
+                   onClick={() => fileInputRef.current?.click()}
+                   onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                   onDrop={(e) => {
+                     e.preventDefault();
+                     e.stopPropagation();
+                     const file = e.dataTransfer.files[0];
+                     if (file && file.type.startsWith("image/")) {
+                       const reader = new FileReader();
+                       reader.onloadend = () => setImage(reader.result as string);
+                       reader.readAsDataURL(file);
+                     }
+                   }}>
                 <div className="relative">
-                  <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl scale-150 group-hover:scale-110 transition-transform"></div>
-                  <Fingerprint className="w-20 h-20 text-primary relative z-10" />
+                  <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl scale-[2.0] group-hover:scale-[2.5] transition-transform duration-500"></div>
+                  <div className="w-24 h-24 rounded-full bg-slate-900/80 border border-white/10 flex items-center justify-center relative z-10 shadow-xl group-hover:-translate-y-2 transition-transform duration-300">
+                    <UploadCloud className="w-10 h-10 text-primary" />
+                  </div>
                 </div>
-                <h3 className="font-bold text-xl text-white">Initialize AI Body Scanner</h3>
-                <p className="text-sm text-slate-400 max-w-[250px]">Upload a photo or use your camera to start a full body composition analysis.</p>
-                <div className="flex gap-4 mt-2">
-                  <Button onClick={() => setUseWebcam(true)} variant="outline" className="rounded-2xl border-white/10 bg-white/5 hover:bg-white/10">
-                    <Camera className="w-4 h-4 mr-2"/> Camera
+                <div>
+                  <h3 className="font-black text-2xl text-white mb-2 tracking-tight group-hover:text-primary transition-colors">UPLOAD PHYSIQUE</h3>
+                  <p className="text-sm font-medium text-slate-400 max-w-[280px] mx-auto leading-relaxed">
+                    Drag and drop your photo here, or click to browse.
+                  </p>
+                </div>
+                <div className="flex gap-4 mt-2 w-full justify-center">
+                  <Button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setUseWebcam(true);
+                    }} 
+                    variant="outline" 
+                    className="rounded-2xl border-white/10 bg-black/50 backdrop-blur-md hover:bg-white/10 h-12 px-6 font-bold tracking-wide"
+                  >
+                    <Camera className="w-5 h-5 mr-3 text-slate-300"/> OPEN CAMERA
                   </Button>
-                  <Button onClick={() => fileInputRef.current?.click()} className="rounded-2xl bg-primary text-black hover:bg-primary/90 font-bold shadow-lg shadow-primary/20">
-                    <UploadCloud className="w-4 h-4 mr-2"/> Upload
+                  <Button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }} 
+                    className="rounded-2xl bg-cyan-400 text-black hover:bg-cyan-300 font-black shadow-[0_0_20px_rgba(34,211,238,0.4)] h-12 px-8 tracking-widest uppercase transition-all"
+                  >
+                    SELECT FILE
                   </Button>
                   <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload}/>
                 </div>
@@ -144,6 +184,12 @@ export default function Scanner() {
                     {!loading && !analysis && (
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-6">
                             <Button onClick={() => setImage(null)} variant="destructive" className="w-full rounded-2xl font-bold bg-red-500/80 backdrop-blur-md border border-red-500/50 hover:bg-red-500">RETAKE PHOTO</Button>
+                        </div>
+                    )}
+                    
+                    {analysis && (
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-6">
+                            <Button onClick={() => { setImage(null); setAnalysis(null); }} variant="outline" className="w-full rounded-2xl font-bold bg-black/60 backdrop-blur-md border border-white/20 hover:bg-white/10 text-white">SCAN ANOTHER PHOTO</Button>
                         </div>
                     )}
                   </div>

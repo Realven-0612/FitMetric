@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile data",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "weight": { "type": "string" },
+        "height": { "type": "string" },
+        "bodyFat": { "type": "string" },
+        "preferredStyle": { "type": "string" },
+        "age": { "type": "string" },
+        "level": { "type": "string" },
+        "primaryGoal": { "type": "string" },
+        "gender": { "type": "string" },
+        "activityLevel": { "type": "string" },
+        "createdAt": { "type": "string", "format": "timestamp" },
+        "updatedAt": { "type": "string", "format": "timestamp" }
+      },
+      "required": ["userId"]
+    },
+    "Scan": {
+      "title": "Scan",
+      "description": "User physique scan history",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "image": { "type": "string" },
+        "date": { "type": "string", "format": "timestamp" },
+        "physiqueType": { "type": "string" },
+        "bodyFatEstimate": { "type": "string" },
+        "score": { "type": "number" },
+        "muscleMass": { "type": "string" }
+      },
+      "required": ["userId"]
+    },
+    "WeightRecord": {
+      "title": "Weight Record",
+      "description": "User weight history",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "date": { "type": "string" },
+        "value": { "type": "number" }
+      },
+      "required": ["userId", "date", "value"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "users/{userId}/scans/{scanId}": {
+      "schema": "Scan",
+      "description": "Physique scans for a user"
+    },
+    "users/{userId}/weightRecords/{recordId}": {
+      "schema": "WeightRecord",
+      "description": "Weight history matching dates"
+    }
+  }
+}

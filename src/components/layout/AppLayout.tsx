@@ -14,18 +14,21 @@ import {
   Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import AIChatbot from "../AIChatbot";
+import { useTranslation } from "../../lib/i18n";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
+  const { language, setLanguage, t } = useTranslation();
 
   const navItems = [
-    { name: "DASHBOARD", href: "/", icon: LayoutGrid },
-    { name: "TRAINING", href: "/training", icon: CalendarDays },
-    { name: "NUTRITION", href: "/nutrition", icon: UtensilsCrossed },
-    { name: "SCANNER", href: "/scanner", icon: Maximize },
-    { name: "LIBRARY", href: "/library", icon: BookOpen },
-    { name: "WATCH", href: "/watch", icon: Watch },
-    { name: "PROFILE", href: "/profile", icon: User },
+    { name: t("dashboard"), href: "/", icon: LayoutGrid },
+    { name: t("training"), href: "/training", icon: CalendarDays },
+    { name: t("nutrition"), href: "/nutrition", icon: UtensilsCrossed },
+    { name: t("scanner"), href: "/scanner", icon: Maximize },
+    { name: t("library"), href: "/library", icon: BookOpen },
+    { name: t("watch"), href: "/watch", icon: Watch },
+    { name: t("profile"), href: "/profile", icon: User },
   ];
 
   return (
@@ -48,7 +51,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <div className="w-full h-full bg-[#111111] rounded-[14px] flex items-center justify-center overflow-hidden relative">
                      <Activity className="h-6 w-6 text-cyan-400 absolute z-0 group-hover:scale-110 transition-transform duration-300" />
                      <img 
-                        src="/assets/logo.png" 
+                        src="/assets/app_icon.png" 
                         alt="Logo" 
                         className="w-full h-full object-cover z-10 relative" 
                         onError={(e) => { e.currentTarget.style.display = 'none'; }} 
@@ -86,12 +89,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           {/* Right Actions */}
           <div className="hidden lg:flex items-center gap-3">
-             <Button variant="outline" className="rounded-full bg-transparent border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300 gap-2 h-10 px-5 text-xs font-bold tracking-wider uppercase">
-                <LogOut className="w-4 h-4" /> Login
-             </Button>
-             <Button variant="outline" size="icon" className="rounded-full bg-transparent border-white/10 text-slate-400 hover:bg-white/5 hover:text-white h-10 w-10">
-                <Globe className="w-4 h-4" />
-             </Button>
+             <div className="flex items-center gap-1 bg-[#111111] border border-white/10 rounded-full p-1 shadow-inner">
+                <button 
+                  onClick={() => setLanguage('en')}
+                  title="English"
+                  className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold transition-all ${language === 'en' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.2)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                >
+                  EN
+                </button>
+                <button 
+                  onClick={() => setLanguage('vi')}
+                  title="Tiếng Việt"
+                  className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold transition-all ${language === 'vi' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.2)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                >
+                  VI
+                </button>
+             </div>
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -122,6 +135,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 {item.name}
               </NavLink>
             ))}
+
+            <div className="h-px bg-white/5 my-2" />
+            
+            <div className="flex items-center justify-between px-4 py-1">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                <Globe className="w-3 h-3" /> Language
+              </span>
+              <div className="flex items-center gap-1 bg-black/40 border border-white/5 rounded-full p-1 shadow-inner">
+                <button 
+                  onClick={() => setLanguage('en')}
+                  className={`flex items-center justify-center px-4 h-8 rounded-full text-[10px] font-black transition-all ${language === 'en' ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(34,211,238,0.3)]' : 'text-slate-400 hover:text-white'}`}
+                >
+                  ENGLISH
+                </button>
+                <button 
+                  onClick={() => setLanguage('vi')}
+                  className={`flex items-center justify-center px-4 h-8 rounded-full text-[10px] font-black transition-all ${language === 'vi' ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(34,211,238,0.3)]' : 'text-slate-400 hover:text-white'}`}
+                >
+                  TIẾNG VIỆT
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </header>
@@ -132,6 +167,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </main>
+      <AIChatbot />
     </div>
   );
 }

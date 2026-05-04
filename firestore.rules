@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function isValidUserCreate(data) {
+      return data.keys().hasAll(['userId', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             (!('name' in data) || (data.name is string && data.name.size() <= 100)) &&
+             (!('weight' in data) || (data.weight is string && data.weight.size() <= 10)) &&
+             (!('height' in data) || (data.height is string && data.height.size() <= 10)) &&
+             (!('bodyFat' in data) || (data.bodyFat is string && data.bodyFat.size() <= 10)) &&
+             (!('preferredStyle' in data) || (data.preferredStyle is string && data.preferredStyle.size() <= 50)) &&
+             (!('age' in data) || (data.age is string && data.age.size() <= 10)) &&
+             (!('level' in data) || (data.level is string && data.level.size() <= 50)) &&
+             (!('primaryGoal' in data) || (data.primaryGoal is string && data.primaryGoal.size() <= 50)) &&
+             (!('gender' in data) || (data.gender is string && data.gender.size() <= 20)) &&
+             (!('activityLevel' in data) || (data.activityLevel is string && data.activityLevel.size() <= 50)) &&
+             data.userId is string && data.userId.size() <= 128;
+    }
+
+    function isValidUserUpdate(data) {
+      return data.userId == request.auth.uid &&
+             (!('name' in data) || (data.name is string && data.name.size() <= 100)) &&
+             (!('weight' in data) || (data.weight is string && data.weight.size() <= 10)) &&
+             (!('height' in data) || (data.height is string && data.height.size() <= 10)) &&
+             (!('bodyFat' in data) || (data.bodyFat is string && data.bodyFat.size() <= 10)) &&
+             (!('preferredStyle' in data) || (data.preferredStyle is string && data.preferredStyle.size() <= 50)) &&
+             (!('age' in data) || (data.age is string && data.age.size() <= 10)) &&
+             (!('level' in data) || (data.level is string && data.level.size() <= 50)) &&
+             (!('primaryGoal' in data) || (data.primaryGoal is string && data.primaryGoal.size() <= 50)) &&
+             (!('gender' in data) || (data.gender is string && data.gender.size() <= 20)) &&
+             (!('activityLevel' in data) || (data.activityLevel is string && data.activityLevel.size() <= 50));
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && isValidId(userId) && request.auth.uid == userId && isValidUserCreate(incoming()) && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && isValidId(userId) && request.auth.uid == userId && isValidUserUpdate(incoming()) && incoming().updatedAt == request.time && incoming().userId == existing().userId;
+      
+      match /scans/{scanId} {
+        function isValidScan(data) {
+          return data.keys().hasAll(['userId', 'date']) && 
+                 data.userId == request.auth.uid &&
+                 (!('image' in data) || (data.image is string && data.image.size() <= 1000000)) &&
+                 data.date is string && data.date.size() <= 100 &&
+                 (!('physiqueType' in data) || (data.physiqueType is string && data.physiqueType.size() <= 100)) &&
+                 (!('bodyFatEstimate' in data) || (data.bodyFatEstimate is string && data.bodyFatEstimate.size() <= 10)) &&
+                 (!('score' in data) || data.score is number) &&
+                 (!('muscleMass' in data) || (data.muscleMass is string && data.muscleMass.size() <= 100));
+        }
+        
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && isValidId(userId) && isValidId(scanId) && request.auth.uid == userId && isValidScan(incoming());
+        allow update: if isSignedIn() && isValidId(userId) && isValidId(scanId) && request.auth.uid == userId && isValidScan(incoming()) && incoming().userId == existing().userId;
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      match /weightRecords/{recordId} {
+        function isValidWeightRecord(data) {
+          return data.keys().hasAll(['userId', 'date', 'value']) &&
+                 data.userId == request.auth.uid &&
+                 data.date is string && data.date.size() <= 50 &&
+                 data.value is number;
+        }
+
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && isValidId(userId) && isValidId(recordId) && request.auth.uid == userId && isValidWeightRecord(incoming());
+        allow update: if isSignedIn() && isValidId(userId) && isValidId(recordId) && request.auth.uid == userId && isValidWeightRecord(incoming()) && incoming().userId == existing().userId;
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+  }
+}

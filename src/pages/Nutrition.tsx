@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { GoogleGenAI, Type } from "@google/genai";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -6,15 +6,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Flame, Utensils, FileText, Info, Calculator, Target, Droplet, Apple, Loader2 } from "lucide-react";
+import { Flame, Utensils, FileText, Info, Calculator, Target, Droplet, Apple, Loader2, Trash2 } from "lucide-react";
+import { useTranslation } from "../lib/i18n";
 
 export default function Nutrition() {
-  const macros = [
-    { name: "Protein", current: 95, target: 144, color: "bg-cyan-400", percent: 65, info: "2.0g / 1kg" },
-    { name: "Carbs", current: 85, target: 138, color: "bg-indigo-400", percent: 61, info: "Energy" },
-    { name: "Fats", current: 30, target: 72, color: "bg-emerald-400", percent: 41, info: "1.0g / 1kg" },
-  ];
-
+  const { t } = useTranslation();
   const [weight, setWeight] = useState(72);
   const [height, setHeight] = useState(168);
   const [age, setAge] = useState(24);
@@ -22,15 +18,146 @@ export default function Nutrition() {
   const [activity, setActivity] = useState(1.375);
   const [goal, setGoal] = useState("lose"); // maintain, lose, gain
 
+  const [waterLiter, setWaterLiter] = useState(0);
+
+  // Food Diary State
+  const [diary, setDiary] = useState<{name: string, kcal: number, protein: number, carbs: number, fat: number}[]>([]);
+  const [diaryDate, setDiaryDate] = useState("");
+
+  // Manual Entry State
+  const [manualName, setManualName] = useState("");
+  const [manualPro, setManualPro] = useState("");
+  const [manualCarb, setManualCarb] = useState("");
+  const [manualFat, setManualFat] = useState("");
+  const [manualKcal, setManualKcal] = useState("");
+
+  useEffect(() => {
+    // Load from profile if available
+    const profileStr = localStorage.getItem("user_profile");
+    if (profileStr) {
+      try {
+        const p = JSON.parse(profileStr);
+        if (p.weight) setWeight(Number(p.weight));
+        if (p.height) setHeight(Number(p.height));
+        if (p.age) setAge(Number(p.age));
+        if (p.bodyFat) setBodyFat(p.bodyFat.toString());
+        
+        if (p.primaryGoal === "Lose Fat") setGoal("lose");
+        else if (p.primaryGoal === "Build Muscle") setGoal("gain");
+        else setGoal("maintain");
+        
+        if (p.activityLevel === "Sedentary") setActivity(1.2);
+        else if (p.activityLevel === "Lightly Active") setActivity(1.375);
+        else if (p.activityLevel === "Moderately Active") setActivity(1.55);
+        else if (p.activityLevel === "Very Active") setActivity(1.725);
+      } catch (e) {}
+    }
+
+    const updateDiaryFromStorage = () => {
+      const today = new Date().toISOString().split('T')[0];
+      const savedDiary = localStorage.getItem("food_diary");
+      const savedDate = localStorage.getItem("food_diary_date");
+
+      if (savedDate === today && savedDiary) {
+        setDiary(JSON.parse(savedDiary));
+      } else {
+        setDiary([]);
+      }
+    };
+
+    updateDiaryFromStorage();
+
+    window.addEventListener('tdee_updated', () => {
+      const profileStr = localStorage.getItem("user_profile");
+      if (profileStr) {
+        try {
+          const p = JSON.parse(profileStr);
+          if (p.weight) setWeight(Number(p.weight));
+          if (p.height) setHeight(Number(p.height));
+          if (p.age) setAge(Number(p.age));
+          if (p.bodyFat) setBodyFat(p.bodyFat.toString());
+          if (p.primaryGoal === "Lose Fat") setGoal("lose");
+          else if (p.primaryGoal === "Build Muscle") setGoal("gain");
+          else setGoal("maintain");
+          if (p.activityLevel === "Sedentary") setActivity(1.2);
+          else if (p.activityLevel === "Lightly Active") setActivity(1.375);
+          else if (p.activityLevel === "Moderately Active") setActivity(1.55);
+          else if (p.activityLevel === "Very Active") setActivity(1.725);
+        } catch (e) {}
+      }
+    });
+
+    window.addEventListener('food_diary_updated', updateDiaryFromStorage);
+
+    return () => {
+      window.removeEventListener('food_diary_updated', updateDiaryFromStorage);
+    };
+  }, []);
+
+  const updateConsumptionHistory = (newDiary: any[]) => {
+    const today = new Date().toISOString().split('T')[0];
+    const totalKcal = newDiary.reduce((acc, curr) => acc + (curr.kcal || 0), 0);
+    
+    const historyStr = localStorage.getItem("consumption_history");
+    const history = historyStr ? JSON.parse(historyStr) : [];
+    
+    if (history.length === 0 || history[history.length - 1].name !== today) {
+       history.push({ name: today, value: totalKcal });
+    } else {
+       history[history.length - 1].value = totalKcal;
+    }
+    localStorage.setItem("consumption_history", JSON.stringify(history));
+  };
+
+  const addToDiary = (food: {name: string, kcal: number, protein: number, carbs: number, fat: number}) => {
+    const newDiary = [...diary, food];
+    setDiary(newDiary);
+    localStorage.setItem("food_diary", JSON.stringify(newDiary));
+    updateConsumptionHistory(newDiary);
+  };
+
+  const removeFromDiary = (index: number) => {
+    const newDiary = [...diary];
+    newDiary.splice(index, 1);
+    setDiary(newDiary);
+    localStorage.setItem("food_diary", JSON.stringify(newDiary));
+    updateConsumptionHistory(newDiary);
+  };
+
+  const clearDiary = () => {
+    setDiary([]);
+    localStorage.setItem("food_diary", JSON.stringify([]));
+    updateConsumptionHistory([]);
+  };
+
+  const handleManualAdd = () => {
+    if (!manualName || (!manualKcal && !manualPro && !manualCarb && !manualFat)) return;
+    const food = {
+      name: manualName,
+      kcal: Number(manualKcal) || 0,
+      protein: Number(manualPro) || 0,
+      carbs: Number(manualCarb) || 0,
+      fat: Number(manualFat) || 0,
+    };
+    addToDiary(food);
+    setManualName("");
+    setManualPro("");
+    setManualCarb("");
+    setManualFat("");
+    setManualKcal("");
+  };
+
   // AI Search State
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResult, setSearchResult] = useState<{name: string, kcal: number, protein: number, carbs: number, fat: number} | null>(null);
+  const [consumedGram, setConsumedGram] = useState<number | "">(100);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     setIsSearching(true);
     setSearchResult(null);
+    setConsumedGram(100);
     try {
       if (!process.env.GEMINI_API_KEY) {
         throw new Error("GEMINI_API_KEY environment variable is required");
@@ -112,16 +239,24 @@ Trả về dữ liệu dưới dạng JSON với các trường:
 
   const results = calculateResult();
 
+  const consumedKcal = diary.reduce((acc, curr) => acc + curr.kcal, 0);
+  const consumedPro = diary.reduce((acc, curr) => acc + curr.protein, 0);
+  const consumedCarb = diary.reduce((acc, curr) => acc + curr.carbs, 0);
+  const consumedFat = diary.reduce((acc, curr) => acc + curr.fat, 0);
+
+  // Calculate water target based on weight (ml/kg rule of thumb ~35ml per kg)
+  const waterTarget = Number((weight * 0.035).toFixed(2));
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-6xl mx-auto pb-10">
       <Tabs defaultValue="dashboard" className="w-full">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-white/5 pb-4">
            <div>
-              <h2 className="text-2xl font-black text-white px-2">NUTRITION SYSTEM</h2>
+              <h2 className="text-2xl font-black text-white px-2">{t('nutrition_system')}</h2>
            </div>
            <TabsList className="bg-[#111111]/80 border border-white/5 p-1 rounded-xl">
-             <TabsTrigger value="dashboard" className="rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-widest px-3 sm:px-4 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">Dashboard</TabsTrigger>
-             <TabsTrigger value="calculator" className="rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-widest px-3 sm:px-4 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">Calculator</TabsTrigger>
+             <TabsTrigger value="dashboard" className="rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-widest px-3 sm:px-4 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">{t('dashboard')}</TabsTrigger>
+             <TabsTrigger value="calculator" className="rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-widest px-3 sm:px-4 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">{t('calculator')}</TabsTrigger>
            </TabsList>
         </div>
 
@@ -137,39 +272,39 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                       <Target className="w-5 h-5 text-cyan-400" />
                    </div>
                    <div>
-                      <h2 className="text-sm font-black text-white uppercase tracking-wider">SMART NUTRITION</h2>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Real-time metabolism monitor</p>
+                      <h2 className="text-sm font-black text-white uppercase tracking-wider">{t('smart_nutrition')}</h2>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{t('realtime_metabolism')}</p>
                    </div>
                 </div>
 
                 <div className="flex justify-between items-end mb-2">
                    <div className="flex items-end gap-2">
-                     <span className="text-5xl font-black text-white leading-none">0</span>
-                     <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Kcal Consumed</span>
+                     <span className="text-5xl font-black text-white leading-none">{consumedKcal}</span>
+                     <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{t('kcal_consumed')}</span>
                    </div>
                    <div className="text-right">
-                     <span className="text-xl font-bold text-slate-300">/ 1438</span>
-                     <p className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Daily Limit</p>
+                     <span className="text-xl font-bold text-slate-300">/ {results.targetCals}</span>
+                     <p className="text-[10px] uppercase font-bold tracking-widest text-slate-500">{t('daily_limit')}</p>
                    </div>
                 </div>
-                <Progress value={0} className="h-1.5 bg-white/5 mb-6 [&>div]:bg-white" />
+                <Progress value={(consumedKcal / results.targetCals) * 100 || 0} className="h-1.5 bg-white/5 mb-6 [&>div]:bg-white" />
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-black/30 rounded-2xl p-4 border border-white/5">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Remaining</p>
-                    <p className="text-xl font-black text-cyan-400 mb-3">1438 KCAL</p>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Status</p>
-                    <p className="text-sm font-black text-emerald-400 uppercase tracking-widest">Optimal</p>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{t('remaining')}</p>
+                    <p className="text-xl font-black text-cyan-400 mb-3">{Math.max(0, results.targetCals - consumedKcal)} KCAL</p>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{t('status')}</p>
+                    <p className="text-sm font-black text-emerald-400 uppercase tracking-widest">{consumedKcal <= results.targetCals ? t('optimal') : t('over_limit')}</p>
                   </div>
                   
                   <div className="bg-black/30 rounded-2xl p-4 border border-white/5 flex flex-col justify-center space-y-3">
-                    {[{n: "Protein", v: "0", t: "136g"}, {n: "Carbs", v: "0", t: "71g"}, {n: "Fats", v: "0", t: "68g"}].map(m => (
+                    {[{n: t('protein'), v: consumedPro, t: results.pro, color: "bg-cyan-400"}, {n: t('carbs'), v: consumedCarb, t: results.carb, color: "bg-indigo-400"}, {n: t('fats'), v: consumedFat, t: results.fat, color: "bg-emerald-400"}].map(m => (
                       <div key={m.n}>
                         <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-1">
                           <span className="text-slate-400">{m.n}</span>
                           <span className="text-slate-500">{m.v} / {m.t}</span>
                         </div>
-                        <Progress value={0} className="h-1 bg-white/5" />
+                        <Progress value={(m.v / m.t) * 100 || 0} className={`h-1 bg-white/5 [&>div]:${m.color}`} />
                       </div>
                     ))}
                   </div>
@@ -181,13 +316,13 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                    <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center">
                       <Utensils className="w-5 h-5 text-orange-400" />
                    </div>
-                   <h2 className="text-sm font-black text-white uppercase tracking-wider">Nutrition DB Search</h2>
+                   <h2 className="text-sm font-black text-white uppercase tracking-wider">{t('nutrition_db_search')}</h2>
                 </div>
 
                 <div className="flex gap-2 mb-4">
                   <div className="relative flex-1">
                     <Input 
-                      placeholder="Search any food for cal..." 
+                      placeholder={t('search_food_placeholder')} 
                       className="bg-black/40 border-white/10 h-10 rounded-xl text-xs pl-10 focus-visible:ring-cyan-500/50 text-white placeholder:text-slate-500" 
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
@@ -199,82 +334,137 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                     onClick={handleSearch} 
                     disabled={isSearching}
                     className="bg-cyan-900/50 text-cyan-400 hover:bg-cyan-800/50 h-10 rounded-xl px-6 text-xs font-bold uppercase tracking-widest border border-cyan-500/30">
-                    {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : "Search"}
+                    {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : t('search_btn')}
                   </Button>
                 </div>
-                <p className="text-[8px] text-cyan-400/70 font-bold uppercase tracking-widest text-center mb-6">Search using AI for accurate nutrition ✨</p>
+                <p className="text-[8px] text-cyan-400/70 font-bold uppercase tracking-widest text-center mb-6">{t('ai_nutrition_note')}</p>
 
                 <div className="flex-1 border border-white/5 bg-black/20 rounded-2xl flex flex-col items-center justify-center gap-4 text-slate-500 p-8 min-h-[150px]">
                   {isSearching ? (
                     <div className="flex flex-col items-center gap-4">
                       <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
-                      <p className="text-xs font-medium text-center text-cyan-400/80">Analyzing food variants...</p>
+                      <p className="text-xs font-medium text-center text-cyan-400/80">{t('analyzing_food')}</p>
                     </div>
                   ) : searchResult ? (
                     <div className="w-full h-full flex flex-col">
-                       <h3 className="text-sm font-black text-white capitalize text-center mb-4">{searchResult.name} <span className="text-[10px] text-slate-500 uppercase ml-1">/ 100g</span></h3>
+                       <h3 className="text-sm font-black text-white capitalize text-center mb-4">{searchResult.name}</h3>
+                       
+                       <div className="flex items-center gap-3 mb-4">
+                         <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">{t('amount_g')}</Label>
+                         <Input 
+                           type="number" 
+                           value={consumedGram} 
+                           onChange={e => setConsumedGram(e.target.value === "" ? "" : Number(e.target.value))}
+                           className="bg-black/40 border-white/10 h-10 rounded-xl text-center focus-visible:ring-cyan-500/50 text-white font-bold"
+                         />
+                       </div>
+
                        <div className="grid grid-cols-2 gap-4 flex-1">
                           <div className="bg-black/40 rounded-xl border border-white/5 p-3 text-center flex flex-col justify-center">
-                            <span className="text-xl font-black text-cyan-400">{searchResult.kcal}</span>
+                            <span className="text-xl font-black text-cyan-400">{Math.round(searchResult.kcal * (Number(consumedGram) || 0) / 100)}</span>
                             <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Kcal</span>
                           </div>
                           <div className="bg-black/40 rounded-xl border border-white/5 p-3 text-center flex flex-col justify-center">
-                            <span className="text-lg font-black text-white">{searchResult.protein}g</span>
-                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Protein</span>
+                            <span className="text-lg font-black text-white">{Math.round(searchResult.protein * (Number(consumedGram) || 0) / 100)}g</span>
+                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">{t('protein')}</span>
                           </div>
                           <div className="bg-black/40 rounded-xl border border-white/5 p-3 text-center flex flex-col justify-center">
-                            <span className="text-lg font-black text-white">{searchResult.carbs}g</span>
-                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Carbs</span>
+                            <span className="text-lg font-black text-white">{Math.round(searchResult.carbs * (Number(consumedGram) || 0) / 100)}g</span>
+                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">{t('carbs')}</span>
                           </div>
                           <div className="bg-black/40 rounded-xl border border-white/5 p-3 text-center flex flex-col justify-center">
-                            <span className="text-lg font-black text-white">{searchResult.fat}g</span>
-                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Fat</span>
+                            <span className="text-lg font-black text-white">{Math.round(searchResult.fat * (Number(consumedGram) || 0) / 100)}g</span>
+                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">{t('fats')}</span>
                           </div>
                        </div>
+                       <Button onClick={() => { 
+                           const multiplier = (Number(consumedGram) || 0) / 100;
+                           addToDiary({
+                             name: searchResult.name,
+                             kcal: Math.round(searchResult.kcal * multiplier),
+                             protein: Math.round(searchResult.protein * multiplier),
+                             carbs: Math.round(searchResult.carbs * multiplier),
+                             fat: Math.round(searchResult.fat * multiplier)
+                           }); 
+                           setSearchResult(null); 
+                           setSearchQuery(""); 
+                         }} className="mt-4 w-full h-10 bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 font-bold uppercase tracking-widest text-xs rounded-xl">
+                         {t('log_db_item')}
+                       </Button>
                     </div>
                   ) : (
                     <>
                       <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                      <p className="text-xs font-medium text-center">Enter a food name to let AI analyze it.</p>
+                      <p className="text-xs font-medium text-center">{t('enter_food_ai')}</p>
                     </>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Column 2: Intake Capture */}
-            <div className="bg-[#111111]/80 backdrop-blur-md rounded-3xl p-6 border border-white/5 flex flex-col">
-              <div className="flex flex-col items-center mb-8 pt-4">
-                <div className="w-16 h-16 rounded-3xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4">
-                  <Apple className="w-8 h-8 text-purple-400" />
+            {/* Column 2: Food Diary */}
+            <div className="bg-[#111111]/80 backdrop-blur-md rounded-3xl p-6 border border-white/5 flex flex-col max-h-[800px] overflow-hidden">
+              <div className="flex flex-col items-center mb-6 pt-2">
+                <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-3">
+                  <Apple className="w-6 h-6 text-purple-400" />
                 </div>
-                <h2 className="text-lg font-black text-white uppercase tracking-wider italic">INTAKE CAPTURE</h2>
-              </div>
-
-              <Button className="w-full h-12 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white font-bold text-xs uppercase tracking-widest rounded-xl mb-8 flex items-center gap-2 shadow-[0_0_20px_rgba(139,92,246,0.3)]">
-                <Target className="w-4 h-4" /> AI Food Vision Scanner
-              </Button>
-
-              <div className="relative mb-8 text-center">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-white/5"></div>
-                </div>
-                <span className="relative bg-[#111111] px-4 text-[10px] text-slate-500 font-bold uppercase tracking-widest">Or Manual</span>
-              </div>
-
-              <div className="space-y-4 flex-1">
-                <Input placeholder="Item Name..." className="bg-black/30 border-white/5 h-12 rounded-xl text-sm font-medium text-center placeholder:text-slate-600" />
-                <div className="grid grid-cols-2 gap-4">
-                  <Input placeholder="Protein" className="bg-black/30 border-white/5 h-12 rounded-xl text-sm font-medium text-center placeholder:text-slate-600" />
-                  <Input placeholder="Carbs (g)" className="bg-black/30 border-white/5 h-12 rounded-xl text-sm font-medium text-center placeholder:text-slate-600" />
-                  <Input placeholder="Fat (g)" className="bg-black/30 border-white/5 h-12 rounded-xl text-sm font-medium text-center placeholder:text-slate-600" />
-                  <Input placeholder="Kcal" className="bg-black/30 border-white/5 h-12 rounded-xl text-sm font-medium text-center placeholder:text-slate-600" />
+                <div className="flex items-center w-full justify-center relative">
+                  <h2 className="text-lg font-black text-white uppercase tracking-wider italic">{t('metabolic_ledger')}</h2>
+                  {diary.length > 0 && (
+                    <Button variant="ghost" size="sm" onClick={clearDiary} className="absolute right-0 text-red-400 hover:text-red-300 hover:bg-red-500/10 text-[10px] uppercase font-bold tracking-widest rounded-lg h-8">
+                      {t('clear')}
+                    </Button>
+                  )}
                 </div>
               </div>
 
-              <Button className="w-full h-12 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 font-bold text-xs uppercase tracking-widest rounded-xl mt-8">
-                Add Meal
-              </Button>
+              <div className="flex-1 overflow-y-auto pr-2 space-y-4 mb-4 custom-scrollbar">
+                {diary.length === 0 ? (
+                  <div className="text-center text-slate-500 text-xs font-bold uppercase tracking-widest mt-10">{t('no_entries_today')}</div>
+                ) : (
+                  diary.map((food, idx) => (
+                    <div key={idx} className="bg-black/40 border border-white/5 rounded-2xl p-4 flex justify-between items-center group">
+                       <div>
+                          <div className="text-sm font-black text-white capitalize">{food.name}</div>
+                          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                             P: {food.protein}g • C: {food.carbs}g • F: {food.fat}g
+                          </div>
+                       </div>
+                       <div className="flex items-center gap-3">
+                          <div className="text-right">
+                             <div className="text-lg font-black text-cyan-400">{food.kcal}</div>
+                             <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Kcal</div>
+                          </div>
+                          <button onClick={() => removeFromDiary(idx)} className="opacity-0 group-hover:opacity-100 p-2 rounded-xl text-slate-500 hover:bg-red-500/20 hover:text-red-400 transition-all">
+                             <Trash2 className="w-4 h-4" />
+                          </button>
+                       </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="pt-4 border-t border-white/5">
+                <div className="relative mb-4 text-center">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-white/5"></div>
+                  </div>
+                  <span className="relative bg-[#111111] px-4 text-[10px] text-slate-500 font-bold uppercase tracking-widest">{t('manual_entry')}</span>
+                </div>
+                <div className="space-y-3">
+                  <Input value={manualName} onChange={e=>setManualName(e.target.value)} placeholder={t('food_item_placeholder')} className="bg-black/30 border-white/5 h-10 rounded-xl text-xs font-medium text-center placeholder:text-slate-600" />
+                  <div className="grid grid-cols-4 gap-2">
+                    <Input value={manualPro} onChange={e=>setManualPro(e.target.value)} placeholder={t('protein') + " (g)"} type="number" className="bg-black/30 border-white/5 h-10 rounded-xl text-[10px] font-medium text-center placeholder:text-slate-600 px-1" />
+                    <Input value={manualCarb} onChange={e=>setManualCarb(e.target.value)} placeholder={t('carbs') + " (g)"} type="number" className="bg-black/30 border-white/5 h-10 rounded-xl text-[10px] font-medium text-center placeholder:text-slate-600 px-1" />
+                    <Input value={manualFat} onChange={e=>setManualFat(e.target.value)} placeholder={t('fats') + " (g)"} type="number" className="bg-black/30 border-white/5 h-10 rounded-xl text-[10px] font-medium text-center placeholder:text-slate-600 px-1" />
+                    <Input value={manualKcal} onChange={e=>setManualKcal(e.target.value)} placeholder="Kcal" type="number" className="bg-black/30 border-white/5 h-10 rounded-xl text-[10px] font-medium text-center placeholder:text-slate-600 px-1" />
+                  </div>
+                </div>
+
+                <Button onClick={handleManualAdd} className="w-full h-10 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 font-bold text-xs uppercase tracking-widest rounded-xl mt-4">
+                  {t('log_entry')}
+                </Button>
+              </div>
             </div>
 
             {/* Column 3: Metrics, Hydration & Motivation */}
@@ -284,7 +474,7 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                    <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center">
                       <Flame className="w-4 h-4 text-orange-400" />
                    </div>
-                   <h2 className="text-xs font-black text-white uppercase tracking-wider">Today's Motivation</h2>
+                   <h2 className="text-xs font-black text-white uppercase tracking-wider">{t('todays_motivation')}</h2>
                 </div>
                 <p className="text-sm text-slate-400 italic">
                   "The only bad workout is the one that didn't happen. Your phone and laptop are synced, no excuses left."
@@ -296,22 +486,22 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
                       <Droplet className="w-5 h-5 text-blue-400" />
                    </div>
-                   <h2 className="text-sm font-black text-white uppercase tracking-wider">Hydration Tracker</h2>
+                   <h2 className="text-sm font-black text-white uppercase tracking-wider">{t('hydration_tracker')}</h2>
                 </div>
                 <div className="flex items-center justify-center mb-6">
                    <div className="w-32 h-32 rounded-full border-4 border-slate-800 flex items-center justify-center relative overflow-hidden bg-black/30">
-                     <div className="absolute bottom-0 w-full bg-blue-500/30 transition-all duration-1000 h-[60%]">
+                     <div className="absolute bottom-0 w-full bg-blue-500/30 transition-all duration-1000" style={{ height: `${waterTarget > 0 ? Math.min(100, (waterLiter / waterTarget) * 100) : 0}%` }}>
                        <div className="absolute top-0 w-full h-4 bg-blue-400/40 rounded-[100%] scale-150"></div>
                      </div>
                      <div className="relative z-10 text-center">
-                       <span className="text-3xl font-black text-white leading-none">1.8</span>
-                       <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Liters</p>
+                       <span className="text-3xl font-black text-white leading-none">{waterLiter.toFixed(2)}</span>
+                       <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mt-1">/ {waterTarget.toFixed(2)}L</p>
                      </div>
                    </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <Button className="h-10 bg-black/40 text-slate-300 border border-white/5 hover:bg-white/10 rounded-xl text-xs">- 250ml</Button>
-                  <Button className="h-10 bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 rounded-xl text-xs">+ 250ml</Button>
+                  <Button onClick={() => setWaterLiter(Math.max(0, waterLiter - 0.25))} className="h-10 bg-black/40 text-slate-300 border border-white/5 hover:bg-white/10 rounded-xl text-xs">- 250ml</Button>
+                  <Button onClick={() => setWaterLiter(waterLiter + 0.25)} className="h-10 bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 rounded-xl text-xs">+ 250ml</Button>
                 </div>
               </div>
               
@@ -320,16 +510,16 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
                       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
                    </div>
-                   <h2 className="text-sm font-black text-white uppercase tracking-wider">Weekly Metrics</h2>
+                   <h2 className="text-sm font-black text-white uppercase tracking-wider">{t('todays_summary')}</h2>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-black/30 rounded-2xl p-4 border border-white/5 text-center">
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">Avg 7D Intake</p>
-                    <p className="text-lg font-black text-white">0 <span className="text-xs font-bold text-slate-400">/1438</span></p>
+                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">{t('intake')}</p>
+                    <p className="text-lg font-black text-white">{consumedKcal} <span className="text-xs font-bold text-slate-400">/{results.targetCals}</span></p>
                   </div>
                   <div className="bg-black/30 rounded-2xl p-4 border border-white/5 text-center">
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">Avg 7D Protein</p>
-                    <p className="text-lg font-black text-white">0g <span className="text-xs font-bold text-slate-400">/136g</span></p>
+                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">{t('protein')}</p>
+                    <p className="text-lg font-black text-white">{consumedPro}g <span className="text-xs font-bold text-slate-400">/{results.pro}g</span></p>
                   </div>
                 </div>
               </div>
@@ -347,41 +537,41 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                       <Calculator className="w-5 h-5" />
                    </div>
                    <div>
-                      <h3 className="text-lg font-black text-white uppercase tracking-wider">Engine Configuration</h3>
-                      <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Algorithms: Katch-McArdle & Mifflin-St Jeor</p>
+                      <h3 className="text-lg font-black text-white uppercase tracking-wider">{t('engine_config')}</h3>
+                      <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">{t('algorithms_desc')}</p>
                    </div>
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-6">
                    <div className="space-y-2">
-                      <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Weight (kg)</Label>
+                      <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('weight_kg')}</Label>
                       <Input type="number" value={weight} onChange={(e) => setWeight(Number(e.target.value))} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
                    </div>
                    <div className="space-y-2">
-                      <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Height (cm)</Label>
+                      <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('height_cm')}</Label>
                       <Input type="number" value={height} onChange={(e) => setHeight(Number(e.target.value))} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
                    </div>
                    <div className="space-y-2">
-                      <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Age</Label>
+                      <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('age_label')}</Label>
                       <Input type="number" value={age} onChange={(e) => setAge(Number(e.target.value))} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
                    </div>
                    <div className="space-y-2">
                       <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest group relative flex items-center gap-1">
-                         Body Fat % 
-                         <span className="text-cyan-400">(Optional)</span>
+                         {t('body_fat_pct')} 
+                         <span className="text-cyan-400">({t('optional')})</span>
                       </Label>
                       <Input type="number" placeholder="Leave empty for Mifflin" value={bodyFat} onChange={(e) => setBodyFat(e.target.value)} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
                    </div>
                 </div>
 
                 <div className="space-y-3 pt-4">
-                   <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Activity Multiplier</Label>
+                   <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('activity_multiplier')}</Label>
                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {[
-                         { v: 1.2, l: "Sedentary", d: "x1.2" }, 
-                         { v: 1.375, l: "Light", d: "x1.375" }, 
-                         { v: 1.55, l: "Moderate", d: "x1.55" },
-                         { v: 1.725, l: "Active", d: "x1.725" },
+                         { v: 1.2, l: t('sedentary'), d: "x1.2" }, 
+                         { v: 1.375, l: t('light'), d: "x1.375" }, 
+                         { v: 1.55, l: t('moderate'), d: "x1.55" },
+                         { v: 1.725, l: t('active_level'), d: "x1.725" },
                       ].map((level) => (
                          <button
                             key={level.v}
@@ -400,11 +590,11 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                 </div>
 
                 <div className="space-y-3 pt-4 border-t border-white/5">
-                   <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Protocol Goal</Label>
+                   <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('protocol_goal')}</Label>
                    <div className="grid grid-cols-3 gap-3">
-                      <button onClick={() => setGoal("lose")} className={`h-14 rounded-[1.25rem] text-xs font-bold border transition-all ${goal === "lose" ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20'}`}>LOSE FAT</button>
-                      <button onClick={() => setGoal("maintain")} className={`h-14 rounded-[1.25rem] text-xs font-bold border transition-all ${goal === "maintain" ? 'bg-slate-500/20 text-slate-400 border-slate-500/50' : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20'}`}>MAINTAIN</button>
-                      <button onClick={() => setGoal("gain")} className={`h-14 rounded-[1.25rem] text-xs font-bold border transition-all ${goal === "gain" ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/50' : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20'}`}>GAIN MUSCLE</button>
+                      <button onClick={() => setGoal("lose")} className={`h-14 rounded-[1.25rem] text-xs font-bold border transition-all ${goal === "lose" ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20'}`}>{t('lose_fat')}</button>
+                      <button onClick={() => setGoal("maintain")} className={`h-14 rounded-[1.25rem] text-xs font-bold border transition-all ${goal === "maintain" ? 'bg-slate-500/20 text-slate-400 border-slate-500/50' : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20'}`}>{t('maintain')}</button>
+                      <button onClick={() => setGoal("gain")} className={`h-14 rounded-[1.25rem] text-xs font-bold border transition-all ${goal === "gain" ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/50' : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20'}`}>{t('gain_muscle')}</button>
                    </div>
                 </div>
              </div>
@@ -451,7 +641,10 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                       </div>
                    </div>
                    
-                   <Button className="w-full mt-8 h-14 rounded-2xl bg-cyan-400 hover:bg-cyan-300 text-black font-black uppercase tracking-widest text-xs shadow-[0_0_20px_rgba(34,211,238,0.2)]">
+                   <Button onClick={() => {
+                      localStorage.setItem("tdee_result", JSON.stringify(results));
+                      window.dispatchEvent(new Event('tdee_updated'));
+                   }} className="w-full mt-8 h-14 rounded-2xl bg-cyan-400 hover:bg-cyan-300 text-black font-black uppercase tracking-widest text-xs shadow-[0_0_20px_rgba(34,211,238,0.2)]">
                       Sync to App
                    </Button>
                 </div>
