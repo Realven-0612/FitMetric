@@ -361,7 +361,7 @@ export default function Dashboard() {
                     </DialogHeader>
                     <div className="mt-4 max-h-[60vh] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                       {rawWeightHistory.length === 0 ? (
-                        <p className="text-sm text-slate-500 text-center py-4">No entries found.</p>
+                        <p className="text-sm text-slate-500 text-center py-4">{t('no_entries_found')}</p>
                       ) : (
                         rawWeightHistory.map((item, idx) => (
                           <div key={idx} className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-2xl border border-white/5">
@@ -389,7 +389,7 @@ export default function Dashboard() {
              {weightHistoryData.length < 2 ? (
                  <div className="flex-1 flex flex-col items-center justify-center text-slate-500 space-y-4">
                     <TrendingUp className="w-8 h-8 opacity-20" />
-                    <p className="text-sm font-medium">Log 2+ weight entries to see progression map.</p>
+                    <p className="text-sm font-medium">{t('weight_progression_empty')}</p>
                  </div>
              ) : (
                  <div className="flex-1 w-full h-[200px] min-h-[200px]">

@@ -255,8 +255,13 @@ export default function Training() {
         });
         setHrConnected(true);
         toast.success(t('hr_connected'));
-      } catch (err) {
-        toast.error(t('hr_connect_failed'));
+      } catch (err: any) {
+        if (err.name === 'NotFoundError' || err.message?.includes('cancelled')) {
+          toast.info(t('hr_cancelled'));
+        } else {
+          console.error("Bluetooth Connection Error:", err);
+          toast.error(t('hr_connect_failed'));
+        }
       }
     }
   };

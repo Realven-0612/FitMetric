@@ -9,12 +9,87 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(cors());
-  app.use(express.json());
+  app.use(express.json({ limit: "10mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
   const STRAVA_CLIENT_ID = process.env.STRAVA_CLIENT_ID;
   const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET;
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
   const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
   const REDIRECT_URI = `${APP_URL}/api/strava/callback`;
+
+  // AI Endpoints
+  app.post("/api/ai/generate", async (req, res) => {
+    if (!GEMINI_API_KEY) {
+      return res.status(500).json({ error: "Gemini API Key not configured" });
+    }
+
+    try {
+      const { prompt, schema, modelName = "gemini-1.5-flash" } = req.body;
+      const axiosRes = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: schema ? {
+            responseMimeType: "application/json",
+            responseSchema: schema
+          } : undefined
+        }
+      );
+
+      const candidate = axiosRes.data.candidates?.[0];
+      const text = candidate?.content?.parts?.[0]?.text;
+
+      if (!text) {
+        return res.status(500).json({ error: "No text returned from AI" });
+      }
+
+      res.json({ result: schema ? JSON.parse(text) : text });
+    } catch (error: any) {
+      console.error("AI Generation Error:", error.response?.data || error.message);
+      res.status(500).json({ error: "AI processing failed" });
+    }
+  });
+
+  app.post("/api/ai/analyze-image", async (req, res) => {
+    if (!GEMINI_API_KEY) {
+      return res.status(500).json({ error: "Gemini API Key not configured" });
+    }
+
+    try {
+      const { prompt, imageBase64, mimeType, schema, modelName = "gemini-1.5-flash" } = req.body;
+      // imageBase64 might be a data URL, so strip the prefix if needed
+      const base64Data = imageBase64.includes(",") ? imageBase64.split(",")[1] : imageBase64;
+
+      const axiosRes = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inlineData: { mimeType, data: base64Data } }
+            ]
+          }],
+          generationConfig: schema ? {
+            responseMimeType: "application/json",
+            responseSchema: schema
+          } : undefined
+        }
+      );
+
+      const candidate = axiosRes.data.candidates?.[0];
+      const text = candidate?.content?.parts?.[0]?.text;
+
+      if (!text) {
+        return res.status(500).json({ error: "No text returned from AI" });
+      }
+
+      res.json({ result: schema ? JSON.parse(text) : text });
+    } catch (error: any) {
+      console.error("AI Vision Error:", error.response?.data || error.message);
+      res.status(500).json({ error: "AI Vision analysis failed" });
+    }
+  });
 
   // Strava Auth Initializer
   app.get("/api/strava/auth", (req, res) => {
