@@ -18,6 +18,7 @@ export default function Nutrition() {
   const { t } = useTranslation();
   const { 
     profile, 
+    setProfile,
     nutritionDiary: diary, 
     addNutritionEntry: storeAddEntry, 
     removeNutritionEntry: removeFromDiary,
@@ -419,20 +420,8 @@ export default function Nutrition() {
               </div>
             </div>
 
-            {/* Column 3: Metrics, Hydration & Motivation */}
+            {/* Column 3: Metrics & Hydration */}
             <div className="space-y-6 flex flex-col">
-              <div className="bg-[#111111]/80 backdrop-blur-md rounded-3xl p-6 border border-white/5">
-                <div className="flex items-center gap-3 mb-6">
-                   <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center">
-                      <Flame className="w-4 h-4 text-orange-400" />
-                   </div>
-                   <h2 className="text-xs font-black text-white uppercase tracking-wider">{t('todays_motivation')}</h2>
-                </div>
-                <p className="text-sm text-slate-400 italic">
-                  "The only bad workout is the one that didn't happen. Your phone and laptop are synced, no excuses left."
-                </p>
-              </div>
-
               <div className="bg-[#111111]/80 backdrop-blur-md rounded-3xl p-6 border border-white/5 flex flex-col">
                 <div className="flex items-center gap-3 mb-6">
                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">

@@ -39,7 +39,7 @@ const itemVariants = {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { profile, workoutPlan, nutritionDiary } = useStore();
 
   const [weight, setWeight] = useState<number | string>("--");
@@ -216,8 +216,8 @@ export default function Dashboard() {
       className="space-y-6 pb-10"
     >
       
-      {/* Top Row: Command Center & Motivation */}
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+      {/* Top Row: Command Center */}
+      <div className="grid grid-cols-1 gap-6">
         
         {/* Command Center Card */}
         <motion.div variants={itemVariants}>
@@ -235,10 +235,6 @@ export default function Dashboard() {
                      <p className="text-xs text-emerald-400 font-bold tracking-widest uppercase">{t('online_now')}</p>
                    </div>
                 </div>
-
-                <blockquote className="text-lg text-slate-300 font-medium italic mt-2 mb-4">
-                  "{t('discipline_freedom')}"
-                </blockquote>
 
                 {/* Metrics Grid */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-auto">
@@ -317,21 +313,6 @@ export default function Dashboard() {
                    </motion.div>
                 </div>
              </div>
-          </Card>
-        </motion.div>
-
-        {/* Motivation Card */}
-        <motion.div variants={itemVariants}>
-          <Card className="bg-[#111111]/80 border-white/5 rounded-[2rem] shadow-none flex flex-col items-start p-6 lg:p-8 h-full">
-             <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-orange-500/20 text-orange-500 rounded-xl">
-                   <Zap className="w-4 h-4 fill-current" />
-                </div>
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">{t('todays_motivation')}</h3>
-             </div>
-             <p className="text-slate-400 italic font-medium leading-relaxed">
-               {t('motivation_text')}
-             </p>
           </Card>
         </motion.div>
       </div>

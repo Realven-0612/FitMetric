@@ -41,6 +41,7 @@ export default function Profile() {
         weight: storeProfile.weight?.toString() || prev.weight,
         height: storeProfile.height?.toString() || prev.height,
         age: storeProfile.age?.toString() || prev.age,
+        bodyFat: storeProfile.bodyFat?.toString() || prev.bodyFat,
       }));
     }
   }, [storeProfile]);
@@ -83,6 +84,8 @@ export default function Profile() {
       weight: Number(profile.weight),
       height: Number(profile.height),
       age: Number(profile.age),
+      bodyFat: profile.bodyFat ? Number(profile.bodyFat) : undefined,
+      gender: profile.gender.toLowerCase() === 'male' ? 'male' as const : 'female' as const,
     };
     setStoreProfile(updatedProfile);
     setIsEditing(false);

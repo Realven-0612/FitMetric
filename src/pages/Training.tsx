@@ -31,6 +31,9 @@ import {
   ExternalLink,
   ArrowRight,
   Activity,
+  Unlink,
+  Play,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "../lib/i18n";
@@ -64,7 +67,6 @@ export interface Exercise {
   rest?: string;
   youtubeId?: string;
   youtubeQuery?: string;
-  recommendedWeight?: string;
 }
 
 export interface WorkoutDay {
@@ -266,16 +268,6 @@ export default function Training() {
     }
   };
 
-  const applyAllRecommendedWeights = () => {
-    if (!currentDayData?.exercises) return;
-    currentDayData.exercises.forEach(ex => {
-      if (ex.rec) {
-        updateExerciseWeight(ex.id, ex.rec);
-      }
-    });
-    toast.success(t('apply_all'));
-  };
-
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (timerActive && timerSeconds > 0) {
@@ -334,28 +326,6 @@ export default function Training() {
     }
   }, [profile, plan, isGenerating]);
 
-  const handleWeightChange = (exName: string, delta: number) => {
-    haptic(5);
-    const current = exerciseWeights[exName] || 0;
-    let newW = current + delta;
-    newW = Math.max(0, Math.round(newW * 10) / 10);
-    updateExerciseWeight(exName, newW);
-  };
-
-  const applyRecommendedWeight = (ex: any) => {
-    if (!ex.recommendedWeight) return;
-    const match = ex.recommendedWeight.match(/(\d+(\.\d+)?)/);
-    if (match) {
-      const weight = parseFloat(match[1]);
-      updateExerciseWeight(ex.name, weight);
-      toast.success(`${t('suggested')} ${ex.name}: ${weight}kg`, {
-        icon: <Sparkles className="w-4 h-4 text-cyan-400" />
-      });
-    } else {
-      toast.info(`"${ex.recommendedWeight}"`);
-    }
-  };
-
   const logSet = (exName: string, weight: number, reps: number, restSeconds: number = 60) => {
     haptic([15, 10, 15]);
     storeLogSet(exName, { weight, reps, completed: true, timestamp: Date.now() });
@@ -410,10 +380,7 @@ export default function Training() {
       3. Output EXACTLY 7 days, Monday to Sunday. If a day is for rest, set focusName to "Rest Day" and leave exercises empty.
       4. progressionGuide must provide a detailed progressive overload strategy for the entire cycle. Format as strictly bullet points with newlines (\n). Example: "- Week 1: Base assessment\n- Week 2: Increase intensity\n- Week 3: Peak volume\n- Week 4: Strategic deload"
       5. Provide an accurate youtubeQuery string (e.g. "Barbell Bench Press tutorial form") for each exercise.
-      6. Provide a list of dynamic warm-up exercises in the 'warmup' array and a list of static cool-down stretches in the 'cooldown' array based on the day's focus.
-      7. Provide a 'recommendedWeight' (e.g. "20kg", "Bodyweight", "15kg per dumbbell") for each exercise. 
-         IMPORTANT: If an exercise exists in "Current Personal Best Weights", recommend a weight that is 2.5% to 5% higher (Progressive Overload). 
-         If it's a new exercise, estimate based on the user's weight (e.g. Bench Press often starts around 40-50% bodyweight for beginners, Squat 60-70%).`;
+      6. Provide a list of dynamic warm-up exercises in the 'warmup' array and a list of static cool-down stretches in the 'cooldown' array based on the day's focus.`;
 
       const schema = {
         type: "object",
@@ -446,7 +413,6 @@ export default function Training() {
                       load: { type: "string" },
                       rest: { type: "string" },
                       youtubeQuery: { type: "string" },
-                      recommendedWeight: { type: "string" },
                     },
                     required: ["name", "muscle", "sets"],
                   },
@@ -1064,13 +1030,6 @@ export default function Training() {
                           )}
                           
                           <Button
-                            onClick={applyAllRecommendedWeights}
-                            variant="outline"
-                            className="border-cyan-500/30 bg-cyan-500/5 text-cyan-400 hover:bg-cyan-500 hover:text-black font-black uppercase tracking-widest text-[10px] h-12 px-5 rounded-xl transition-all"
-                          >
-                            <Trophy className="w-4 h-4 mr-2" /> {t('apply_all')}
-                          </Button>
-                          <Button
                             onClick={markSessionComplete}
                             className="bg-cyan-500 text-black hover:bg-cyan-400 font-black uppercase tracking-widest text-[10px] h-12 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(34,211,238,0.2)] group"
                           >
@@ -1152,64 +1111,43 @@ export default function Training() {
                                 </div>
                               </div>
 
-                              <div className="grid grid-cols-2 md:flex md:items-center gap-4 md:gap-6 bg-black/40 md:bg-transparent rounded-xl p-4 md:p-0 border md:border-none border-white/5 mt-2 md:mt-0">
-                                <div className="flex flex-col">
-                                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">
-                                    {t('volume_label')}
-                                  </span>
-                                  <span className="text-white font-black text-sm">
-                                    {ex.sets}
-                                  </span>
-                                </div>
-                                {ex.rest && (
+                                <div className="grid grid-cols-2 md:flex md:items-center gap-4 md:gap-6 bg-black/40 md:bg-transparent rounded-xl p-4 md:p-0 border md:border-none border-white/5 mt-2 md:mt-0">
                                   <div className="flex flex-col">
                                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">
-                                      {t('rest_label')}
+                                      {t('volume_label')}
                                     </span>
-                                    <span className="text-slate-300 font-black text-sm">
-                                      {ex.rest}
+                                    <span className="text-white font-black text-sm">
+                                      {ex.sets}
                                     </span>
                                   </div>
-                                )}
-                                {ex.recommendedWeight && (
-                                  <button 
-                                    onClick={() => applyRecommendedWeight(ex)}
-                                    className="flex flex-col text-left group/suggest hover:bg-cyan-500/5 p-1 rounded-lg transition-colors cursor-pointer"
-                                  >
-                                    <span className="text-[10px] text-cyan-500 font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                                      {t('suggested')} <CheckCircle2 className="w-2.5 h-2.5 opacity-0 group-hover/suggest:opacity-100 transition-opacity" />
-                                    </span>
-                                    <span className="text-cyan-300 font-black text-sm flex items-center gap-1 underline decoration-cyan-500/30 underline-offset-4">
-                                      {ex.recommendedWeight}
-                                    </span>
-                                  </button>
-                                )}
-                                <div className="flex flex-col col-span-2 md:col-span-1 mt-2 md:mt-0">
-                                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5 flex items-center justify-between gap-2">
-                                    {t('weight_kg_alt')}
-                                    {ex.recommendedWeight && (
-                                      <button 
-                                        onClick={() => applyRecommendedWeight(ex)}
-                                        className="text-[9px] text-cyan-500/80 font-black animate-pulse hover:text-cyan-400 hover:scale-105 transition-all cursor-pointer"
-                                        title={t('use_recommended')}
-                                      >
-                                        REC: {ex.recommendedWeight}
-                                      </button>
-                                    )}
-                                  </span>
+                                  {ex.rest && (
+                                    <div className="flex flex-col">
+                                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">
+                                        {t('rest_label')}
+                                      </span>
+                                      <span className="text-slate-300 font-black text-sm">
+                                        {ex.rest}
+                                      </span>
+                                    </div>
+                                  )}
                                   
-                                  <SetLogger 
-                                    exercise={ex} 
-                                    currentWeight={exerciseWeights[ex.name] || 0}
-                                    logs={sessionLogs[ex.name] || []}
-                                    onLog={(w, r) => {
-                                      const isHeavy = ex.name.toLowerCase().includes('squat') || ex.name.toLowerCase().includes('deadlift') || ex.name.toLowerCase().includes('bench');
-                                      logSet(ex.name, w, r, isHeavy ? 180 : 90);
-                                    }}
-                                    haptic={haptic}
-                                  />
-                                </div>
-                                <Button
+                                  <div className="flex flex-col col-span-2 md:col-span-1 mt-2 md:mt-0">
+                                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5 flex items-center justify-between gap-2">
+                                      {t('weight_kg_alt')}
+                                    </span>
+                                    
+                                    <SetLogger 
+                                      exercise={ex} 
+                                      currentWeight={exerciseWeights[ex.name] || 0}
+                                      logs={sessionLogs[ex.name] || []}
+                                      onLog={(w, r) => {
+                                        const isHeavy = ex.name.toLowerCase().includes('squat') || ex.name.toLowerCase().includes('deadlift') || ex.name.toLowerCase().includes('bench');
+                                        logSet(ex.name, w, r, isHeavy ? 180 : 90);
+                                      }}
+                                      haptic={haptic}
+                                    />
+                                  </div>
+                                  <Button
                                   onClick={() =>
                                     setActiveVideoIndex(
                                       activeVideoIndex === idx ? null : idx,
@@ -1380,7 +1318,7 @@ function SetLogger({ exercise, currentWeight, logs, onLog, haptic }: {
   const [reps, setReps] = useState(10);
 
   useEffect(() => {
-    if (currentWeight > 0) setWeight(currentWeight);
+    setWeight(currentWeight);
   }, [currentWeight]);
 
   return (
