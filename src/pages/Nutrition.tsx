@@ -9,25 +9,18 @@ import { Flame, Utensils, FileText, Info, Calculator, Target, Droplet, Apple, Lo
 import { useTranslation } from "../lib/i18n";
 import { MealScanner } from "../components/MealScanner";
 import { RecipeGenerator } from "../components/RecipeGenerator";
+import { useFitness } from "../components/FitnessProvider";
 
 export default function Nutrition() {
   const { t } = useTranslation();
-  const [weight, setWeight] = useState(72);
-  const [height, setHeight] = useState(168);
-  const [age, setAge] = useState(24);
-  const [bodyFat, setBodyFat] = useState("");
-  const [activity, setActivity] = useState(1.375);
-  const [goal, setGoal] = useState("lose"); // maintain, lose, gain
+  const { profile, diary, addFoodEntry, removeFoodEntry, macros, consumed } = useFitness();
+  const { weight, height, age, bodyFat, activityLevel, primaryGoal } = profile;
 
   const [waterLiter, setWaterLiter] = useState(0);
 
   // Modals
   const [showScanner, setShowScanner] = useState(false);
   const [showRecipeGen, setShowRecipeGen] = useState(false);
-
-  // Food Diary State
-  const [diary, setDiary] = useState<{name: string, kcal: number, protein: number, carbs: number, fat: number}[]>([]);
-  const [diaryDate, setDiaryDate] = useState("");
 
   // Manual Entry State
   const [manualName, setManualName] = useState("");
@@ -36,115 +29,15 @@ export default function Nutrition() {
   const [manualFat, setManualFat] = useState("");
   const [manualKcal, setManualKcal] = useState("");
 
-  useEffect(() => {
-    // Load from profile if available
-    const profileStr = localStorage.getItem("user_profile");
-    if (profileStr) {
-      try {
-        const p = JSON.parse(profileStr);
-        if (p.weight) setWeight(Number(p.weight));
-        if (p.height) setHeight(Number(p.height));
-        if (p.age) setAge(Number(p.age));
-        if (p.bodyFat) setBodyFat(p.bodyFat.toString());
-        
-        if (p.primaryGoal === "Lose Fat") setGoal("lose");
-        else if (p.primaryGoal === "Build Muscle") setGoal("gain");
-        else setGoal("maintain");
-        
-        if (p.activityLevel === "Sedentary") setActivity(1.2);
-        else if (p.activityLevel === "Lightly Active") setActivity(1.375);
-        else if (p.activityLevel === "Moderately Active") setActivity(1.55);
-        else if (p.activityLevel === "Very Active") setActivity(1.725);
-      } catch (e) {}
-    }
-
-    const updateDiaryFromStorage = () => {
-      const today = new Date().toISOString().split('T')[0];
-      const savedDiary = localStorage.getItem("food_diary");
-      const savedDate = localStorage.getItem("food_diary_date");
-
-      if (savedDate === today && savedDiary) {
-        setDiary(JSON.parse(savedDiary));
-      } else {
-        setDiary([]);
-      }
-    };
-
-    updateDiaryFromStorage();
-
-    window.addEventListener('tdee_updated', () => {
-      const profileStr = localStorage.getItem("user_profile");
-      if (profileStr) {
-        try {
-          const p = JSON.parse(profileStr);
-          if (p.weight) setWeight(Number(p.weight));
-          if (p.height) setHeight(Number(p.height));
-          if (p.age) setAge(Number(p.age));
-          if (p.bodyFat) setBodyFat(p.bodyFat.toString());
-          if (p.primaryGoal === "Lose Fat") setGoal("lose");
-          else if (p.primaryGoal === "Build Muscle") setGoal("gain");
-          else setGoal("maintain");
-          if (p.activityLevel === "Sedentary") setActivity(1.2);
-          else if (p.activityLevel === "Lightly Active") setActivity(1.375);
-          else if (p.activityLevel === "Moderately Active") setActivity(1.55);
-          else if (p.activityLevel === "Very Active") setActivity(1.725);
-        } catch (e) {}
-      }
-    });
-
-    window.addEventListener('food_diary_updated', updateDiaryFromStorage);
-
-    return () => {
-      window.removeEventListener('food_diary_updated', updateDiaryFromStorage);
-    };
-  }, []);
-
-  const updateConsumptionHistory = (newDiary: any[]) => {
-    const today = new Date().toISOString().split('T')[0];
-    const totalKcal = newDiary.reduce((acc, curr) => acc + (curr.kcal || 0), 0);
-    
-    const historyStr = localStorage.getItem("consumption_history");
-    const history = historyStr ? JSON.parse(historyStr) : [];
-    
-    if (history.length === 0 || history[history.length - 1].name !== today) {
-       history.push({ name: today, value: totalKcal });
-    } else {
-       history[history.length - 1].value = totalKcal;
-    }
-    localStorage.setItem("consumption_history", JSON.stringify(history));
-  };
-
-  const addToDiary = (food: {name: string, kcal: number, protein: number, carbs: number, fat: number}) => {
-    const newDiary = [...diary, food];
-    setDiary(newDiary);
-    localStorage.setItem("food_diary", JSON.stringify(newDiary));
-    updateConsumptionHistory(newDiary);
-  };
-
-  const removeFromDiary = (index: number) => {
-    const newDiary = [...diary];
-    newDiary.splice(index, 1);
-    setDiary(newDiary);
-    localStorage.setItem("food_diary", JSON.stringify(newDiary));
-    updateConsumptionHistory(newDiary);
-  };
-
-  const clearDiary = () => {
-    setDiary([]);
-    localStorage.setItem("food_diary", JSON.stringify([]));
-    updateConsumptionHistory([]);
-  };
-
   const handleManualAdd = () => {
     if (!manualName || (!manualKcal && !manualPro && !manualCarb && !manualFat)) return;
-    const food = {
+    addFoodEntry({
       name: manualName,
       kcal: Number(manualKcal) || 0,
       protein: Number(manualPro) || 0,
       carbs: Number(manualCarb) || 0,
       fat: Number(manualFat) || 0,
-    };
-    addToDiary(food);
+    });
     setManualName("");
     setManualPro("");
     setManualCarb("");
@@ -179,7 +72,7 @@ Trả về dữ liệu dưới dạng JSON với các trường:
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gemini-1.5-flash',
+          model: 'gemini-2.0-flash',
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: {
             responseMimeType: "application/json",
@@ -211,46 +104,10 @@ Trả về dữ liệu dưới dạng JSON với các trường:
     }
   };
 
-  // Calculation Logic
-  const calculateResult = () => {
-    let lbm = 0;
-    let bmr = 0;
-    let isKatch = false;
-    
-    if (bodyFat && parseFloat(bodyFat) > 0) {
-      lbm = weight * (100 - parseFloat(bodyFat)) / 100;
-      bmr = 370 + (21.6 * lbm);
-      isKatch = true;
-    } else {
-      bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5; // Mifflin for Men
-    }
-
-    const tdee = bmr * activity;
-    let targetCals = tdee;
-    if (goal === "lose") targetCals = tdee - 500;
-    if (goal === "gain") targetCals = tdee + 300;
-
-    const targetPro = weight * 2.0;
-    const targetFat = weight * 1.0;
-    const targetCarbs = (targetCals - (targetPro * 4) - (targetFat * 9)) / 4;
-
-    return {
-      isKatch,
-      bmr: Math.round(bmr),
-      tdee: Math.round(tdee),
-      targetCals: Math.round(targetCals),
-      pro: Math.round(targetPro),
-      fat: Math.round(targetFat),
-      carb: Math.round(targetCarbs)
-    };
-  };
-
-  const results = calculateResult();
-
-  const consumedKcal = diary.reduce((acc, curr) => acc + curr.kcal, 0);
-  const consumedPro = diary.reduce((acc, curr) => acc + curr.protein, 0);
-  const consumedCarb = diary.reduce((acc, curr) => acc + curr.carbs, 0);
-  const consumedFat = diary.reduce((acc, curr) => acc + curr.fat, 0);
+  const consumedKcal = consumed.calories;
+  const consumedPro = consumed.protein;
+  const consumedCarb = consumed.carbs;
+  const consumedFat = consumed.fat;
 
   // Calculate water target based on weight (ml/kg rule of thumb ~35ml per kg)
   const waterTarget = Number((weight * 0.035).toFixed(2));
@@ -291,16 +148,16 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                      <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{t('kcal_consumed')}</span>
                    </div>
                    <div className="text-right">
-                     <span className="text-xl font-bold text-slate-300">/ {results.targetCals}</span>
+                     <span className="text-xl font-bold text-slate-300">/ {macros.calories}</span>
                      <p className="text-[10px] uppercase font-bold tracking-widest text-slate-500">{t('daily_limit')}</p>
                    </div>
                 </div>
-                <Progress value={(consumedKcal / results.targetCals) * 100 || 0} className="h-1.5 bg-white/5 mb-6 [&>div]:bg-white" />
+                <Progress value={(consumedKcal / macros.calories) * 100 || 0} className="h-1.5 bg-white/5 mb-6 [&>div]:bg-white" />
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-black/30 rounded-2xl p-4 border border-white/5">
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{t('remaining')}</p>
-                    <p className="text-xl font-black text-cyan-400 mb-3">{Math.max(0, results.targetCals - consumedKcal)} KCAL</p>
+                    <p className="text-xl font-black text-cyan-400 mb-3">{Math.max(0, macros.calories - consumedKcal)} KCAL</p>
                     <Button 
                       onClick={() => setShowRecipeGen(true)}
                       className="w-full h-8 bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 text-[9px] font-black uppercase tracking-widest rounded-lg border border-purple-500/20"
@@ -310,7 +167,7 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                   </div>
                   
                   <div className="bg-black/30 rounded-2xl p-4 border border-white/5 flex flex-col justify-center space-y-3">
-                    {[{n: t('protein'), v: consumedPro, t: results.pro, color: "bg-cyan-400"}, {n: t('carbs'), v: consumedCarb, t: results.carb, color: "bg-indigo-400"}, {n: t('fats'), v: consumedFat, t: results.fat, color: "bg-emerald-400"}].map(m => (
+                    {[{n: t('protein'), v: consumedPro, t: macros.protein, color: "bg-cyan-400"}, {n: t('carbs'), v: consumedCarb, t: macros.carbs, color: "bg-indigo-400"}, {n: t('fats'), v: consumedFat, t: macros.fat, color: "bg-emerald-400"}].map(m => (
                       <div key={m.n}>
                         <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-1">
                           <span className="text-slate-400">{m.n}</span>
@@ -533,11 +390,11 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-black/30 rounded-2xl p-4 border border-white/5 text-center">
                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">{t('intake')}</p>
-                    <p className="text-lg font-black text-white">{consumedKcal} <span className="text-xs font-bold text-slate-400">/{results.targetCals}</span></p>
+                    <p className="text-lg font-black text-white">{consumedKcal} <span className="text-xs font-bold text-slate-400">/{macros.calories}</span></p>
                   </div>
                   <div className="bg-black/30 rounded-2xl p-4 border border-white/5 text-center">
                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">{t('protein')}</p>
-                    <p className="text-lg font-black text-white">{consumedPro}g <span className="text-xs font-bold text-slate-400">/{results.pro}g</span></p>
+                    <p className="text-lg font-black text-white">{consumedPro}g <span className="text-xs font-bold text-slate-400">/{macros.protein}g</span></p>
                   </div>
                 </div>
               </div>
@@ -563,22 +420,22 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                 <div className="grid sm:grid-cols-2 gap-6">
                    <div className="space-y-2">
                       <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('weight_kg')}</Label>
-                      <Input type="number" value={weight} onChange={(e) => setWeight(Number(e.target.value))} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
+                      <Input type="number" value={weight} onChange={(e) => useFitness().updateProfile({ weight: Number(e.target.value) })} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
                    </div>
                    <div className="space-y-2">
                       <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('height_cm')}</Label>
-                      <Input type="number" value={height} onChange={(e) => setHeight(Number(e.target.value))} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
+                      <Input type="number" value={height} onChange={(e) => useFitness().updateProfile({ height: Number(e.target.value) })} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
                    </div>
                    <div className="space-y-2">
                       <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('age_label')}</Label>
-                      <Input type="number" value={age} onChange={(e) => setAge(Number(e.target.value))} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
+                      <Input type="number" value={age} onChange={(e) => useFitness().updateProfile({ age: Number(e.target.value) })} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
                    </div>
                    <div className="space-y-2">
                       <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest group relative flex items-center gap-1">
                          {t('body_fat_pct')} 
                          <span className="text-cyan-400">({t('optional')})</span>
                       </Label>
-                      <Input type="number" placeholder="Leave empty for Mifflin" value={bodyFat} onChange={(e) => setBodyFat(e.target.value)} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
+                      <Input type="number" placeholder="Leave empty for Mifflin" value={bodyFat || ""} onChange={(e) => useFitness().updateProfile({ bodyFat: Number(e.target.value) })} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
                    </div>
                 </div>
 
@@ -586,22 +443,22 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                    <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('activity_multiplier')}</Label>
                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {[
-                         { v: 1.2, l: t('sedentary'), d: "x1.2" }, 
-                         { v: 1.375, l: t('light'), d: "x1.375" }, 
-                         { v: 1.55, l: t('moderate'), d: "x1.55" },
-                         { v: 1.725, l: t('active_level'), d: "x1.725" },
+                         { v: 'Sedentary', l: t('sedentary'), d: "x1.2" }, 
+                         { v: 'Lightly Active', l: t('light'), d: "x1.375" }, 
+                         { v: 'Moderately Active', l: t('moderate'), d: "x1.55" },
+                         { v: 'Very Active', l: t('active_level'), d: "x1.725" },
                       ].map((level) => (
                          <button
                             key={level.v}
-                            onClick={() => setActivity(level.v)}
+                            onClick={() => useFitness().updateProfile({ activityLevel: level.v })}
                             className={`h-16 rounded-[1.25rem] text-xs font-bold border flex flex-col items-center justify-center gap-0.5 transition-all outline-none ${
-                               activity === level.v 
+                               activityLevel === level.v 
                                ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_15px_rgba(34,211,238,0.15)]' 
                                : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20 hover:text-white hover:bg-black/50'
                             }`}
                          >
                             <span>{level.l}</span>
-                            <span className={`text-[10px] ${activity === level.v ? 'text-cyan-400/70' : 'text-slate-600'}`}>{level.d}</span>
+                            <span className={`text-[10px] ${activityLevel === level.v ? 'text-cyan-400/70' : 'text-slate-600'}`}>{level.d}</span>
                          </button>
                       ))}
                    </div>
@@ -610,9 +467,9 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                 <div className="space-y-3 pt-4 border-t border-white/5">
                    <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('protocol_goal')}</Label>
                    <div className="grid grid-cols-3 gap-3">
-                      <button onClick={() => setGoal("lose")} className={`h-14 rounded-[1.25rem] text-xs font-bold border transition-all ${goal === "lose" ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20'}`}>{t('lose_fat')}</button>
-                      <button onClick={() => setGoal("maintain")} className={`h-14 rounded-[1.25rem] text-xs font-bold border transition-all ${goal === "maintain" ? 'bg-slate-500/20 text-slate-400 border-slate-500/50' : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20'}`}>{t('maintain')}</button>
-                      <button onClick={() => setGoal("gain")} className={`h-14 rounded-[1.25rem] text-xs font-bold border transition-all ${goal === "gain" ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/50' : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20'}`}>{t('gain_muscle')}</button>
+                      <button onClick={() => useFitness().updateProfile({ primaryGoal: "Lose Fat" })} className={`h-14 rounded-[1.25rem] text-xs font-bold border transition-all ${primaryGoal === "Lose Fat" ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20'}`}>{t('lose_fat')}</button>
+                      <button onClick={() => useFitness().updateProfile({ primaryGoal: "Maintain" })} className={`h-14 rounded-[1.25rem] text-xs font-bold border transition-all ${primaryGoal === "Maintain" ? 'bg-slate-500/20 text-slate-400 border-slate-500/50' : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20'}`}>{t('maintain')}</button>
+                      <button onClick={() => useFitness().updateProfile({ primaryGoal: "Build Muscle" })} className={`h-14 rounded-[1.25rem] text-xs font-bold border transition-all ${primaryGoal === "Build Muscle" ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/50' : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20'}`}>{t('gain_muscle')}</button>
                    </div>
                 </div>
              </div>
@@ -626,45 +483,27 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                          <Target className="w-3.5 h-3.5" /> Output Blueprint
                       </div>
                       <div className="text-6xl font-black text-white tracking-tight drop-shadow-md mb-2">
-                         {results.targetCals}
+                         {macros.calories}
                       </div>
                       <div className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">
                          Daily kcal limit
-                      </div>
-                      
-                      <div className="flex justify-center gap-6 mt-6">
-                         <div className="text-center">
-                            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">BMR</div>
-                            <div className="text-base font-bold text-slate-300">{results.bmr} <span className="text-[10px] text-slate-600">({results.isKatch ? 'Katch' : 'Mifflin'})</span></div>
-                         </div>
-                         <div className="text-center border-l border-white/10 pl-6">
-                            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">TDEE</div>
-                            <div className="text-base font-bold text-slate-300">{results.tdee}</div>
-                         </div>
                       </div>
                    </div>
 
                    <div className="space-y-3">
                       <div className="bg-black/40 border border-white/5 rounded-2xl p-5 flex justify-between items-center group hover:bg-black/60 transition-colors">
-                         <span className="font-bold text-slate-400 text-sm">Protein <span className="text-[10px] text-slate-600 ml-2">2.0g/kg</span></span>
-                         <span className="text-2xl font-black text-cyan-400 group-hover:scale-105 transition-transform">{results.pro}g</span>
+                         <span className="font-bold text-slate-400 text-sm">Protein</span>
+                         <span className="text-2xl font-black text-cyan-400 group-hover:scale-105 transition-transform">{macros.protein}g</span>
                       </div>
                       <div className="bg-black/40 border border-white/5 rounded-2xl p-5 flex justify-between items-center group hover:bg-black/60 transition-colors">
-                         <span className="font-bold text-slate-400 text-sm">Fat <span className="text-[10px] text-slate-600 ml-2">1.0g/kg</span></span>
-                         <span className="text-2xl font-black text-orange-400 group-hover:scale-105 transition-transform">{results.fat}g</span>
+                         <span className="font-bold text-slate-400 text-sm">Fat</span>
+                         <span className="text-2xl font-black text-orange-400 group-hover:scale-105 transition-transform">{macros.fat}g</span>
                       </div>
                       <div className="bg-black/40 border border-white/5 rounded-2xl p-5 flex justify-between items-center group hover:bg-black/60 transition-colors">
-                         <span className="font-bold text-slate-400 text-sm">Carbs <span className="text-[10px] text-slate-600 ml-2">Rest</span></span>
-                         <span className="text-2xl font-black text-indigo-400 group-hover:scale-105 transition-transform">{results.carb}g</span>
+                         <span className="font-bold text-slate-400 text-sm">Carbs</span>
+                         <span className="text-2xl font-black text-indigo-400 group-hover:scale-105 transition-transform">{macros.carbs}g</span>
                       </div>
                    </div>
-                   
-                   <Button onClick={() => {
-                      localStorage.setItem("tdee_result", JSON.stringify(results));
-                      window.dispatchEvent(new Event('tdee_updated'));
-                   }} className="w-full mt-8 h-14 rounded-2xl bg-cyan-400 hover:bg-cyan-300 text-black font-black uppercase tracking-widest text-xs shadow-[0_0_20px_rgba(34,211,238,0.2)]">
-                      Sync to App
-                   </Button>
                 </div>
              </div>
           </Card>

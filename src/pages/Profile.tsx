@@ -10,14 +10,16 @@ import { db } from "../lib/firebase";
 import { doc, getDoc, updateDoc, collection, getDocs, deleteDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { handleFirestoreError, OperationType } from "../lib/firestoreUtils";
 import { useTranslation } from "../lib/i18n";
+import { useFitness } from "../components/FitnessProvider";
 
 export default function Profile() {
   const { user, loading: authLoading, signInWithGoogle, signOut } = useAuth();
+  const { profile: sysProfile, updateProfile: updateSysProfile } = useFitness();
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
   const [scanHistory, setScanHistory] = useState<any[]>([]);
-  const [profile, setProfile] = useState({
+  const [profile, setProfile] = useState<any>({
     name: "",
     weight: "68",
     height: "168",
@@ -31,28 +33,34 @@ export default function Profile() {
   });
 
   useEffect(() => {
-    if (!user) {
-      // Load from localStorage if not logged in (guest mode)
-      const saved = localStorage.getItem("user_profile");
-      if (saved) setProfile(JSON.parse(saved));
-      const history = localStorage.getItem("scan_history");
-      if (history) setScanHistory(JSON.parse(history));
-      return;
+    // Sync initial state from FitnessProvider when not editing
+    if (!isEditing) {
+      setProfile({
+        name: sysProfile.name || "",
+        weight: sysProfile.weight?.toString() || "68",
+        height: sysProfile.height?.toString() || "168",
+        bodyFat: sysProfile.bodyFat?.toString() || "",
+        preferredStyle: sysProfile.preferredStyle || "Calisthenics",
+        age: sysProfile.age?.toString() || "24",
+        level: sysProfile.level || "Beginner (0-1 y)",
+        primaryGoal: sysProfile.primaryGoal || "Lose Fat",
+        gender: sysProfile.gender === 'female' ? 'Female' : (sysProfile.gender === 'other' ? 'Other' : 'Male'),
+        activityLevel: sysProfile.activityLevel || "Sedentary"
+      });
     }
+  }, [sysProfile, isEditing]);
 
+  useEffect(() => {
     const loadUserData = async () => {
       setDataLoading(true);
-      try {
-        const userDocRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(userDocRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setProfile(prev => ({
-            ...prev,
-            ...data
-          }));
-        }
+      if (!user) {
+        const history = localStorage.getItem("scan_history");
+        if (history) setScanHistory(JSON.parse(history));
+        setDataLoading(false);
+        return;
+      }
 
+      try {
         // Load scans
         const scansRef = collection(db, "users", user.uid, "scans");
         const querySnapshot = await getDocs(scansRef);
@@ -75,13 +83,27 @@ export default function Profile() {
   }, [user]);
 
   const handleChange = (e: any) => {
-    setProfile(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    setProfile((prev: any) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSave = async () => {
+    // Update global fitness context
+    const updates = {
+      name: profile.name,
+      weight: parseFloat(profile.weight) || undefined,
+      height: parseFloat(profile.height) || undefined,
+      age: parseFloat(profile.age) || undefined,
+      bodyFat: profile.bodyFat ? parseFloat(profile.bodyFat) : undefined,
+      preferredStyle: profile.preferredStyle,
+      level: profile.level,
+      primaryGoal: profile.primaryGoal,
+      gender: profile.gender.toLowerCase() as 'male' | 'female' | 'other',
+      activityLevel: profile.activityLevel,
+    };
+    updateSysProfile(updates as any);
+
     if (!user) {
-      // Guest mode
-      localStorage.setItem("user_profile", JSON.stringify(profile));
+      // Guest mode additions (weights history)
       const historyStr = localStorage.getItem("weight_history");
       const weightHistory = historyStr ? JSON.parse(historyStr) : [];
       const today = new Date().toISOString().split('T')[0];

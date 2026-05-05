@@ -9,6 +9,7 @@ import { db } from "../lib/firebase";
 import { doc, deleteDoc, collection, getDocs } from "firebase/firestore";
 import { handleFirestoreError, OperationType } from "../lib/firestoreUtils";
 import { useTranslation } from "../lib/i18n";
+import { useFitness } from "../components/FitnessProvider";
 
 const defaultConsumptionData = [
   { name: "t2", value: 0 },
@@ -23,11 +24,8 @@ const defaultConsumptionData = [
 export default function Dashboard() {
   const { user } = useAuth();
   const { t } = useTranslation();
-  const [tdee, setTdee] = useState<number | string>("2000");
-  const [weight, setWeight] = useState<number | string>("--");
   const [nextOperation, setNextOperation] = useState<string>("Rest");
   const [nextWeightHint, setNextWeightHint] = useState<string>("");
-  const [consumedKcal, setConsumedKcal] = useState<number>(0);
   const [streak, setStreak] = useState<number>(0);
   const [consumptionData, setConsumptionData] = useState(defaultConsumptionData);
   const [weightHistoryData, setWeightHistoryData] = useState<any[]>([]);
@@ -54,184 +52,134 @@ export default function Dashboard() {
     window.dispatchEvent(new Event('weight_history_updated'));
   };
 
-  useEffect(() => {
-    const updateDashboardData = () => {
-      let fallbackTarget = 2000;
-      const profileStr = localStorage.getItem("user_profile");
-      if (profileStr) {
-        try {
-          const profile = JSON.parse(profileStr);
-          if (profile.weight) setWeight(profile.weight);
+   const { profile, macros, consumed } = useFitness();
+   const tdee = macros.calories;
+   const weight = profile.weight;
+   const consumedKcal = consumed.calories;
 
-          const w = parseFloat(profile.weight) || 72;
-          const h = parseFloat(profile.height) || 168;
-          const a = parseFloat(profile.age) || 24;
-          const bf = profile.bodyFat ? parseFloat(profile.bodyFat) : NaN;
-          
-          let bmr = (10 * w) + (6.25 * h) - (5 * a) + 5;
-          if (!isNaN(bf) && bf > 0) {
-            bmr = 370 + (21.6 * (w * (100 - bf) / 100));
-          }
-          
-          let act = 1.375;
-          if (profile.activityLevel === "Sedentary") act = 1.2;
-          else if (profile.activityLevel === "Moderately Active") act = 1.55;
-          else if (profile.activityLevel === "Very Active") act = 1.725;
-          
-          let target = bmr * act;
-          if (profile.primaryGoal === "Lose Fat") target -= 500;
-          if (profile.primaryGoal === "Build Muscle") target += 300;
-          fallbackTarget = Math.round(target);
-        } catch (e) {}
-      }
-
-      const tdeeStr = localStorage.getItem("tdee_result");
-      if (tdeeStr) {
-        try {
-          const result = JSON.parse(tdeeStr);
-          if (result.targetCals) setTdee(result.targetCals);
-          else if (result.tdee) setTdee(result.tdee);
-          else setTdee(fallbackTarget);
-        } catch (e) {
-          setTdee(fallbackTarget);
-        }
-      } else {
-        setTdee(fallbackTarget);
-      }
-
-      const workoutStr = localStorage.getItem("workout_plan");
-      if (workoutStr) {
-        try {
-          const result = JSON.parse(workoutStr);
-          const days = result.days || (Array.isArray(result) ? result : null);
-          if (days && Array.isArray(days)) {
-              const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1; 
-              const todayWorkout = days[todayIndex];
-              if (todayWorkout && todayWorkout.focusName) {
-                 setNextOperation(todayWorkout.focusName.length > 20 ? todayWorkout.focusName.substring(0, 20) + '...' : todayWorkout.focusName);
-                 
-                 // Extraction weight hint
-                 if (todayWorkout.exercises && todayWorkout.exercises.length > 0) {
-                   const firstExWithWeight = todayWorkout.exercises.find((ex: any) => ex.recommendedWeight);
-                   if (firstExWithWeight) {
-                     setNextWeightHint(firstExWithWeight.recommendedWeight);
-                   } else {
-                     setNextWeightHint("");
-                   }
-                 } else {
-                   setNextWeightHint("");
-                 }
-              }
-          }
-        } catch (e) {}
-      }
-
-      const todayStr = new Date().toISOString().split('T')[0];
-      const savedDiary = localStorage.getItem("food_diary");
-      const savedDate = localStorage.getItem("food_diary_date");
-      if (savedDate === todayStr && savedDiary) {
+   useEffect(() => {
+     const updateDashboardData = () => {
+       const workoutStr = localStorage.getItem("workout_plan");
+       if (workoutStr) {
          try {
-            const diary = JSON.parse(savedDiary);
-            if (Array.isArray(diary)) {
-                const totalKcal = diary.reduce((acc, curr) => acc + (curr.kcal || 0), 0);
-                setConsumedKcal(totalKcal);
-            }
-         } catch (e) {}
-      }
-      
-      const consHistoryStr = localStorage.getItem("consumption_history");
-      if (consHistoryStr) {
-         try {
-            const history = JSON.parse(consHistoryStr);
-            if (Array.isArray(history) && history.length > 0) {
-               // Compute streak
-               let currentStreak = 0;
-               let checkDate = new Date();
-               // check backwards
-               while (true) {
-                  const dStr = checkDate.toISOString().split('T')[0];
-                  const found = history.find(entry => entry.name === dStr && entry.value > 0);
-                  if (found) {
-                     currentStreak++;
-                     checkDate.setDate(checkDate.getDate() - 1);
+           const result = JSON.parse(workoutStr);
+           const days = result.days || (Array.isArray(result) ? result : null);
+           if (days && Array.isArray(days)) {
+               const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1; 
+               const todayWorkout = days[todayIndex];
+               if (todayWorkout && todayWorkout.focusName) {
+                  setNextOperation(todayWorkout.focusName.length > 20 ? todayWorkout.focusName.substring(0, 20) + '...' : todayWorkout.focusName);
+                  
+                  // Extraction weight hint
+                  if (todayWorkout.exercises && todayWorkout.exercises.length > 0) {
+                    const firstExWithWeight = todayWorkout.exercises.find((ex: any) => ex.recommendedWeight);
+                    if (firstExWithWeight) {
+                      setNextWeightHint(firstExWithWeight.recommendedWeight);
+                    } else {
+                      setNextWeightHint("");
+                    }
                   } else {
-                     if (currentStreak === 0 && dStr === todayStr) {
-                         // if today is empty, check yesterday before breaking streak
-                         checkDate.setDate(checkDate.getDate() - 1);
-                         const yDayFound = history.find(entry => entry.name === checkDate.toISOString().split('T')[0] && entry.value > 0);
-                         if (!yDayFound) break;
-                     } else {
-                         break;
-                     }
+                    setNextWeightHint("");
                   }
                }
-               setStreak(currentStreak);
-
-               // last 7 days chart
-               const chartData = [];
-               for (let i = 6; i >= 0; i--) {
-                  const d = new Date();
-                  d.setDate(d.getDate() - i);
-                  const dStr = d.toISOString().split('T')[0];
-                  const mmdd = `${d.getMonth() + 1}/${d.getDate()}`;
-                  const entry = history.find(e => e.name === dStr);
-                  chartData.push({ name: mmdd, value: entry ? entry.value || 0 : 0 });
-               }
-               setConsumptionData(chartData);
-            }
+           }
          } catch (e) {}
-      }
-      
-      const loadWeightHistory = async () => {
-        let history: any[] = [];
-        if (user) {
-           try {
-              const recordsRef = collection(db, "users", user.uid, "weightRecords");
-              const qs = await getDocs(recordsRef);
-              qs.forEach(doc => {
-                 history.push({ id: doc.id, ...doc.data() });
-              });
-              history.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-           } catch (e) {
-              handleFirestoreError(e, OperationType.GET, `users/${user.uid}/weightRecords`);
-           }
-        } else {
-           const weightHistoryStr = localStorage.getItem("weight_history");
-           if (weightHistoryStr) {
-              try {
-                 history = JSON.parse(weightHistoryStr);
-              } catch (e) {}
-           }
-        }
+       }
 
-        if (Array.isArray(history)) {
-           setRawWeightHistory(history);
-           const chartData = history.map(entry => {
-              const d = new Date(entry.date);
-              return {
-                 name: `${d.getMonth() + 1}/${d.getDate()}`,
-                 weight: entry.value
-              }
-           });
-           setWeightHistoryData(chartData);
-        }
-      };
-      
-      loadWeightHistory();
-    };
+       const todayStr = new Date().toISOString().split('T')[0];
+       const consHistoryStr = localStorage.getItem("consumption_history");
+       if (consHistoryStr) {
+          try {
+             const history = JSON.parse(consHistoryStr);
+             if (Array.isArray(history) && history.length > 0) {
+                // Compute streak
+                let currentStreak = 0;
+                let checkDate = new Date();
+                // check backwards
+                while (true) {
+                   const dStr = checkDate.toISOString().split('T')[0];
+                   const found = history.find((entry: any) => entry.name === dStr && entry.value > 0);
+                   if (found) {
+                      currentStreak++;
+                      checkDate.setDate(checkDate.getDate() - 1);
+                   } else {
+                      if (currentStreak === 0 && dStr === todayStr) {
+                          // if today is empty, check yesterday before breaking streak
+                          checkDate.setDate(checkDate.getDate() - 1);
+                          const yDayFound = history.find((entry: any) => entry.name === checkDate.toISOString().split('T')[0] && entry.value > 0);
+                          if (!yDayFound) break;
+                      } else {
+                          break;
+                      }
+                   }
+                }
+                setStreak(currentStreak);
 
-    updateDashboardData();
-    
-    window.addEventListener('tdee_updated', updateDashboardData);
-    window.addEventListener('workout_plan_updated', updateDashboardData);
-    window.addEventListener('weight_history_updated', updateDashboardData);
-    
-    return () => {
-       window.removeEventListener('tdee_updated', updateDashboardData);
-       window.removeEventListener('workout_plan_updated', updateDashboardData);
-       window.removeEventListener('weight_history_updated', updateDashboardData);
-    };
-  }, [user]);
+                // last 7 days chart
+                const chartData = [];
+                for (let i = 6; i >= 0; i--) {
+                   const d = new Date();
+                   d.setDate(d.getDate() - i);
+                   const dStr = d.toISOString().split('T')[0];
+                   const mmdd = `${d.getMonth() + 1}/${d.getDate()}`;
+                   const entry = history.find((e: any) => e.name === dStr);
+                   chartData.push({ name: mmdd, value: entry ? entry.value || 0 : 0 });
+                }
+                setConsumptionData(chartData);
+             }
+          } catch (e) {}
+       }
+       
+       const loadWeightHistory = async () => {
+         let history: any[] = [];
+         if (user) {
+            try {
+               const recordsRef = collection(db, "users", user.uid, "weightRecords");
+               const qs = await getDocs(recordsRef);
+               qs.forEach(doc => {
+                  history.push({ id: doc.id, ...doc.data() });
+               });
+               history.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            } catch (e) {
+               handleFirestoreError(e, OperationType.GET, `users/${user.uid}/weightRecords`);
+            }
+         } else {
+            const weightHistoryStr = localStorage.getItem("weight_history");
+            if (weightHistoryStr) {
+               try {
+                  history = JSON.parse(weightHistoryStr);
+               } catch (e) {}
+            }
+         }
+
+         if (Array.isArray(history)) {
+            setRawWeightHistory(history);
+            const chartData = history.map(entry => {
+               const d = new Date(entry.date);
+               return {
+                  name: `${d.getMonth() + 1}/${d.getDate()}`,
+                  weight: entry.value
+               }
+            });
+            setWeightHistoryData(chartData);
+         }
+       };
+       
+       loadWeightHistory();
+     };
+
+     updateDashboardData();
+     
+     window.addEventListener('workout_plan_updated', updateDashboardData);
+     window.addEventListener('weight_history_updated', updateDashboardData);
+     window.addEventListener('food_diary_updated', updateDashboardData);
+     
+     return () => {
+        window.removeEventListener('workout_plan_updated', updateDashboardData);
+        window.removeEventListener('weight_history_updated', updateDashboardData);
+        window.removeEventListener('food_diary_updated', updateDashboardData);
+     };
+   }, [user]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10">
