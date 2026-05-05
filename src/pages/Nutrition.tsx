@@ -13,7 +13,7 @@ import { useFitness } from "../components/FitnessProvider";
 
 export default function Nutrition() {
   const { t } = useTranslation();
-  const { profile, diary, addFoodEntry, removeFoodEntry, macros, consumed, waterIntake, logWater: logWaterContext } = useFitness();
+  const { profile, updateProfile, diary, addFoodEntry, removeFoodEntry, macros, consumed, waterIntake, logWater: logWaterContext } = useFitness();
   const { weight, height, age, bodyFat, activityLevel, primaryGoal } = profile;
 
   // Modals
@@ -418,22 +418,22 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                 <div className="grid sm:grid-cols-2 gap-6">
                    <div className="space-y-2">
                       <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('weight_kg')}</Label>
-                      <Input type="number" value={weight} onChange={(e) => useFitness().updateProfile({ weight: Number(e.target.value) })} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
+                      <Input type="number" value={weight} onChange={(e) => updateProfile({ weight: Number(e.target.value) })} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
                    </div>
                    <div className="space-y-2">
                       <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('height_cm')}</Label>
-                      <Input type="number" value={height} onChange={(e) => useFitness().updateProfile({ height: Number(e.target.value) })} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
+                      <Input type="number" value={height} onChange={(e) => updateProfile({ height: Number(e.target.value) })} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
                    </div>
                    <div className="space-y-2">
                       <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('age_label')}</Label>
-                      <Input type="number" value={age} onChange={(e) => useFitness().updateProfile({ age: Number(e.target.value) })} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
+                      <Input type="number" value={age} onChange={(e) => updateProfile({ age: Number(e.target.value) })} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
                    </div>
                    <div className="space-y-2">
                       <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest group relative flex items-center gap-1">
                          {t('body_fat_pct')} 
                          <span className="text-cyan-400">({t('optional')})</span>
                       </Label>
-                      <Input type="number" placeholder="Leave empty for Mifflin" value={bodyFat || ""} onChange={(e) => useFitness().updateProfile({ bodyFat: Number(e.target.value) })} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
+                      <Input type="number" placeholder="Leave empty for Mifflin" value={bodyFat || ""} onChange={(e) => updateProfile({ bodyFat: Number(e.target.value) })} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
                    </div>
                 </div>
 
@@ -448,7 +448,7 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                       ].map((level) => (
                          <button
                             key={level.v}
-                            onClick={() => useFitness().updateProfile({ activityLevel: level.v })}
+                            onClick={() => updateProfile({ activityLevel: level.v })}
                             className={`h-16 rounded-[1.25rem] text-xs font-bold border flex flex-col items-center justify-center gap-0.5 transition-all outline-none ${
                                activityLevel === level.v 
                                ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_15px_rgba(34,211,238,0.15)]' 
@@ -461,13 +461,12 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                       ))}
                    </div>
                 </div>
-
                 <div className="space-y-3 pt-4 border-t border-white/5">
                    <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('protocol_goal')}</Label>
                    <div className="grid grid-cols-3 gap-3">
-                      <button onClick={() => useFitness().updateProfile({ primaryGoal: "Lose Fat" })} className={`h-14 rounded-[1.25rem] text-xs font-bold border transition-all ${primaryGoal === "Lose Fat" ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20'}`}>{t('lose_fat')}</button>
-                      <button onClick={() => useFitness().updateProfile({ primaryGoal: "Maintain" })} className={`h-14 rounded-[1.25rem] text-xs font-bold border transition-all ${primaryGoal === "Maintain" ? 'bg-slate-500/20 text-slate-400 border-slate-500/50' : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20'}`}>{t('maintain')}</button>
-                      <button onClick={() => useFitness().updateProfile({ primaryGoal: "Build Muscle" })} className={`h-14 rounded-[1.25rem] text-xs font-bold border transition-all ${primaryGoal === "Build Muscle" ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/50' : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20'}`}>{t('gain_muscle')}</button>
+                      <button onClick={() => updateProfile({ primaryGoal: "Lose Fat" })} className={`h-14 rounded-[1.25rem] text-xs font-bold border transition-all ${primaryGoal === "Lose Fat" ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20'}`}>{t('lose_fat')}</button>
+                      <button onClick={() => updateProfile({ primaryGoal: "Maintain" })} className={`h-14 rounded-[1.25rem] text-xs font-bold border transition-all ${primaryGoal === "Maintain" ? 'bg-slate-500/20 text-slate-400 border-slate-500/50' : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20'}`}>{t('maintain')}</button>
+                      <button onClick={() => updateProfile({ primaryGoal: "Build Muscle" })} className={`h-14 rounded-[1.25rem] text-xs font-bold border transition-all ${primaryGoal === "Build Muscle" ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/50' : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20'}`}>{t('gain_muscle')}</button>
                    </div>
                 </div>
              </div>
