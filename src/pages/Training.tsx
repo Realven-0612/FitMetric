@@ -549,6 +549,11 @@ export default function Training() {
     };
     setPlan(newPlan);
     localStorage.setItem("workout_plan", JSON.stringify(newPlan));
+    
+    const today = new Date().toISOString().split('T')[0];
+    localStorage.setItem('workout_completed_today', 'true');
+    localStorage.setItem('workout_completed_date', today);
+
     toast.success("Đã hoàn thành buổi tập! Tiếp tục cố gắng nhé!");
 
     // Auto upgrade check (every 14 sessions)

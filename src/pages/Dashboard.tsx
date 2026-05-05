@@ -146,25 +146,29 @@ export default function Dashboard() {
      actionItems.push({
        type: 'warning',
        icon: <AlertTriangle className="w-5 h-5" />,
-       title: "Protein Deficit",
-       message: `You're at ${Math.round(consumed.protein)}g out of ${Math.round(macros.protein)}g. Consider a high-protein snack.`
+       title: t('protein_deficit'),
+       message: t('protein_deficit_msg', undefined, { current: Math.round(consumed.protein), target: Math.round(macros.protein) })
      });
    }
    if (currentHour >= 14 && waterIntake < 1.5) {
      actionItems.push({
        type: 'info',
        icon: <Droplet className="w-5 h-5" />,
-       title: "Hydration Check",
-       message: `You've had ${waterIntake.toFixed(2)}L of water today. Drink up!`
+       title: t('hydration_check'),
+       message: t('hydration_check_msg', undefined, { water: waterIntake.toFixed(2) })
      });
    }
-   const workoutCompleted = localStorage.getItem('workout_completed_today') === 'true';
+   
+   const todayDate = new Date().toISOString().split('T')[0];
+   const workoutCompletedDate = localStorage.getItem('workout_completed_date');
+   const workoutCompleted = localStorage.getItem('workout_completed_today') === 'true' && workoutCompletedDate === todayDate;
+   
    if (currentHour >= 17 && !workoutCompleted && nextOperation !== 'Rest') {
       actionItems.push({
          type: 'motivation',
          icon: <Zap className="w-5 h-5" />,
-         title: "Time to Move",
-         message: `Your ${nextOperation} workout awaits. Finish the day strong.`
+         title: t('time_to_move'),
+         message: t('time_to_move_msg', undefined, { workout: t(nextOperation, { defaultValue: nextOperation }) })
       });
    }
 
@@ -289,7 +293,7 @@ export default function Dashboard() {
         
          {/* Weight Progression Card */}
          <Card className="bg-[#111111]/80 border-white/5 rounded-[2rem] shadow-none flex flex-col p-6 lg:p-8 min-h-[300px]">
-           <div className="flex items-center justify-between mb-8">
+           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
               <div className="flex items-center gap-3">
                  <div className="text-indigo-400">
                     <TrendingUp className="w-5 h-5" />
@@ -297,10 +301,10 @@ export default function Dashboard() {
                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">{t('weight_progression')}</h3>
               </div>
               
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0">
                 <Dialog>
                   <DialogTrigger render={
-                    <Button variant="outline" className="h-8 rounded-full bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/20 hover:text-indigo-300 text-xs px-3 font-bold border" onClick={generateInsights}>
+                    <Button variant="outline" className="h-8 rounded-full bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/20 hover:text-indigo-300 text-xs px-3 font-bold border w-full sm:w-auto" onClick={generateInsights}>
                       <Sparkles className="w-3 h-3 mr-1" />
                       Review Progress
                     </Button>
@@ -333,7 +337,7 @@ export default function Dashboard() {
 
                 <Dialog>
                   <DialogTrigger render={
-                    <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white hover:bg-white/5 rounded-full h-8 w-8">
+                    <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white hover:bg-white/5 rounded-full h-8 w-full sm:w-8">
                       <Settings2 className="w-4 h-4" />
                     </Button>
                   } />

@@ -291,6 +291,12 @@ const translations = {
     ex_band_bicep_curl: 'Band Bicep Curls',
     ex_band_tricep_pushdown: 'Band Tricep Pushdown',
     ex_band_woodchopper: 'Banded Woodchoppers',
+    protein_deficit: 'Protein Deficit',
+    protein_deficit_msg: "You're at {{current}}g out of {{target}}g. Consider a high-protein snack.",
+    hydration_check: 'Hydration Check',
+    hydration_check_msg: "You've had {{water}}L of water today. Drink up!",
+    time_to_move: 'Time to Move',
+    time_to_move_msg: "Your {{workout}} workout awaits. Finish the day strong."
   },
   vi: {
     dashboard: 'Bảng điều khiển',
@@ -579,13 +585,19 @@ const translations = {
     ex_band_bicep_curl: 'Cuốn dây kháng lực tập tay trước',
     ex_band_tricep_pushdown: 'Nhấn dây kháng lực tập tay sau',
     ex_band_woodchopper: 'Chặt gỗ với dây kháng lực',
+    protein_deficit: 'Thiếu hụt Protein',
+    protein_deficit_msg: "Chỉ mới nạp {{current}}g / {{target}}g protein. Hãy bổ sung thực phẩm giàu đạm.",
+    hydration_check: 'Kiểm tra Nước',
+    hydration_check_msg: "Hôm nay bạn uống {{water}}L nước. Uống nước ngay nào!",
+    time_to_move: 'Khởi động nào',
+    time_to_move_msg: "Buổi tập {{workout}} đang chờ bạn. Hãy kết thúc ngày thật mạnh mẽ."
   }
 };
 
 interface TranslationContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: any, options?: { defaultValue?: string }) => string;
+  t: (key: any, options?: { defaultValue?: string }, variables?: Record<string, string|number>) => string;
 }
 
 const TranslationContext = createContext<TranslationContextType | undefined>(undefined);
@@ -599,9 +611,15 @@ export function TranslationProvider({ children }: { children: React.ReactNode })
     localStorage.setItem('app_language', language);
   }, [language]);
 
-  const t = (key: any, options?: { defaultValue?: string }) => {
+  const t = (key: any, options?: { defaultValue?: string }, variables?: Record<string, string|number>) => {
     const translation = translations[language][key as keyof typeof translations['en']] || translations['en'][key as keyof typeof translations['en']];
-    return translation || options?.defaultValue || key;
+    let result = translation || options?.defaultValue || key;
+    if (variables && typeof result === 'string') {
+      for (const [k, v] of Object.entries(variables)) {
+        result = result.replace(new RegExp(`{{${k}}}`, 'g'), String(v));
+      }
+    }
+    return result;
   };
 
   return (

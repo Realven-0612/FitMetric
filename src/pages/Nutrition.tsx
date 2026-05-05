@@ -20,6 +20,12 @@ export default function Nutrition() {
   const [showScanner, setShowScanner] = useState(false);
   const [showRecipeGen, setShowRecipeGen] = useState(false);
 
+  const clearDiary = () => {
+    diary.forEach((f) => {
+      if (f.id) removeFoodEntry(f.id);
+    });
+  };
+
   // Manual Entry State
   const [manualName, setManualName] = useState("");
   const [manualPro, setManualPro] = useState("");
@@ -252,7 +258,7 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                        </div>
                        <Button onClick={() => { 
                            const multiplier = (Number(consumedGram) || 0) / 100;
-                           addToDiary({
+                           addFoodEntry({
                              name: searchResult.name,
                              kcal: Math.round(searchResult.kcal * multiplier),
                              protein: Math.round(searchResult.protein * multiplier),
@@ -308,7 +314,7 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                              <div className="text-lg font-black text-cyan-400">{food.kcal}</div>
                              <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Kcal</div>
                           </div>
-                          <button onClick={() => removeFromDiary(idx)} className="opacity-0 group-hover:opacity-100 p-2 rounded-xl text-slate-500 hover:bg-red-500/20 hover:text-red-400 transition-all">
+                          <button onClick={() => { if (food.id) removeFoodEntry(food.id); }} className="opacity-0 group-hover:opacity-100 p-2 rounded-xl text-slate-500 hover:bg-red-500/20 hover:text-red-400 transition-all">
                              <Trash2 className="w-4 h-4" />
                           </button>
                        </div>
@@ -509,7 +515,7 @@ Trả về dữ liệu dưới dạng JSON với các trường:
 
       {showScanner && (
         <MealScanner 
-          onFoodDetected={(food) => addToDiary(food)} 
+          onFoodDetected={(food) => addFoodEntry(food)} 
           onClose={() => setShowScanner(false)} 
         />
       )}
@@ -517,10 +523,10 @@ Trả về dữ liệu dưới dạng JSON với các trường:
       {showRecipeGen && (
         <RecipeGenerator 
           remainingMacros={{
-            kcal: Math.max(0, results.targetCals - consumedKcal),
-            protein: Math.max(0, results.pro - consumedPro),
-            carbs: Math.max(0, results.carb - consumedCarb),
-            fat: Math.max(0, results.fat - consumedFat)
+            kcal: Math.max(0, macros.calories - consumedKcal),
+            protein: Math.max(0, macros.protein - consumedPro),
+            carbs: Math.max(0, macros.carbs - consumedCarb),
+            fat: Math.max(0, macros.fat - consumedFat)
           }}
           onClose={() => setShowRecipeGen(false)}
         />
