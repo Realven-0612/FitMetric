@@ -46,31 +46,6 @@
         "value": { "type": "number" }
       },
       "required": ["userId", "date", "value"]
-    },
-    "WorkoutPlan": {
-      "title": "Workout Plan",
-      "description": "User's current AI generated workout plan",
-      "type": "object",
-      "properties": {
-        "progressionGuide": { "type": "string" },
-        "days": { "type": "array" },
-        "completedSessions": { "type": "number" },
-        "currentCycle": { "type": "number" },
-        "updatedAt": { "type": "string", "format": "timestamp" }
-      }
-    },
-    "NutritionEntry": {
-      "title": "Nutrition Entry",
-      "description": "Single food item logged",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "kcal": { "type": "number" },
-        "protein": { "type": "number" },
-        "carbs": { "type": "number" },
-        "fat": { "type": "number" },
-        "timestamp": { "type": "string", "format": "timestamp" }
-      }
     }
   },
   "firestore": {
@@ -85,14 +60,6 @@
     "users/{userId}/weightRecords/{recordId}": {
       "schema": "WeightRecord",
       "description": "Weight history matching dates"
-    },
-    "users/{userId}/plans/current": {
-      "schema": "WorkoutPlan",
-      "description": "Current workout plan"
-    },
-    "users/{userId}/nutrition/{entryId}": {
-      "schema": "NutritionEntry",
-      "description": "Daily nutrition logs"
     }
   }
 }

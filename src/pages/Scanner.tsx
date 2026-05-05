@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
+import { GoogleGenAI } from "@google/genai";
 import Webcam from "react-webcam";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Fingerprint, Camera, UploadCloud, Loader2, Zap, LayoutGrid, Info, ShieldCheck, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import * as tf from '@tensorflow/tfjs-core';
 import '@tensorflow/tfjs-backend-webgl';
-import { analyzeAIImage } from "../lib/ai";
 
 type ScanMode = "COMPOSITION" | "FORM";
 type LiftType = "SQUAT" | "DEADLIFT" | "UNKNOWN";
@@ -79,14 +80,14 @@ export default function Scanner() {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
     // Draw skeleton
-    const adjacentPairs = poseDetection.util.getAdjacentPairs(poseDetection.SupportedModels.MoveNet);
+    const connections = poseDetection.util.getAdjacentPairs(poseDetection.SupportedModels.MoveNet);
     ctx.lineWidth = 4;
     ctx.strokeStyle = isGoodForm ? '#22d3ee' : '#f87171'; // Cyan for good, Red for bad
 
-    adjacentPairs.forEach(([i, j]) => {
-      const p1 = pose.keypoints[i];
-      const p2 = pose.keypoints[j];
-      if (p1.score && p2.score && p1.score > 0.3 && p2.score > 0.3) {
+    connections.forEach(([p1_idx, p2_idx]) => {
+      const p1 = pose.keypoints[p1_idx];
+      const p2 = pose.keypoints[p2_idx];
+      if (p1 && p2 && p1.score && p2.score && p1.score > 0.3 && p2.score > 0.3) {
         ctx.beginPath();
         ctx.moveTo(p1.x, p1.y);
         ctx.lineTo(p2.x, p2.y);
@@ -176,27 +177,30 @@ export default function Scanner() {
     setLoading(true);
     setAnalysis(null);
     try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const base64Data = image.split(",")[1];
       const mimeType = image.split(";")[0].split(":")[1];
 
       const prompt = `You are a professional fitness coach and AI body analyst. 
-      Analyze the person in this image. Provide a detailed assessment of their current physique.`;
+      Analyze the person in this image. Provide a detailed assessment of their current physique.
+      Return the result strictly as a JSON object with this shape:
+      {
+        "bodyFatEstimate": "number (e.g. 15.5)",
+        "physiqueType": "Short description of body type",
+        "muscleMass": "Low / Average / High",
+        "strengths": ["list of observed strong points"],
+        "weaknesses": ["list of areas to improve"],
+        "recommendation": "A professional actionable advice for their training",
+        "score": number between 1 to 100 representing overall fitness aesthetics
+      }`;
 
-      const schema = {
-        type: "object",
-        properties: {
-          bodyFatEstimate: { type: "string" },
-          physiqueType: { type: "string" },
-          muscleMass: { type: "string" },
-          strengths: { type: "array", items: { type: "string" } },
-          weaknesses: { type: "array", items: { type: "string" } },
-          recommendation: { type: "string" },
-          score: { type: "number" }
-        },
-        required: ["bodyFatEstimate", "physiqueType", "muscleMass", "strengths", "weaknesses", "recommendation", "score"]
-      };
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [{ inlineData: { data: base64Data, mimeType } }, prompt],
+        config: { responseMimeType: "application/json" }
+      });
 
-      const data = await analyzeAIImage(prompt, base64Data, mimeType, schema);
+      const data = JSON.parse(response.text.trim());
       setAnalysis(data);
       
       const history = JSON.parse(localStorage.getItem('scan_history') || '[]');

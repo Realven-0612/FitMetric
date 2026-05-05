@@ -7,16 +7,13 @@ import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthProvider";
 import { db } from "../lib/firebase";
-import { doc, collection, getDocs, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, getDocs, deleteDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { handleFirestoreError, OperationType } from "../lib/firestoreUtils";
 import { useTranslation } from "../lib/i18n";
-import { useStore } from "../lib/store";
-import { handleFirestoreError, OperationType } from "../services/firebaseService";
 
 export default function Profile() {
   const { user, loading: authLoading, signInWithGoogle, signOut } = useAuth();
   const { t } = useTranslation();
-  const { profile: storeProfile, setProfile: setStoreProfile } = useStore();
-  
   const [isEditing, setIsEditing] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
   const [scanHistory, setScanHistory] = useState<any[]>([]);
@@ -34,44 +31,47 @@ export default function Profile() {
   });
 
   useEffect(() => {
-    if (storeProfile) {
-      setProfile(prev => ({
-        ...prev,
-        ...storeProfile,
-        weight: storeProfile.weight?.toString() || prev.weight,
-        height: storeProfile.height?.toString() || prev.height,
-        age: storeProfile.age?.toString() || prev.age,
-        bodyFat: storeProfile.bodyFat?.toString() || prev.bodyFat,
-      }));
-    }
-  }, [storeProfile]);
-
-  useEffect(() => {
     if (!user) {
+      // Load from localStorage if not logged in (guest mode)
+      const saved = localStorage.getItem("user_profile");
+      if (saved) setProfile(JSON.parse(saved));
       const history = localStorage.getItem("scan_history");
       if (history) setScanHistory(JSON.parse(history));
       return;
     }
 
-    const loadScans = async () => {
+    const loadUserData = async () => {
       setDataLoading(true);
       try {
+        const userDocRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(userDocRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setProfile(prev => ({
+            ...prev,
+            ...data
+          }));
+        }
+
+        // Load scans
         const scansRef = collection(db, "users", user.uid, "scans");
         const querySnapshot = await getDocs(scansRef);
         const scans: any[] = [];
         querySnapshot.forEach((doc) => {
           scans.push({ id: doc.id, ...doc.data() });
         });
+        // Sort newest first
         scans.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setScanHistory(scans);
+
       } catch (error) {
-        console.error("Error loading scans:", error);
+        handleFirestoreError(error, OperationType.GET, "users/" + user.uid);
       } finally {
         setDataLoading(false);
       }
     };
 
-    loadScans();
+    loadUserData();
   }, [user]);
 
   const handleChange = (e: any) => {
@@ -79,16 +79,47 @@ export default function Profile() {
   };
 
   const handleSave = async () => {
-    const updatedProfile = {
-      ...profile,
-      weight: Number(profile.weight),
-      height: Number(profile.height),
-      age: Number(profile.age),
-      bodyFat: profile.bodyFat ? Number(profile.bodyFat) : undefined,
-      gender: profile.gender.toLowerCase() === 'male' ? 'male' as const : 'female' as const,
-    };
-    setStoreProfile(updatedProfile);
-    setIsEditing(false);
+    if (!user) {
+      // Guest mode
+      localStorage.setItem("user_profile", JSON.stringify(profile));
+      const historyStr = localStorage.getItem("weight_history");
+      const weightHistory = historyStr ? JSON.parse(historyStr) : [];
+      const today = new Date().toISOString().split('T')[0];
+      if (profile.weight) {
+        if (weightHistory.length === 0 || weightHistory[weightHistory.length - 1].date !== today) {
+          weightHistory.push({ date: today, value: parseFloat(profile.weight) });
+        } else {
+          weightHistory[weightHistory.length - 1].value = parseFloat(profile.weight);
+        }
+        localStorage.setItem("weight_history", JSON.stringify(weightHistory));
+      }
+      setIsEditing(false);
+      return;
+    }
+
+    // Save to Firestore
+    try {
+      const userDocRef = doc(db, "users", user.uid);
+      await updateDoc(userDocRef, {
+        ...profile,
+        updatedAt: serverTimestamp(),
+      });
+
+      // Save Weight Record if needed
+      if (profile.weight) {
+        const today = new Date().toISOString().split('T')[0];
+        const recordId = today; // using date as ID for simplicity
+        const recordRef = doc(db, "users", user.uid, "weightRecords", recordId);
+        await setDoc(recordRef, {
+          userId: user.uid,
+          date: today,
+          value: parseFloat(profile.weight)
+        });
+      }
+      setIsEditing(false);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, "users/" + user.uid);
+    }
   };
 
   const handleDeleteScan = async (idx: number, id?: string) => {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,13 +31,9 @@ import {
   ExternalLink,
   ArrowRight,
   Activity,
-  Unlink,
-  Play,
-  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "../lib/i18n";
-import { heartRateService } from "../services/heartRateService";
 import {
   Select,
   SelectContent,
@@ -45,8 +41,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useStore } from "../lib/store";
-import { generateAIContent } from "../lib/ai";
 
 export interface LoggedSet {
   weight: number;
@@ -67,6 +61,7 @@ export interface Exercise {
   rest?: string;
   youtubeId?: string;
   youtubeQuery?: string;
+  recommendedWeight?: string;
 }
 
 export interface WorkoutDay {
@@ -207,66 +202,28 @@ const VIDEO_LIBRARY: Record<string, string> = {
 
 export default function Training() {
   const { t } = useTranslation();
-  const { 
-    profile, 
-    workoutPlan: plan, 
-    setWorkoutPlan: setPlan,
-    exerciseWeights, 
-    updateExerciseWeight,
-    sessionLogs,
-    logSet: storeLogSet,
-    clearSessionLogs
-  } = useStore();
-
   const [selectedDay, setSelectedDay] = useState(() =>
     new Date().getDay() === 0 ? 6 : new Date().getDay() - 1,
   );
   const [isGenerating, setIsGenerating] = useState(false);
   const [open, setOpen] = useState(false);
+  const [plan, setPlan] = useState<WorkoutPlan | null>(null);
+  const [profile, setProfile] = useState<any>(null);
 
   // Customization state
   const [focus, setFocus] = useState("");
   const [frequency, setFrequency] = useState("4");
   const [equipment, setEquipment] = useState("gym");
   const [goal, setGoal] = useState("hypertrophy");
-  
+  const [exerciseWeights, setExerciseWeights] = useState<
+    Record<string, number>
+  >({});
+  const [sessionLogs, setSessionLogs] = useState<TrainingLogs>({});
   const [timerActive, setTimerActive] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [timerTotal, setTimerTotal] = useState(0);
   const [activeVideoIndex, setActiveVideoIndex] = useState<number | null>(null);
-  const [heartRate, setHeartRate] = useState<number | null>(null);
-  const [hrConnected, setHrConnected] = useState(false);
   const hasTriggeredAutoGenerate = useRef(false);
-
-  const haptic = (pattern: number | number[] = 10) => {
-    if ("vibrate" in navigator) {
-      navigator.vibrate(pattern);
-    }
-  };
-
-  const toggleHeartRate = async () => {
-    if (hrConnected) {
-      heartRateService.disconnect();
-      setHrConnected(false);
-      setHeartRate(null);
-      toast.info(t('hr_disconnected'));
-    } else {
-      try {
-        await heartRateService.connect((update) => {
-          setHeartRate(update.heartRate);
-        });
-        setHrConnected(true);
-        toast.success(t('hr_connected'));
-      } catch (err: any) {
-        if (err.name === 'NotFoundError' || err.message?.includes('cancelled')) {
-          toast.info(t('hr_cancelled'));
-        } else {
-          console.error("Bluetooth Connection Error:", err);
-          toast.error(t('hr_connect_failed'));
-        }
-      }
-    }
-  };
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -304,38 +261,134 @@ export default function Training() {
     return () => {
       window.removeEventListener('request_workout_generation', handleRemoteRequest);
     };
-  }, [profile, goal, equipment, frequency]);
+  }, [profile, goal, equipment, frequency]); // Dependencies that handleGenerate uses
 
   useEffect(() => {
-    if (profile?.primaryGoal) {
-      if (profile.primaryGoal.includes("Fat")) setGoal("fatloss");
-      else if (profile.primaryGoal.includes("Muscle")) setGoal("hypertrophy");
-      else if (profile.primaryGoal.includes("Strength")) setGoal("strength");
+    const weightsStr = localStorage.getItem("exercise_weights");
+    if (weightsStr) {
+      try {
+        setExerciseWeights(JSON.parse(weightsStr));
+      } catch (e) {}
     }
-  }, [profile]);
+
+    const pStr = localStorage.getItem("user_profile");
+    if (pStr) {
+      const p = JSON.parse(pStr);
+      setProfile(p);
+      if (p.primaryGoal) {
+        if (p.primaryGoal.includes("Fat")) setGoal("fatloss");
+        else if (p.primaryGoal.includes("Muscle")) setGoal("hypertrophy");
+        else if (p.primaryGoal.includes("Strength")) setGoal("strength");
+      }
+    }
+
+    const wStr = localStorage.getItem("workout_plan");
+    if (wStr) {
+      try {
+        const w = JSON.parse(wStr);
+        if (w && w.days && w.days.length === 7) {
+          setPlan(w);
+        }
+      } catch (e) {}
+    }
+  }, []);
 
   useEffect(() => {
     if (
       profile &&
       !plan &&
       !isGenerating &&
-      !hasTriggeredAutoGenerate.current
+      !hasTriggeredAutoGenerate.current &&
+      !localStorage.getItem("workout_plan")
     ) {
       hasTriggeredAutoGenerate.current = true;
       handleGenerate(false);
     }
   }, [profile, plan, isGenerating]);
 
-  const logSet = (exName: string, weight: number, reps: number, restSeconds: number = 60) => {
-    haptic([15, 10, 15]);
-    storeLogSet(exName, { weight, reps, completed: true, timestamp: Date.now() });
+  const handleWeightChange = (exName: string, delta: number) => {
+    setExerciseWeights((prev) => {
+      const current = prev[exName] || 0;
+      let newW = current + delta;
 
+      // Handle floating point weirdness
+      newW = Math.max(0, Math.round(newW * 10) / 10);
+
+      const updated = { ...prev, [exName]: newW };
+      localStorage.setItem("exercise_weights", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const applyRecommendedWeight = (ex: any) => {
+    if (!ex.recommendedWeight) return;
+    
+    // Improved extraction: look for decimal or integer
+    const match = ex.recommendedWeight.match(/(\d+(\.\d+)?)/);
+    if (match) {
+      const weight = parseFloat(match[1]);
+      setExerciseWeights((prev) => {
+        const updated = { ...prev, [ex.name]: weight };
+        localStorage.setItem("exercise_weights", JSON.stringify(updated));
+        return updated;
+      });
+      toast.success(`${t('suggested')} ${ex.name}: ${weight}kg`, {
+        icon: <Sparkles className="w-4 h-4 text-cyan-400" />
+      });
+    } else {
+      toast.info(`"${ex.recommendedWeight}"`);
+    }
+  };
+
+  const applyAllRecommendedWeights = () => {
+    if (!plan) return;
+    const currentDay = plan.days[selectedDay];
+    if (!currentDay || !currentDay.exercises) return;
+
+    let updatedCount = 0;
+    setExerciseWeights((prev) => {
+      const updated = { ...prev };
+      currentDay.exercises.forEach((ex) => {
+        if (!ex.recommendedWeight) return;
+        const match = ex.recommendedWeight.match(/(\d+(\.\d+)?)/);
+        if (match) {
+          const weight = parseFloat(match[1]);
+          updated[ex.name] = weight;
+          updatedCount++;
+        }
+      });
+      if (updatedCount > 0) {
+        localStorage.setItem("exercise_weights", JSON.stringify(updated));
+      }
+      return updatedCount > 0 ? updated : prev;
+    });
+
+    if (updatedCount > 0) {
+      toast.success(`${t('apply_all')} (${updatedCount})`, {
+        icon: <Sparkles className="w-4 h-4 text-cyan-400" />
+      });
+    } else {
+      toast.info("No recommended weights to apply.", {
+        icon: <Sparkles className="w-4 h-4 text-cyan-400" />
+      });
+    }
+  };
+
+  const logSet = (exName: string, weight: number, reps: number, restSeconds: number = 60) => {
+    setSessionLogs(prev => {
+      const logs = prev[exName] || [];
+      const newLogs = [...logs, { weight, reps, completed: true, timestamp: Date.now() }];
+      return { ...prev, [exName]: newLogs };
+    });
+
+    // Start rest timer
     setTimerSeconds(restSeconds);
     setTimerTotal(restSeconds);
     setTimerActive(true);
     
+    // Auto update PB if higher
     if (weight > (exerciseWeights[exName] || 0)) {
-      updateExerciseWeight(exName, weight);
+      handleWeightChange(exName, weight - (exerciseWeights[exName] || 0));
     }
   };
 
@@ -350,6 +403,7 @@ export default function Training() {
   };
 
   const handleGenerate = async (isAutoRefresh = false, overrideFocus?: string) => {
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     setIsGenerating(true);
 
     try {
@@ -380,54 +434,66 @@ export default function Training() {
       3. Output EXACTLY 7 days, Monday to Sunday. If a day is for rest, set focusName to "Rest Day" and leave exercises empty.
       4. progressionGuide must provide a detailed progressive overload strategy for the entire cycle. Format as strictly bullet points with newlines (\n). Example: "- Week 1: Base assessment\n- Week 2: Increase intensity\n- Week 3: Peak volume\n- Week 4: Strategic deload"
       5. Provide an accurate youtubeQuery string (e.g. "Barbell Bench Press tutorial form") for each exercise.
-      6. Provide a list of dynamic warm-up exercises in the 'warmup' array and a list of static cool-down stretches in the 'cooldown' array based on the day's focus.`;
+      6. Provide a list of dynamic warm-up exercises in the 'warmup' array and a list of static cool-down stretches in the 'cooldown' array based on the day's focus.
+      7. Provide a 'recommendedWeight' (e.g. "20kg", "Bodyweight", "15kg per dumbbell") for each exercise. 
+         IMPORTANT: If an exercise exists in "Current Personal Best Weights", recommend a weight that is 2.5% to 5% higher (Progressive Overload). 
+         If it's a new exercise, estimate based on the user's weight (e.g. Bench Press often starts around 40-50% bodyweight for beginners, Squat 60-70%).`;
 
-      const schema = {
-        type: "object",
-        properties: {
-          progressionGuide: { type: "string" },
-          days: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                dayName: { type: "string" },
-                focusName: { type: "string" },
-                description: { type: "string" },
-                warmup: {
-                  type: "array",
-                  items: { type: "string" },
-                },
-                cooldown: {
-                  type: "array",
-                  items: { type: "string" },
-                },
-                exercises: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      name: { type: "string" },
-                      muscle: { type: "string" },
-                      sets: { type: "string" },
-                      load: { type: "string" },
-                      rest: { type: "string" },
-                      youtubeQuery: { type: "string" },
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              progressionGuide: { type: Type.STRING },
+              days: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    dayName: { type: Type.STRING },
+                    focusName: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                    warmup: {
+                      type: Type.ARRAY,
+                      items: { type: Type.STRING },
                     },
-                    required: ["name", "muscle", "sets"],
+                    cooldown: {
+                      type: Type.ARRAY,
+                      items: { type: Type.STRING },
+                    },
+                    exercises: {
+                      type: Type.ARRAY,
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          name: { type: Type.STRING },
+                          muscle: { type: Type.STRING },
+                          sets: { type: Type.STRING },
+                          load: { type: Type.STRING },
+                          rest: { type: Type.STRING },
+                          youtubeQuery: { type: Type.STRING },
+                          recommendedWeight: { type: Type.STRING },
+                        },
+                        required: ["name", "muscle", "sets"],
+                      },
+                    },
                   },
+                  required: ["dayName", "focusName", "exercises"],
                 },
               },
-              required: ["dayName", "focusName", "exercises"],
             },
+            required: ["progressionGuide", "days"],
           },
         },
-        required: ["progressionGuide", "days"],
-      };
+      });
 
-      const result = await generateAIContent(prompt, schema, "gemini-2.0-flash");
+      if (response.text) {
+        const result = JSON.parse(response.text);
 
-      if (result) {
+        // Ensure 7 days
         const validDays = [];
         for (let i = 0; i < 7; i++) {
           const d = result.days[i] || { focusName: "Ngày nghỉ", exercises: [] };
@@ -446,6 +512,7 @@ export default function Training() {
         };
 
         setPlan(newPlan);
+        localStorage.setItem("workout_plan", JSON.stringify(newPlan));
         window.dispatchEvent(new Event("workout_plan_updated"));
 
         if (!isAutoRefresh) {
@@ -476,7 +543,7 @@ export default function Training() {
       completedSessions: (plan.completedSessions || 0) + 1,
     };
     setPlan(newPlan);
-    haptic([30, 20, 30, 20, 50]);
+    localStorage.setItem("workout_plan", JSON.stringify(newPlan));
     toast.success("Đã hoàn thành buổi tập! Tiếp tục cố gắng nhé!");
 
     // Auto upgrade check (every 14 sessions)
@@ -970,253 +1037,233 @@ export default function Training() {
             </div>
 
             {/* Protocol View */}
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={selectedDay}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-                className="w-full"
-              >
-                <Card className="bg-[#0a0c10]/90 backdrop-blur-xl border-white/5 rounded-[2rem] shadow-2xl overflow-hidden relative min-h-[500px]">
-                  <div className="absolute top-0 right-0 p-16 opacity-[0.03] pointer-events-none">
-                    <Trophy className="w-64 h-64 blur-3xl fill-current text-white" />
-                  </div>
+            <Card className="bg-[#0a0c10]/90 backdrop-blur-xl border-white/5 rounded-[2rem] shadow-2xl overflow-hidden relative min-h-[500px]">
+              <div className="absolute top-0 right-0 p-16 opacity-[0.03] pointer-events-none">
+                <Trophy className="w-64 h-64 blur-3xl fill-current text-white" />
+              </div>
 
-                  <div className="p-6 md:p-10 relative z-10 w-full">
-                    <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6 mb-8 w-full">
-                      <div className="flex-1 min-w-0 pr-0 lg:pr-8">
-                        <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-slate-300 font-bold uppercase tracking-wider text-[10px] px-3 py-1.5 rounded-full mb-4">
-                          <Calendar className="w-3 h-3" /> {t(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'][selectedDay] as any)}{" "}
-                          {t('operation')}
-                        </div>
-                        <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight md:leading-tight">
-                          {currentDayData?.focusName}
-                        </h2>
-                        {currentDayData?.description && (
-                          <p className="text-slate-400 font-medium text-sm md:text-base mt-4 max-w-full leading-relaxed">
-                            {currentDayData.description}
-                          </p>
-                        )}
-                      </div>
-
-                      {!isRestDay && (
-                        <div className="flex flex-wrap gap-3">
-                          {hrConnected ? (
-                            <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 px-4 rounded-xl h-12">
-                              <Activity className="w-5 h-5 text-red-500 animate-pulse" />
-                              <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-red-400 uppercase tracking-widest leading-none">{t('heart_rate')}</span>
-                                <span className="text-xl font-black text-white leading-none mt-1">{heartRate || '--'} <small className="text-[8px] opacity-50">BPM</small></span>
-                              </div>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={toggleHeartRate}
-                                className="w-8 h-8 rounded-lg hover:bg-red-500/10 text-red-400/50 hover:text-red-400"
-                              >
-                                <Unlink className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button
-                              onClick={toggleHeartRate}
-                              variant="outline"
-                              className="border-red-500/30 bg-red-500/5 text-red-400 hover:bg-red-500 hover:text-white font-black uppercase tracking-widest text-[10px] h-12 px-5 rounded-xl transition-all"
-                            >
-                              <Activity className="w-4 h-4 mr-2" /> {t('connect_hr')}
-                            </Button>
-                          )}
-                          
-                          <Button
-                            onClick={markSessionComplete}
-                            className="bg-cyan-500 text-black hover:bg-cyan-400 font-black uppercase tracking-widest text-[10px] h-12 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(34,211,238,0.2)] group"
-                          >
-                            <CheckCircle2 className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />{" "}
-                            {t('complete_session')}
-                          </Button>
-                        </div>
-                      )}
+              <div className="p-6 md:p-10 relative z-10 w-full">
+                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6 mb-8 w-full">
+                  <div className="flex-1 min-w-0 pr-0 lg:pr-8">
+                    <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-slate-300 font-bold uppercase tracking-wider text-[10px] px-3 py-1.5 rounded-full mb-4">
+                      <Calendar className="w-3 h-3" /> {t(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'][selectedDay] as any)}{" "}
+                      {t('operation')}
                     </div>
-
-                    {isRestDay ? (
-                      <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl bg-black/40 border border-white/5 mx-auto max-w-lg mt-10">
-                        <div className="w-20 h-20 rounded-full border border-white/10 flex items-center justify-center mb-6 bg-[#111] shadow-inner text-slate-500">
-                          <Zap className="w-8 h-8 opacity-50" />
-                        </div>
-                        <h3 className="text-white font-black tracking-widest uppercase text-xl mb-3">
-                          {t('active_recovery')}
-                        </h3>
-                        <p className="text-slate-400 text-sm max-w-xs mx-auto font-medium">
-                          {t('active_recovery_desc')}
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 gap-6">
-                        {currentDayData?.warmup &&
-                          currentDayData.warmup.length > 0 && (
-                            <div className="bg-[#111111]/80 border border-orange-500/20 rounded-[1.5rem] overflow-hidden flex flex-col group shadow-sm mb-2">
-                              <div className="p-5 md:p-6 bg-orange-500/5">
-                                <h3 className="text-orange-400 font-black tracking-widest uppercase text-sm mb-4 flex items-center gap-2">
-                                  <Flame className="w-4 h-4" /> {t('dynamic_warmup')}
-                                </h3>
-                                <ul className="space-y-2">
-                                  {currentDayData.warmup.map((wu, i) => (
-                                    <li
-                                      key={i}
-                                      className="flex gap-3 items-start text-sm text-slate-300 font-medium"
-                                    >
-                                      <div className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 shrink-0"></div>
-                                      <span className="leading-relaxed">{wu}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            </div>
-                          )}
-
-                        {currentDayData?.exercises.map((ex, idx) => (
-                          <motion.div
-                            key={idx}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.05 }}
-                            className="bg-[#111111] border border-white/5 hover:border-white/10 transition-all rounded-[1.5rem] overflow-hidden flex flex-col group shadow-sm"
-                          >
-                            <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center gap-5 relative">
-                              <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-cyan-500/0 group-hover:bg-cyan-500 transition-colors"></div>
-
-                              <div className="w-14 h-14 rounded-2xl bg-black border border-white/10 flex items-center justify-center shadow-inner shrink-0 relative overflow-hidden">
-                                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>
-                                <span className="text-slate-500 font-black text-xl group-hover:text-cyan-400 transition-colors">
-                                  {idx + 1}
-                                </span>
-                              </div>
-
-                              <div className="flex-1">
-                                <h3 className="text-white font-black text-xl leading-tight mb-2">
-                                  {ex.name}
-                                </h3>
-                                <div className="flex flex-wrap items-center gap-3">
-                                  <span className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md">
-                                    {ex.muscle}
-                                  </span>
-                                  {ex.load && (
-                                    <span className="text-[12px] text-slate-400 font-medium flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-md">
-                                      <TrendingUp className="w-3 h-3 text-slate-500" />{" "}
-                                      {ex.load}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-
-                                <div className="grid grid-cols-2 md:flex md:items-center gap-4 md:gap-6 bg-black/40 md:bg-transparent rounded-xl p-4 md:p-0 border md:border-none border-white/5 mt-2 md:mt-0">
-                                  <div className="flex flex-col">
-                                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">
-                                      {t('volume_label')}
-                                    </span>
-                                    <span className="text-white font-black text-sm">
-                                      {ex.sets}
-                                    </span>
-                                  </div>
-                                  {ex.rest && (
-                                    <div className="flex flex-col">
-                                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">
-                                        {t('rest_label')}
-                                      </span>
-                                      <span className="text-slate-300 font-black text-sm">
-                                        {ex.rest}
-                                      </span>
-                                    </div>
-                                  )}
-                                  
-                                  <div className="flex flex-col col-span-2 md:col-span-1 mt-2 md:mt-0">
-                                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5 flex items-center justify-between gap-2">
-                                      {t('weight_kg_alt')}
-                                    </span>
-                                    
-                                    <SetLogger 
-                                      exercise={ex} 
-                                      currentWeight={exerciseWeights[ex.name] || 0}
-                                      logs={sessionLogs[ex.name] || []}
-                                      onLog={(w, r) => {
-                                        const isHeavy = ex.name.toLowerCase().includes('squat') || ex.name.toLowerCase().includes('deadlift') || ex.name.toLowerCase().includes('bench');
-                                        logSet(ex.name, w, r, isHeavy ? 180 : 90);
-                                      }}
-                                      haptic={haptic}
-                                    />
-                                  </div>
-                                  <Button
-                                  onClick={() =>
-                                    setActiveVideoIndex(
-                                      activeVideoIndex === idx ? null : idx,
-                                    )
-                                  }
-                                  variant="ghost"
-                                  size="icon"
-                                  className={`mt-2 md:mt-0 w-8 h-8 rounded-full transition-colors flex-shrink-0 border ${activeVideoIndex === idx ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/30 hover:text-cyan-300" : "text-slate-400 border-white/5 hover:text-white hover:bg-white/10"}`}
-                                >
-                                  {activeVideoIndex === idx ? (
-                                    <ChevronUp className="w-4 h-4" />
-                                  ) : (
-                                    <PlayCircle className="w-4 h-4" />
-                                  )}
-                                </Button>
-                              </div>
-                            </div>
-
-                            {/* Video Embed Section */}
-                            <AnimatePresence>
-                              {activeVideoIndex === idx && (
-                                <motion.div
-                                  initial={{ height: 0, opacity: 0 }}
-                                  animate={{ height: "auto", opacity: 1 }}
-                                  exit={{ height: 0, opacity: 0 }}
-                                  className="border-t border-white/5 bg-black/80 px-5 md:px-6 py-4 overflow-hidden"
-                                >
-                                  <div className="flex items-center gap-2 mb-3">
-                                    <PlayCircle className="w-4 h-4 text-cyan-400" />
-                                    <span className="text-xs font-bold text-slate-300 uppercase tracking-widest">
-                                      {t('demonstration')}
-                                    </span>
-                                  </div>
-                                  <div className="relative w-full max-w-2xl mx-auto rounded-xl overflow-hidden bg-black aspect-video border border-white/10 shadow-lg">
-                                    {getEmbeddedVideo(ex.name, ex.youtubeQuery)}
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </motion.div>
-                        ))}
-
-                        {currentDayData?.cooldown &&
-                          currentDayData.cooldown.length > 0 && (
-                            <div className="bg-[#111111]/80 border border-blue-500/20 rounded-[1.5rem] overflow-hidden flex flex-col group shadow-sm mt-2">
-                              <div className="p-5 md:p-6 bg-blue-500/5">
-                                <h3 className="text-blue-400 font-black tracking-widest uppercase text-sm mb-4 flex items-center gap-2">
-                                  <Wind className="w-4 h-4" /> {t('static_cooldown')}
-                                </h3>
-                                <ul className="space-y-2">
-                                  {currentDayData.cooldown.map((cd, i) => (
-                                    <li
-                                      key={i}
-                                      className="flex gap-3 items-start text-sm text-slate-300 font-medium"
-                                    >
-                                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0"></div>
-                                      <span className="leading-relaxed">{cd}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            </div>
-                          )}
-                      </div>
+                    <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight md:leading-tight">
+                      {currentDayData?.focusName}
+                    </h2>
+                    {currentDayData?.description && (
+                      <p className="text-slate-400 font-medium text-sm md:text-base mt-4 max-w-full leading-relaxed">
+                        {currentDayData.description}
+                      </p>
                     )}
                   </div>
-                </Card>
-              </motion.div>
-            </AnimatePresence>
+
+                  {!isRestDay && (
+                    <div className="flex flex-wrap gap-3">
+                      <Button
+                        onClick={applyAllRecommendedWeights}
+                        variant="outline"
+                        className="border-cyan-500/30 bg-cyan-500/5 text-cyan-400 hover:bg-cyan-500 hover:text-black font-black uppercase tracking-widest text-[10px] h-12 px-5 rounded-xl transition-all"
+                      >
+                        <Trophy className="w-4 h-4 mr-2" /> {t('apply_all')}
+                      </Button>
+                      <Button
+                        onClick={markSessionComplete}
+                        className="bg-cyan-500 text-black hover:bg-cyan-400 font-black uppercase tracking-widest text-[10px] h-12 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(34,211,238,0.2)] group"
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />{" "}
+                        {t('complete_session')}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {isRestDay ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl bg-black/40 border border-white/5 mx-auto max-w-lg mt-10">
+                    <div className="w-20 h-20 rounded-full border border-white/10 flex items-center justify-center mb-6 bg-[#111] shadow-inner text-slate-500">
+                      <Zap className="w-8 h-8 opacity-50" />
+                    </div>
+                    <h3 className="text-white font-black tracking-widest uppercase text-xl mb-3">
+                      {t('active_recovery')}
+                    </h3>
+                    <p className="text-slate-400 text-sm max-w-xs mx-auto font-medium">
+                      {t('active_recovery_desc')}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-6">
+                    {currentDayData?.warmup &&
+                      currentDayData.warmup.length > 0 && (
+                        <div className="bg-[#111111]/80 border border-orange-500/20 rounded-[1.5rem] overflow-hidden flex flex-col group shadow-sm mb-2">
+                          <div className="p-5 md:p-6 bg-orange-500/5">
+                            <h3 className="text-orange-400 font-black tracking-widest uppercase text-sm mb-4 flex items-center gap-2">
+                              <Flame className="w-4 h-4" /> {t('dynamic_warmup')}
+                            </h3>
+                            <ul className="space-y-2">
+                              {currentDayData.warmup.map((wu, i) => (
+                                <li
+                                  key={i}
+                                  className="flex gap-3 items-start text-sm text-slate-300 font-medium"
+                                >
+                                  <div className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 shrink-0"></div>
+                                  <span className="leading-relaxed">{wu}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+
+                    {currentDayData?.exercises.map((ex, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-[#111111] border border-white/5 hover:border-white/10 transition-all rounded-[1.5rem] overflow-hidden flex flex-col group shadow-sm"
+                      >
+                        <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center gap-5 relative">
+                          <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-cyan-500/0 group-hover:bg-cyan-500 transition-colors"></div>
+
+                          <div className="w-14 h-14 rounded-2xl bg-black border border-white/10 flex items-center justify-center shadow-inner shrink-0 relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>
+                            <span className="text-slate-500 font-black text-xl group-hover:text-cyan-400 transition-colors">
+                              {idx + 1}
+                            </span>
+                          </div>
+
+                          <div className="flex-1">
+                            <h3 className="text-white font-black text-xl leading-tight mb-2">
+                              {ex.name}
+                            </h3>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <span className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md">
+                                {ex.muscle}
+                              </span>
+                              {ex.load && (
+                                <span className="text-[12px] text-slate-400 font-medium flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-md">
+                                  <TrendingUp className="w-3 h-3 text-slate-500" />{" "}
+                                  {ex.load}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 md:flex md:items-center gap-4 md:gap-6 bg-black/40 md:bg-transparent rounded-xl p-4 md:p-0 border md:border-none border-white/5 mt-2 md:mt-0">
+                            <div className="flex flex-col">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">
+                                {t('volume_label')}
+                              </span>
+                              <span className="text-white font-black text-sm">
+                                {ex.sets}
+                              </span>
+                            </div>
+                            {ex.rest && (
+                              <div className="flex flex-col">
+                                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">
+                                  {t('rest_label')}
+                                </span>
+                                <span className="text-slate-300 font-black text-sm">
+                                  {ex.rest}
+                                </span>
+                              </div>
+                            )}
+                            {ex.recommendedWeight && !/bodyweight/i.test(ex.recommendedWeight) && (
+                              <button 
+                                onClick={() => applyRecommendedWeight(ex)}
+                                className="flex flex-col text-left group/suggest hover:bg-cyan-500/5 p-1 rounded-lg transition-colors cursor-pointer"
+                              >
+                                <span className="text-[10px] text-cyan-500 font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                                  {t('suggested')} <CheckCircle2 className="w-2.5 h-2.5 opacity-0 group-hover/suggest:opacity-100 transition-opacity" />
+                                </span>
+                                <span className="text-cyan-300 font-black text-sm flex items-center gap-1 underline decoration-cyan-500/30 underline-offset-4">
+                                  {ex.recommendedWeight}
+                                </span>
+                              </button>
+                            )}
+                            <div className="flex flex-col col-span-2 md:col-span-1 mt-2 md:mt-0">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5 flex items-center justify-between gap-2">
+                                {t('weight_kg_alt')}
+                                {ex.recommendedWeight && !/bodyweight/i.test(ex.recommendedWeight) && (
+                                  <button 
+                                    onClick={() => applyRecommendedWeight(ex)}
+                                    className="text-[9px] text-cyan-500/80 font-black animate-pulse hover:text-cyan-400 hover:scale-105 transition-all cursor-pointer"
+                                    title={t('use_recommended')}
+                                  >
+                                    REC: {ex.recommendedWeight}
+                                  </button>
+                                )}
+                              </span>
+                              
+                              <SetLogger 
+                                exercise={ex} 
+                                currentWeight={exerciseWeights[ex.name] || 0}
+                                logs={sessionLogs[ex.name] || []}
+                                onLog={(w, r) => {
+                                  const isHeavy = ex.name.toLowerCase().includes('squat') || ex.name.toLowerCase().includes('deadlift') || ex.name.toLowerCase().includes('bench');
+                                  logSet(ex.name, w, r, isHeavy ? 180 : 90);
+                                }}
+                              />
+                            </div>
+                            <Button
+                              onClick={() =>
+                                setActiveVideoIndex(
+                                  activeVideoIndex === idx ? null : idx,
+                                )
+                              }
+                              variant="ghost"
+                              size="icon"
+                              className={`mt-2 md:mt-0 w-8 h-8 rounded-full transition-colors flex-shrink-0 border ${activeVideoIndex === idx ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/30 hover:text-cyan-300" : "text-slate-400 border-white/5 hover:text-white hover:bg-white/10"}`}
+                            >
+                              {activeVideoIndex === idx ? (
+                                <ChevronUp className="w-4 h-4" />
+                              ) : (
+                                <PlayCircle className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Video Embed Section */}
+                        {activeVideoIndex === idx && (
+                          <div className="border-t border-white/5 bg-black/80 px-5 md:px-6 py-4 animate-in slide-in-from-top-2 fade-in duration-200">
+                            <div className="flex items-center gap-2 mb-3">
+                              <PlayCircle className="w-4 h-4 text-cyan-400" />
+                              <span className="text-xs font-bold text-slate-300 uppercase tracking-widest">
+                                {t('demonstration')}
+                              </span>
+                            </div>
+                            <div className="relative w-full max-w-2xl mx-auto rounded-xl overflow-hidden bg-black aspect-video border border-white/10 shadow-lg">
+                              {getEmbeddedVideo(ex.name, ex.youtubeQuery)}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {currentDayData?.cooldown &&
+                      currentDayData.cooldown.length > 0 && (
+                        <div className="bg-[#111111]/80 border border-blue-500/20 rounded-[1.5rem] overflow-hidden flex flex-col group shadow-sm mt-2">
+                          <div className="p-5 md:p-6 bg-blue-500/5">
+                            <h3 className="text-blue-400 font-black tracking-widest uppercase text-sm mb-4 flex items-center gap-2">
+                              <Wind className="w-4 h-4" /> {t('static_cooldown')}
+                            </h3>
+                            <ul className="space-y-2">
+                              {currentDayData.cooldown.map((cd, i) => (
+                                <li
+                                  key={i}
+                                  className="flex gap-3 items-start text-sm text-slate-300 font-medium"
+                                >
+                                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0"></div>
+                                  <span className="leading-relaxed">{cd}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+                  </div>
+                )}
+              </div>
+            </Card>
           </div>
 
           {/* Right Column: Stats & Progression */}
@@ -1301,24 +1348,51 @@ export default function Training() {
           </div>
         </div>
       )}
-      {plan && <RestTimerUI />}
+      {plan && timerActive && timerSeconds > 0 && (
+        <div className="fixed bottom-24 right-4 z-50">
+          <Card className="bg-[#0a0c10]/95 backdrop-blur-xl border border-white/10 shadow-2xl p-4 pr-6 rounded-2xl flex items-center gap-4 animate-in slide-in-from-right-8 duration-300">
+            <div className="relative w-12 h-12 flex items-center justify-center">
+              <svg className="absolute inset-0 w-full h-full -rotate-90">
+                <circle cx="24" cy="24" r="22" stroke="rgba(255,255,255,0.1)" strokeWidth="4" fill="none" />
+                <circle 
+                  cx="24" cy="24" r="22" 
+                  stroke="currentColor" 
+                  strokeWidth="4" 
+                  fill="none" 
+                  className="text-cyan-400 transition-all duration-1000 linear"
+                  strokeDasharray="138"
+                  strokeDashoffset={138 - (138 * ((timerTotal > 0 ? timerSeconds : 0) / (timerTotal || 1)))}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span className="text-sm font-black text-white">{timerSeconds}</span>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">{t('rest_timer' as any)}</p>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setTimerSeconds(prev => prev + 30)} className="text-xs font-bold text-slate-300 hover:text-white">+30s</button>
+                <button onClick={() => setTimerSeconds(0)} className="text-xs font-bold text-slate-300 hover:text-white">{t('skip' as any)}</button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
 
-function SetLogger({ exercise, currentWeight, logs, onLog, haptic }: { 
+function SetLogger({ exercise, currentWeight, logs, onLog }: { 
   exercise: Exercise; 
   currentWeight: number; 
   logs: LoggedSet[]; 
-  onLog: (weight: number, reps: number) => void;
-  haptic: (pattern?: number | number[]) => void;
+  onLog: (weight: number, reps: number) => void 
 }) {
   const { t } = useTranslation();
   const [weight, setWeight] = useState(currentWeight || 0);
   const [reps, setReps] = useState(10);
 
   useEffect(() => {
-    setWeight(currentWeight);
+    if (currentWeight > 0) setWeight(currentWeight);
   }, [currentWeight]);
 
   return (
@@ -1335,17 +1409,17 @@ function SetLogger({ exercise, currentWeight, logs, onLog, haptic }: {
         </div>
         <div className="flex items-center gap-1 bg-black/50 border border-white/10 rounded-lg p-0.5 shadow-inner">
           <button 
-            onClick={() => { haptic(5); setReps(Math.max(1, reps - 1)); }}
+            onClick={() => setReps(Math.max(1, reps - 1))}
             className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-white"
           >-</button>
           <span className="w-8 text-center text-sm font-black text-white">{reps}</span>
           <button 
-            onClick={() => { haptic(5); setReps(reps + 1); }}
+            onClick={() => setReps(reps + 1)}
             className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-white"
           >+</button>
         </div>
         <Button 
-          onClick={() => { haptic(10); onLog(weight, reps); }}
+          onClick={() => onLog(weight, reps)}
           size="sm"
           className="bg-cyan-500 hover:bg-cyan-400 text-black font-black text-[10px] h-8 px-3 rounded-lg"
         >
@@ -1366,45 +1440,6 @@ function SetLogger({ exercise, currentWeight, logs, onLog, haptic }: {
             <span className="text-[8px] font-black text-slate-700">{logs.length + i + 1}</span>
           </div>
         ))}
-      </div>
-    </div>
-  );
-}
-
-function RestTimerUI() {
-  const { t } = useTranslation();
-  const [seconds, setSeconds] = useState(0);
-  const [active, setActive] = useState(false);
-
-  useEffect(() => {
-    let interval: any;
-    if (active) {
-      interval = setInterval(() => setSeconds(s => s + 1), 1000);
-    }
-    return () => clearInterval(interval);
-  }, [active]);
-
-  if (!active && seconds === 0) return (
-    <Button 
-      onClick={() => setActive(true)}
-      className="fixed bottom-24 right-6 bg-cyan-600 text-white rounded-full p-4 shadow-xl z-50 overflow-hidden group hover:scale-110 transition-all border border-cyan-400/50"
-    >
-      <Zap className="w-6 h-6" />
-    </Button>
-  );
-
-  return (
-    <div className="fixed bottom-24 right-6 bg-[#0a0a0c] border border-cyan-500/30 rounded-3xl p-4 shadow-2xl z-50 flex items-center gap-4 animate-in slide-in-from-right-4">
-      <div className="text-2xl font-black text-cyan-400 font-mono w-16 text-center">
-        {Math.floor(seconds / 60)}:{(seconds % 60).toString().padStart(2, '0')}
-      </div>
-      <div className="flex gap-2">
-        <Button size="icon" onClick={() => setActive(!active)} variant="ghost" className="text-white hover:bg-white/10">
-          <Play className="w-4 h-4" />
-        </Button>
-        <Button size="icon" onClick={() => { setActive(false); setSeconds(0); }} variant="ghost" className="text-red-400 hover:bg-red-500/10">
-          <RotateCcw className="w-4 h-4" />
-        </Button>
       </div>
     </div>
   );

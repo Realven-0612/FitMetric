@@ -1,9 +1,9 @@
 import React, { useState, useRef } from "react";
 import Webcam from "react-webcam";
+import { GoogleGenAI, Type } from "@google/genai";
 import { Button } from "@/components/ui/button";
 import { Camera, UploadCloud, Loader2, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
-import { analyzeAIImage } from "../lib/ai";
 
 interface MealScannerProps {
   onFoodDetected: (food: { name: string; kcal: number; protein: number; carbs: number; fat: number }) => void;
@@ -40,6 +40,7 @@ export function MealScanner({ onFoodDetected, onClose }: MealScannerProps) {
     if (!image) return;
     setIsScanning(true);
     try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
       const base64Data = image.split(",")[1];
       const mimeType = image.split(";")[0].split(":")[1];
 
@@ -54,20 +55,29 @@ export function MealScanner({ onFoodDetected, onClose }: MealScannerProps) {
         - confidence: 1-100 score of your estimation.
       `;
 
-      const schema = {
-        type: "object",
-        properties: {
-          name: { type: "string" },
-          kcal: { type: "number" },
-          protein: { type: "number" },
-          carbs: { type: "number" },
-          fat: { type: "number" },
-          confidence: { type: "number" }
-        },
-        required: ["name", "kcal", "protein", "carbs", "fat"]
-      };
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [{ 
+          inlineData: { data: base64Data, mimeType } 
+        }, { text: prompt }],
+        config: { 
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              name: { type: Type.STRING },
+              kcal: { type: Type.NUMBER },
+              protein: { type: Type.NUMBER },
+              carbs: { type: Type.NUMBER },
+              fat: { type: Type.NUMBER },
+              confidence: { type: Type.NUMBER }
+            },
+            required: ["name", "kcal", "protein", "carbs", "fat"]
+          }
+        }
+      });
 
-      const result = await analyzeAIImage(prompt, base64Data, mimeType, schema);
+      const result = JSON.parse(response.text.trim());
       onFoodDetected(result);
       toast.success(`Logged ${result.name}! (AI Confidence: ${result.confidence}%)`);
       onClose();

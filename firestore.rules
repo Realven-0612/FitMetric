@@ -78,30 +78,6 @@ service cloud.firestore {
         allow update: if isSignedIn() && isValidId(userId) && isValidId(recordId) && request.auth.uid == userId && isValidWeightRecord(incoming()) && incoming().userId == existing().userId;
         allow delete: if isSignedIn() && request.auth.uid == userId;
       }
-
-      match /plans/{planId} {
-        function isValidPlan(data) {
-          return (!('progressionGuide' in data) || data.progressionGuide is string) &&
-                 (!('days' in data) || data.days is list) &&
-                 (!('completedSessions' in data) || data.completedSessions is number) &&
-                 (!('currentCycle' in data) || data.currentCycle is number);
-        }
-        allow read: if isSignedIn() && request.auth.uid == userId;
-        allow create, update: if isSignedIn() && request.auth.uid == userId && isValidPlan(incoming());
-      }
-
-      match /nutrition/{entryId} {
-        function isValidNutritionEntry(data) {
-          return data.keys().hasAll(['name', 'kcal', 'protein', 'carbs', 'fat', 'timestamp']) &&
-                 data.name is string && data.name.size() <= 200 &&
-                 data.kcal is number && data.protein is number &&
-                 data.carbs is number && data.fat is number &&
-                 data.timestamp is string && data.timestamp.size() <= 100;
-        }
-        allow read, list: if isSignedIn() && request.auth.uid == userId;
-        allow create: if isSignedIn() && request.auth.uid == userId && isValidNutritionEntry(incoming());
-        allow delete: if isSignedIn() && request.auth.uid == userId;
-      }
     }
   }
 }

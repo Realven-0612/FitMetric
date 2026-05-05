@@ -1,6 +1,6 @@
 {
-  "name": "FitMetric",
+  "name": "FitMet",
   "description": "AI-powered fitness application featuring an AI physique scanner, workout generator, nutrition tracker, and Strava integration for a complete fitness experience.",
-  "requestFramePermissions": ["camera", "bluetooth"],
+  "requestFramePermissions": ["camera"],
   "majorCapabilities": []
 }

@@ -1,9 +1,9 @@
 import React, { useState } from "react";
+import { GoogleGenAI, Type } from "@google/genai";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sparkles, Utensils, Loader2, Info, CheckCircle2, ChevronRight, X } from "lucide-react";
 import Markdown from "react-markdown";
-import { generateAIContent } from "../lib/ai";
 
 interface RecipeGeneratorProps {
   remainingMacros: { kcal: number; protein: number; carbs: number; fat: number };
@@ -17,6 +17,7 @@ export function RecipeGenerator({ remainingMacros, onClose }: RecipeGeneratorPro
   const generateRecipe = async () => {
     setLoading(true);
     try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
       const prompt = `
         You are an elite fitness chef. 
         Create 1 high-protein recipe for dinner that fits exactly within these remaining daily macros:
@@ -34,11 +35,14 @@ export function RecipeGenerator({ remainingMacros, onClose }: RecipeGeneratorPro
         - Macro Breakdown of this specific meal
       `;
 
-      const response = await generateAIContent(prompt);
-      setRecipe(response.text || (typeof response === "string" ? response : JSON.stringify(response)));
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt
+      });
+
+      setRecipe(response.text);
     } catch (err) {
       console.error(err);
-      setRecipe("Failed to generate recipe. Please try again.");
     } finally {
       setLoading(false);
     }
