@@ -86,7 +86,9 @@ export default function Dashboard() {
         });
 
         const data = await response.json();
-        if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        if (data.text) {
+          setInsightResult(data.text);
+        } else if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
           setInsightResult(data.candidates[0].content.parts[0].text);
         } else {
           setInsightResult("No insights generated. Try again.");
@@ -330,11 +332,11 @@ export default function Dashboard() {
                 </Dialog>
 
                 <Dialog>
-                  <DialogTrigger render={
+                  <DialogTrigger asChild>
                     <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white hover:bg-white/5 rounded-full h-8 w-8">
                       <Settings2 className="w-4 h-4" />
                     </Button>
-                  } />
+                  </DialogTrigger>
                   <DialogContent className="bg-[#111111] border-white/10 text-white rounded-[2rem] p-6 max-w-sm">
                     <DialogHeader>
                       <DialogTitle className="text-lg font-black uppercase tracking-wider">{t('adjust_weight_history')}</DialogTitle>
