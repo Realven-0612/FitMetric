@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Flame, Trophy, Calendar, Target, Zap, TrendingUp, Settings2, Trash2 } from "lucide-react";
+import { Flame, Trophy, Calendar, Target, Zap, TrendingUp, Settings2, Trash2, Droplet, Sparkles, Loader2, AlertTriangle } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -10,6 +10,7 @@ import { doc, deleteDoc, collection, getDocs } from "firebase/firestore";
 import { handleFirestoreError, OperationType } from "../lib/firestoreUtils";
 import { useTranslation } from "../lib/i18n";
 import { useFitness } from "../components/FitnessProvider";
+import Markdown from 'react-markdown';
 
 const defaultConsumptionData = [
   { name: "t2", value: 0 },
@@ -26,6 +27,8 @@ export default function Dashboard() {
   const { t } = useTranslation();
   const [nextOperation, setNextOperation] = useState<string>("Rest");
   const [nextWeightHint, setNextWeightHint] = useState<string>("");
+  const [isGeneratingInsight, setIsGeneratingInsight] = useState(false);
+  const [insightResult, setInsightResult] = useState<string | null>(null);
 
   const handleDeleteWeightRecord = async (dateStr: string, id?: string) => {
     if (user && id) {
@@ -48,7 +51,7 @@ export default function Dashboard() {
     window.dispatchEvent(new Event('weight_history_updated'));
   };
 
-   const { profile, macros, consumed, consumptionStreak: streak, consumptionChartData: consumptionData, weightHistory: rawWeightHistory } = useFitness();
+   const { profile, macros, consumed, consumptionStreak: streak, consumptionChartData: consumptionData, weightHistory: rawWeightHistory, waterIntake } = useFitness();
    const tdee = macros.calories;
    const weight = profile.weight;
    const consumedKcal = consumed.calories;
@@ -60,6 +63,41 @@ export default function Dashboard() {
          weight: entry.value
       }
    });
+
+   const generateInsights = async () => {
+      setIsGeneratingInsight(true);
+      try {
+        const weights = weightHistoryData.slice(-7).map(d => `${d.name}: ${d.weight}kg`).join(', ');
+        const cals = consumptionData.slice(-7).map(d => `${d.name}: ${d.value}kcal`).join(', ');
+        const prompt = `Analyze this 7-day history. Weights: [${weights}]. Calories: [${cals}]. Goal: ${profile.primaryGoal}. Provide 3 concise observations and 1 expert tip. Format as a short Markdown string.`;
+
+        const response = await fetch('/api/ai/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'gemini-2.0-flash',
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            config: {
+              temperature: 0.7
+            }
+          })
+        });
+
+        const data = await response.json();
+        if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+          setInsightResult(data.candidates[0].content.parts[0].text);
+        } else {
+          setInsightResult("No insights generated. Try again.");
+        }
+      } catch (error) {
+        console.error(error);
+        setInsightResult("Error generating insights.");
+      } finally {
+        setIsGeneratingInsight(false);
+      }
+   };
 
    useEffect(() => {
      const updateDashboardData = () => {
@@ -100,6 +138,34 @@ export default function Dashboard() {
      };
    }, [user]);
 
+   const currentHour = new Date().getHours();
+   const actionItems = [];
+   if (currentHour >= 16 && consumed.protein < macros.protein * 0.75) {
+     actionItems.push({
+       type: 'warning',
+       icon: <AlertTriangle className="w-5 h-5" />,
+       title: "Protein Deficit",
+       message: `You're at ${Math.round(consumed.protein)}g out of ${Math.round(macros.protein)}g. Consider a high-protein snack.`
+     });
+   }
+   if (currentHour >= 14 && waterIntake < 1.5) {
+     actionItems.push({
+       type: 'info',
+       icon: <Droplet className="w-5 h-5" />,
+       title: "Hydration Check",
+       message: `You've had ${waterIntake.toFixed(2)}L of water today. Drink up!`
+     });
+   }
+   const workoutCompleted = localStorage.getItem('workout_completed_today') === 'true';
+   if (currentHour >= 17 && !workoutCompleted && nextOperation !== 'Rest') {
+      actionItems.push({
+         type: 'motivation',
+         icon: <Zap className="w-5 h-5" />,
+         title: "Time to Move",
+         message: `Your ${nextOperation} workout awaits. Finish the day strong.`
+      });
+   }
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10">
       
@@ -125,6 +191,25 @@ export default function Dashboard() {
               <blockquote className="text-lg text-slate-300 font-medium italic mt-2 mb-4">
                 "{t('discipline_freedom')}"
               </blockquote>
+
+              {/* Action Items */}
+              {actionItems.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                  {actionItems.map((item, idx) => (
+                    <div key={idx} className={`rounded-2xl p-4 border flex items-start gap-4 backdrop-blur-md ${
+                      item.type === 'warning' ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' :
+                      item.type === 'info' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
+                      'bg-cyan-500/10 border-cyan-500/20 text-cyan-400'
+                    }`}>
+                      <div className="shrink-0 mt-1">{item.icon}</div>
+                      <div>
+                         <h4 className="font-bold uppercase tracking-wider text-xs mb-1 opacity-90">{item.title}</h4>
+                         <p className="text-sm font-medium opacity-80 text-white">{item.message}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Metrics Grid */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-auto">
@@ -200,8 +285,8 @@ export default function Dashboard() {
       {/* Bottom Row: Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Weight Progression Card */}
-        <Card className="bg-[#111111]/80 border-white/5 rounded-[2rem] shadow-none flex flex-col p-6 lg:p-8 min-h-[300px]">
+         {/* Weight Progression Card */}
+         <Card className="bg-[#111111]/80 border-white/5 rounded-[2rem] shadow-none flex flex-col p-6 lg:p-8 min-h-[300px]">
            <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
                  <div className="text-indigo-400">
@@ -209,40 +294,76 @@ export default function Dashboard() {
                  </div>
                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">{t('weight_progression')}</h3>
               </div>
-              <Dialog>
-                <DialogTrigger render={
-                  <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white hover:bg-white/5 rounded-full h-8 w-8">
-                    <Settings2 className="w-4 h-4" />
-                  </Button>
-                } />
-                <DialogContent className="bg-[#111111] border-white/10 text-white rounded-[2rem] p-6 max-w-sm">
-                  <DialogHeader>
-                    <DialogTitle className="text-lg font-black uppercase tracking-wider">{t('adjust_weight_history')}</DialogTitle>
-                  </DialogHeader>
-                  <div className="mt-4 max-h-[60vh] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                    {rawWeightHistory.length === 0 ? (
-                      <p className="text-sm text-slate-500 text-center py-4">No entries found.</p>
-                    ) : (
-                      rawWeightHistory.map((item, idx) => (
-                        <div key={idx} className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-2xl border border-white/5">
-                          <div>
-                            <div className="text-white font-bold">{item.value} kg</div>
-                            <div className="text-xs text-slate-500 font-medium">{new Date(item.date).toLocaleDateString()}</div>
-                          </div>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleDeleteWeightRecord(item.date, item.id)}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-8 w-8 rounded-full"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+              
+              <div className="flex items-center gap-2">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="h-8 rounded-full bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/20 hover:text-indigo-300 text-xs px-3 font-bold border" onClick={generateInsights}>
+                      <Sparkles className="w-3 h-3 mr-1" />
+                      Review Progress
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-[#111111] border-white/10 text-white rounded-[2rem] p-6 max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle className="text-lg font-black uppercase tracking-wider items-center gap-2 text-indigo-400 flex border-b border-white/5 pb-4">
+                        <Sparkles className="w-5 h-5" />
+                        AI Insights
+                      </DialogTitle>
+                    </DialogHeader>
+                    <div className="mt-4 min-h-[200px] flex flex-col custom-scrollbar">
+                      {isGeneratingInsight ? (
+                        <div className="flex-1 flex flex-col items-center justify-center text-slate-400 space-y-4 py-8">
+                          <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
+                          <p className="text-sm font-medium animate-pulse">Analyzing your 7-day progress...</p>
                         </div>
-                      ))
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
+                      ) : (
+                        <div className="text-slate-300 text-sm leading-relaxed prose prose-invert max-w-none">
+                          {insightResult ? (
+                            <Markdown>{insightResult}</Markdown>
+                          ) : (
+                            <p>Click the button to generate insights based on your recent activity.</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog>
+                  <DialogTrigger render={
+                    <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white hover:bg-white/5 rounded-full h-8 w-8">
+                      <Settings2 className="w-4 h-4" />
+                    </Button>
+                  } />
+                  <DialogContent className="bg-[#111111] border-white/10 text-white rounded-[2rem] p-6 max-w-sm">
+                    <DialogHeader>
+                      <DialogTitle className="text-lg font-black uppercase tracking-wider">{t('adjust_weight_history')}</DialogTitle>
+                    </DialogHeader>
+                    <div className="mt-4 max-h-[60vh] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                      {rawWeightHistory.length === 0 ? (
+                        <p className="text-sm text-slate-500 text-center py-4">No entries found.</p>
+                      ) : (
+                        rawWeightHistory.map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-2xl border border-white/5">
+                            <div>
+                              <div className="text-white font-bold">{item.value} kg</div>
+                              <div className="text-xs text-slate-500 font-medium">{new Date(item.date).toLocaleDateString()}</div>
+                            </div>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleDeleteWeightRecord(item.date, item.id)}
+                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-8 w-8 rounded-full"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
            </div>
            
            {/* Empty State or Chart */}
