@@ -402,7 +402,6 @@ export default function Training() {
   };
 
   const handleGenerate = async (isAutoRefresh = false, overrideFocus?: string) => {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     setIsGenerating(true);
 
     try {
@@ -442,8 +441,8 @@ export default function Training() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: "gemini-3-flash-preview",
-          contents: prompt,
+          model: "gemini-1.5-flash",
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: {
             responseMimeType: "application/json",
             responseSchema: {

@@ -2,6 +2,18 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import cors from "cors";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+let aiClient: any = null;
+async function getAIClient() {
+  if (!aiClient) {
+    const { GoogleGenAI } = await import('@google/genai');
+    aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  }
+  return aiClient;
+}
 
 async function startServer() {
   const app = express();
@@ -26,9 +38,13 @@ async function startServer() {
 
   app.post('/api/ai/chat', validateAIRequest, async (req, res) => {
     try {
-      const { GoogleGenAI } = await import('@google/genai');
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent(req.body);
+      const ai = await getAIClient();
+      const requestPayload = {
+        model: req.body.model || 'gemini-1.5-flash',
+        contents: req.body.contents,
+        config: req.body.config
+      };
+      const response = await ai.models.generateContent(requestPayload);
       res.json({
         text: response.text,
         functionCalls: response.functionCalls,
@@ -42,9 +58,13 @@ async function startServer() {
 
   app.post('/api/ai/generate', validateAIRequest, async (req, res) => {
     try {
-      const { GoogleGenAI } = await import('@google/genai');
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent(req.body);
+      const ai = await getAIClient();
+      const requestPayload = {
+        model: req.body.model || 'gemini-1.5-flash',
+        contents: req.body.contents,
+        config: req.body.config
+      };
+      const response = await ai.models.generateContent(requestPayload);
       res.json({
         text: response.text,
         functionCalls: response.functionCalls,

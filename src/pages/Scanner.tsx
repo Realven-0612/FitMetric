@@ -196,8 +196,14 @@ export default function Scanner() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: "gemini-3-flash-preview",
-          contents: [{ inlineData: { data: base64Data, mimeType } }, prompt],
+          model: "gemini-1.5-flash",
+          contents: [{
+            role: "user",
+            parts: [
+              { inlineData: { data: base64Data, mimeType } },
+              { text: prompt }
+            ]
+          }],
           config: { responseMimeType: "application/json" }
         })
       });

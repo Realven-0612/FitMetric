@@ -57,10 +57,14 @@ export function MealScanner({ onFoodDetected, onClose }: MealScannerProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: "gemini-3-flash-preview",
+          model: "gemini-1.5-flash",
           contents: [{ 
-            inlineData: { data: base64Data, mimeType } 
-          }, { text: prompt }],
+            role: "user",
+            parts: [
+              { inlineData: { data: base64Data, mimeType } },
+              { text: prompt }
+            ]
+          }],
           config: { 
             responseMimeType: "application/json",
             responseSchema: {

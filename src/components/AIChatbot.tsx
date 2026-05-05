@@ -175,7 +175,7 @@ export default function AIChatbot() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gemini-3-flash-preview',
+          model: 'gemini-1.5-flash',
           contents,
           config: {
             systemInstruction,
@@ -203,11 +203,11 @@ export default function AIChatbot() {
 
         currentContents.push({
           role: 'model',
-          parts: [{ functionCall: call }]
+          parts: [{ functionCall: call } as any]
         });
         currentContents.push({
           role: 'user',
-          parts: [{ functionResponse: { name: call.name, response: { success: true } } }]
+          parts: [{ functionResponse: { name: call.name, response: { success: true } } } as any]
         });
         
         const followUp = await callAI(currentContents);
