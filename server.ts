@@ -46,7 +46,7 @@ async function startServer() {
       };
       const response = await ai.models.generateContent(requestPayload);
       res.json({
-        text: response.text,
+        text: typeof response.text === 'function' ? response.text() : response.text,
         functionCalls: response.functionCalls,
         candidates: response.candidates
       });
@@ -66,7 +66,7 @@ async function startServer() {
       };
       const response = await ai.models.generateContent(requestPayload);
       res.json({
-        text: response.text,
+        text: typeof response.text === 'function' ? response.text() : response.text,
         functionCalls: response.functionCalls,
         candidates: response.candidates
       });
