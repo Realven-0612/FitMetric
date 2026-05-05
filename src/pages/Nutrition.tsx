@@ -13,10 +13,8 @@ import { useFitness } from "../components/FitnessProvider";
 
 export default function Nutrition() {
   const { t } = useTranslation();
-  const { profile, diary, addFoodEntry, removeFoodEntry, macros, consumed } = useFitness();
+  const { profile, diary, addFoodEntry, removeFoodEntry, macros, consumed, waterIntake, logWater: logWaterContext } = useFitness();
   const { weight, height, age, bodyFat, activityLevel, primaryGoal } = profile;
-
-  const [waterLiter, setWaterLiter] = useState(0);
 
   // Modals
   const [showScanner, setShowScanner] = useState(false);
@@ -365,18 +363,18 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                 </div>
                 <div className="flex items-center justify-center mb-6">
                    <div className="w-32 h-32 rounded-full border-4 border-slate-800 flex items-center justify-center relative overflow-hidden bg-black/30">
-                     <div className="absolute bottom-0 w-full bg-blue-500/30 transition-all duration-1000" style={{ height: `${waterTarget > 0 ? Math.min(100, (waterLiter / waterTarget) * 100) : 0}%` }}>
+                     <div className="absolute bottom-0 w-full bg-blue-500/30 transition-all duration-1000" style={{ height: `${waterTarget > 0 ? Math.min(100, (waterIntake / waterTarget) * 100) : 0}%` }}>
                        <div className="absolute top-0 w-full h-4 bg-blue-400/40 rounded-[100%] scale-150"></div>
                      </div>
                      <div className="relative z-10 text-center">
-                       <span className="text-3xl font-black text-white leading-none">{waterLiter.toFixed(2)}</span>
+                       <span className="text-3xl font-black text-white leading-none">{waterIntake.toFixed(2)}</span>
                        <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mt-1">/ {waterTarget.toFixed(2)}L</p>
                      </div>
                    </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <Button onClick={() => setWaterLiter(Math.max(0, waterLiter - 0.25))} className="h-10 bg-black/40 text-slate-300 border border-white/5 hover:bg-white/10 rounded-xl text-xs">- 250ml</Button>
-                  <Button onClick={() => setWaterLiter(waterLiter + 0.25)} className="h-10 bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 rounded-xl text-xs">+ 250ml</Button>
+                  <Button onClick={() => logWaterContext(waterIntake - 0.25 < 0 ? -waterIntake : -0.25)} className="h-10 bg-black/40 text-slate-300 border border-white/5 hover:bg-white/10 rounded-xl text-xs">- 250ml</Button>
+                  <Button onClick={() => logWaterContext(0.25)} className="h-10 bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 rounded-xl text-xs">+ 250ml</Button>
                 </div>
               </div>
               

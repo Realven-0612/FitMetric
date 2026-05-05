@@ -1,8 +1,13 @@
-export function calculateBMR(weight: number, height: number, age: number, gender: 'male' | 'female' = 'male'): number {
-  if (gender === 'male') {
-    return 10 * weight + 6.25 * height - 5 * age + 5;
-  } else {
+export function calculateBMR(weight: number, height: number, age: number, gender: 'male' | 'female' | 'other' = 'male', bodyFat?: number): number {
+  if (bodyFat && bodyFat > 0) {
+    const lbm = weight * (100 - bodyFat) / 100;
+    return 370 + (21.6 * lbm);
+  }
+
+  if (gender === 'female') {
     return 10 * weight + 6.25 * height - 5 * age - 161;
+  } else {
+    return 10 * weight + 6.25 * height - 5 * age + 5;
   }
 }
 

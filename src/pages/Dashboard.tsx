@@ -26,10 +26,6 @@ export default function Dashboard() {
   const { t } = useTranslation();
   const [nextOperation, setNextOperation] = useState<string>("Rest");
   const [nextWeightHint, setNextWeightHint] = useState<string>("");
-  const [streak, setStreak] = useState<number>(0);
-  const [consumptionData, setConsumptionData] = useState(defaultConsumptionData);
-  const [weightHistoryData, setWeightHistoryData] = useState<any[]>([]);
-  const [rawWeightHistory, setRawWeightHistory] = useState<{date: string, value: number, id?: string}[]>([]);
 
   const handleDeleteWeightRecord = async (dateStr: string, id?: string) => {
     if (user && id) {
@@ -48,14 +44,22 @@ export default function Dashboard() {
       }
     }
     
-    // Dispatch an event so it updates everywhere in dashboard
+    // Dispatch an event so it updates everywhere
     window.dispatchEvent(new Event('weight_history_updated'));
   };
 
-   const { profile, macros, consumed } = useFitness();
+   const { profile, macros, consumed, consumptionStreak: streak, consumptionChartData: consumptionData, weightHistory: rawWeightHistory } = useFitness();
    const tdee = macros.calories;
    const weight = profile.weight;
    const consumedKcal = consumed.calories;
+
+   const weightHistoryData = rawWeightHistory.map(entry => {
+      const d = new Date(entry.date);
+      return {
+         name: `${d.getMonth() + 1}/${d.getDate()}`,
+         weight: entry.value
+      }
+   });
 
    useEffect(() => {
      const updateDashboardData = () => {
@@ -85,99 +89,14 @@ export default function Dashboard() {
            }
          } catch (e) {}
        }
-
-       const todayStr = new Date().toISOString().split('T')[0];
-       const consHistoryStr = localStorage.getItem("consumption_history");
-       if (consHistoryStr) {
-          try {
-             const history = JSON.parse(consHistoryStr);
-             if (Array.isArray(history) && history.length > 0) {
-                // Compute streak
-                let currentStreak = 0;
-                let checkDate = new Date();
-                // check backwards
-                while (true) {
-                   const dStr = checkDate.toISOString().split('T')[0];
-                   const found = history.find((entry: any) => entry.name === dStr && entry.value > 0);
-                   if (found) {
-                      currentStreak++;
-                      checkDate.setDate(checkDate.getDate() - 1);
-                   } else {
-                      if (currentStreak === 0 && dStr === todayStr) {
-                          // if today is empty, check yesterday before breaking streak
-                          checkDate.setDate(checkDate.getDate() - 1);
-                          const yDayFound = history.find((entry: any) => entry.name === checkDate.toISOString().split('T')[0] && entry.value > 0);
-                          if (!yDayFound) break;
-                      } else {
-                          break;
-                      }
-                   }
-                }
-                setStreak(currentStreak);
-
-                // last 7 days chart
-                const chartData = [];
-                for (let i = 6; i >= 0; i--) {
-                   const d = new Date();
-                   d.setDate(d.getDate() - i);
-                   const dStr = d.toISOString().split('T')[0];
-                   const mmdd = `${d.getMonth() + 1}/${d.getDate()}`;
-                   const entry = history.find((e: any) => e.name === dStr);
-                   chartData.push({ name: mmdd, value: entry ? entry.value || 0 : 0 });
-                }
-                setConsumptionData(chartData);
-             }
-          } catch (e) {}
-       }
-       
-       const loadWeightHistory = async () => {
-         let history: any[] = [];
-         if (user) {
-            try {
-               const recordsRef = collection(db, "users", user.uid, "weightRecords");
-               const qs = await getDocs(recordsRef);
-               qs.forEach(doc => {
-                  history.push({ id: doc.id, ...doc.data() });
-               });
-               history.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-            } catch (e) {
-               handleFirestoreError(e, OperationType.GET, `users/${user.uid}/weightRecords`);
-            }
-         } else {
-            const weightHistoryStr = localStorage.getItem("weight_history");
-            if (weightHistoryStr) {
-               try {
-                  history = JSON.parse(weightHistoryStr);
-               } catch (e) {}
-            }
-         }
-
-         if (Array.isArray(history)) {
-            setRawWeightHistory(history);
-            const chartData = history.map(entry => {
-               const d = new Date(entry.date);
-               return {
-                  name: `${d.getMonth() + 1}/${d.getDate()}`,
-                  weight: entry.value
-               }
-            });
-            setWeightHistoryData(chartData);
-         }
-       };
-       
-       loadWeightHistory();
      };
 
      updateDashboardData();
      
      window.addEventListener('workout_plan_updated', updateDashboardData);
-     window.addEventListener('weight_history_updated', updateDashboardData);
-     window.addEventListener('food_diary_updated', updateDashboardData);
      
      return () => {
         window.removeEventListener('workout_plan_updated', updateDashboardData);
-        window.removeEventListener('weight_history_updated', updateDashboardData);
-        window.removeEventListener('food_diary_updated', updateDashboardData);
      };
    }, [user]);
 

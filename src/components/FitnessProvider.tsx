@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo } from '
 import { calculateBMR, calculateMacros, calculateTDEE, ActivityLevel, Goal } from '../lib/fitness-logic';
 import { useAuth } from './AuthProvider';
 import { db } from '../lib/firebase';
-import { doc, getDoc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, setDoc, collection, getDocs, serverTimestamp } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../lib/firestoreUtils';
 
 export interface UserProfile {
@@ -35,6 +35,11 @@ export interface FitnessContextType {
   removeFoodEntry: (id: string) => void;
   macros: { calories: number; protein: number; carbs: number; fat: number };
   consumed: { calories: number; protein: number; carbs: number; fat: number };
+  waterIntake: number;
+  logWater: (amount: number) => void;
+  weightHistory: any[];
+  consumptionStreak: number;
+  consumptionChartData: any[];
 }
 
 const defaultProfile: UserProfile = {
@@ -52,6 +57,10 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile>(defaultProfile);
   const [diary, setDiary] = useState<FoodEntry[]>([]);
+  const [waterIntake, setWaterIntake] = useState<number>(0);
+  const [weightHistory, setWeightHistory] = useState<any[]>([]);
+  const [consumptionStreak, setConsumptionStreak] = useState<number>(0);
+  const [consumptionChartData, setConsumptionChartData] = useState<any[]>([]);
 
   // Load from local storage or Firestore on mount/auth change
   useEffect(() => {
@@ -99,6 +108,37 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // Load weight history
+    const loadWeightHistory = async () => {
+      let history: any[] = [];
+      if (user) {
+        try {
+          const recordsRef = collection(db, "users", user.uid, "weightRecords");
+          const qs = await getDocs(recordsRef);
+          qs.forEach(doc => {
+            history.push({ id: doc.id, ...doc.data() });
+          });
+          history.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        } catch (e) {
+          handleFirestoreError(e, OperationType.GET, `users/${user.uid}/weightRecords`);
+        }
+      } else {
+        const weightHistoryStr = localStorage.getItem("weight_history");
+        if (weightHistoryStr) {
+          try {
+            history = JSON.parse(weightHistoryStr);
+          } catch (e) {}
+        }
+      }
+
+      if (Array.isArray(history)) {
+        setWeightHistory(history);
+      }
+    };
+    loadWeightHistory();
+
+    window.addEventListener('weight_history_updated', loadWeightHistory);
+
     const today = new Date().toISOString().split('T')[0];
     const savedDate = localStorage.getItem('food_diary_date');
     const savedDiary = localStorage.getItem('food_diary');
@@ -109,7 +149,19 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         console.error('Failed to parse food diary', e);
       }
     }
-  }, []);
+
+    const savedWaterDate = localStorage.getItem('water_date');
+    const savedWater = localStorage.getItem('water_intake');
+    if (savedWaterDate === today && savedWater) {
+      setWaterIntake(Number(savedWater));
+    } else {
+      setWaterIntake(0);
+    }
+
+    return () => {
+      window.removeEventListener('weight_history_updated', loadWeightHistory);
+    };
+  }, [user]);
 
   // Save changes to local storage when they occur
   useEffect(() => {
@@ -140,6 +192,38 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
     }
     localStorage.setItem("consumption_history", JSON.stringify(history));
 
+    if (Array.isArray(history) && history.length > 0) {
+       let currentStreak = 0;
+       let checkDate = new Date();
+       while (true) {
+          const dStr = checkDate.toISOString().split('T')[0];
+          const found = history.find((entry: any) => entry.name === dStr && entry.value > 0);
+          if (found) {
+             currentStreak++;
+             checkDate.setDate(checkDate.getDate() - 1);
+          } else {
+             if (currentStreak === 0 && dStr === today) {
+                 checkDate.setDate(checkDate.getDate() - 1);
+                 const yDayFound = history.find((entry: any) => entry.name === checkDate.toISOString().split('T')[0] && entry.value > 0);
+                 if (!yDayFound) break;
+             } else {
+                 break;
+             }
+          }
+       }
+       setConsumptionStreak(currentStreak);
+
+       const chartData = [];
+       for (let i = 6; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const dStr = d.toISOString().split('T')[0];
+          const mmdd = `${d.getMonth() + 1}/${d.getDate()}`;
+          const entry = history.find((e: any) => e.name === dStr);
+          chartData.push({ name: mmdd, value: entry ? entry.value || 0 : 0 });
+       }
+       setConsumptionChartData(chartData);
+    }
   }, [diary]);
 
   const updateProfile = (updates: Partial<UserProfile>) => {
@@ -163,10 +247,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       case 'Very Active': actKey = 'very_active'; break;
     }
 
-    let bmr = calculateBMR(profile.weight, profile.height, profile.age, profile.gender);
-    if (profile.bodyFat && profile.bodyFat > 0) {
-      bmr = 370 + (21.6 * (profile.weight * (100 - profile.bodyFat) / 100));
-    }
+    let bmr = calculateBMR(profile.weight, profile.height, profile.age, profile.gender, profile.bodyFat);
 
     const tdee = calculateTDEE(bmr, actKey);
 
@@ -190,6 +271,16 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
     );
   }, [diary]);
 
+  const logWater = (amount: number) => {
+    setWaterIntake(prev => prev + amount);
+  };
+
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    localStorage.setItem('water_intake', waterIntake.toString());
+    localStorage.setItem('water_date', today);
+  }, [waterIntake]);
+
   return (
     <FitnessContext.Provider
       value={{
@@ -200,6 +291,11 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         removeFoodEntry,
         macros,
         consumed,
+        waterIntake,
+        logWater,
+        weightHistory,
+        consumptionStreak,
+        consumptionChartData,
       }}
     >
       {children}

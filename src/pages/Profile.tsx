@@ -114,6 +114,7 @@ export default function Profile() {
           weightHistory[weightHistory.length - 1].value = parseFloat(profile.weight);
         }
         localStorage.setItem("weight_history", JSON.stringify(weightHistory));
+        window.dispatchEvent(new Event('weight_history_updated'));
       }
       setIsEditing(false);
       return;
@@ -137,6 +138,7 @@ export default function Profile() {
           date: today,
           value: parseFloat(profile.weight)
         });
+        window.dispatchEvent(new Event('weight_history_updated'));
       }
       setIsEditing(false);
     } catch (error) {
