@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -439,59 +438,66 @@ export default function Training() {
          IMPORTANT: If an exercise exists in "Current Personal Best Weights", recommend a weight that is 2.5% to 5% higher (Progressive Overload). 
          If it's a new exercise, estimate based on the user's weight (e.g. Bench Press often starts around 40-50% bodyweight for beginners, Squat 60-70%).`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              progressionGuide: { type: Type.STRING },
-              days: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    dayName: { type: Type.STRING },
-                    focusName: { type: Type.STRING },
-                    description: { type: Type.STRING },
-                    warmup: {
-                      type: Type.ARRAY,
-                      items: { type: Type.STRING },
-                    },
-                    cooldown: {
-                      type: Type.ARRAY,
-                      items: { type: Type.STRING },
-                    },
-                    exercises: {
-                      type: Type.ARRAY,
-                      items: {
-                        type: Type.OBJECT,
-                        properties: {
-                          name: { type: Type.STRING },
-                          muscle: { type: Type.STRING },
-                          sets: { type: Type.STRING },
-                          load: { type: Type.STRING },
-                          rest: { type: Type.STRING },
-                          youtubeQuery: { type: Type.STRING },
-                          recommendedWeight: { type: Type.STRING },
+      const response = await fetch('/api/ai/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: "gemini-3-flash-preview",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                progressionGuide: { type: "STRING" },
+                days: {
+                  type: "ARRAY",
+                  items: {
+                    type: "OBJECT",
+                    properties: {
+                      dayName: { type: "STRING" },
+                      focusName: { type: "STRING" },
+                      description: { type: "STRING" },
+                      warmup: {
+                        type: "ARRAY",
+                        items: { type: "STRING" },
+                      },
+                      cooldown: {
+                        type: "ARRAY",
+                        items: { type: "STRING" },
+                      },
+                      exercises: {
+                        type: "ARRAY",
+                        items: {
+                          type: "OBJECT",
+                          properties: {
+                            name: { type: "STRING" },
+                            muscle: { type: "STRING" },
+                            sets: { type: "STRING" },
+                            load: { type: "STRING" },
+                            rest: { type: "STRING" },
+                            youtubeQuery: { type: "STRING" },
+                            recommendedWeight: { type: "STRING" },
+                          },
+                          required: ["name", "muscle", "sets"],
                         },
-                        required: ["name", "muscle", "sets"],
                       },
                     },
+                    required: ["dayName", "focusName", "exercises"],
                   },
-                  required: ["dayName", "focusName", "exercises"],
                 },
               },
+              required: ["progressionGuide", "days"],
             },
-            required: ["progressionGuide", "days"],
           },
-        },
+        })
       });
 
-      if (response.text) {
-        const result = JSON.parse(response.text);
+      if (!response.ok) throw new Error('AI request failed');
+      const resultData = await response.json();
+
+      if (resultData.text) {
+        const result = JSON.parse(resultData.text);
 
         // Ensure 7 days
         const validDays = [];

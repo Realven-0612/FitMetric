@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { GoogleGenAI, Type } from "@google/genai";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -165,10 +164,6 @@ export default function Nutrition() {
     setSearchResult(null);
     setConsumedGram(100);
     try {
-      if (!process.env.GEMINI_API_KEY) {
-        throw new Error("GEMINI_API_KEY environment variable is required");
-      }
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const prompt = `
 Bạn là một chuyên gia dinh dưỡng. Người dùng muốn tìm thông tin dinh dưỡng cho món ăn/thực phẩm: "${searchQuery}".
 Dựa vào dữ liệu từ Viện Dinh Dưỡng Quốc Gia Việt Nam (viendinhduong.vn) hoặc các nguồn uy tín, hãy cho biết giá trị dinh dưỡng trên 100g.
@@ -180,26 +175,33 @@ Trả về dữ liệu dưới dạng JSON với các trường:
 - fat: Lượng chất béo (g) (kiểu number).
       `;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview',
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              name: { type: Type.STRING },
-              kcal: { type: Type.NUMBER },
-              protein: { type: Type.NUMBER },
-              carbs: { type: Type.NUMBER },
-              fat: { type: Type.NUMBER }
+      const response = await fetch('/api/ai/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gemini-3.1-pro-preview',
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                name: { type: "STRING" },
+                kcal: { type: "NUMBER" },
+                protein: { type: "NUMBER" },
+                carbs: { type: "NUMBER" },
+                fat: { type: "NUMBER" }
+              }
             }
           }
-        }
+        })
       });
 
-      if (response.text) {
-        const result = JSON.parse(response.text);
+      if (!response.ok) throw new Error('Failed to generate content');
+      const data = await response.json();
+
+      if (data.text) {
+        const result = JSON.parse(data.text);
         setSearchResult(result);
       }
     } catch (e) {

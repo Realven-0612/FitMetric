@@ -1,6 +1,5 @@
 import React, { useState, useRef } from "react";
 import Webcam from "react-webcam";
-import { GoogleGenAI, Type } from "@google/genai";
 import { Button } from "@/components/ui/button";
 import { Camera, UploadCloud, Loader2, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
@@ -40,7 +39,6 @@ export function MealScanner({ onFoodDetected, onClose }: MealScannerProps) {
     if (!image) return;
     setIsScanning(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
       const base64Data = image.split(",")[1];
       const mimeType = image.split(";")[0].split(":")[1];
 
@@ -55,29 +53,36 @@ export function MealScanner({ onFoodDetected, onClose }: MealScannerProps) {
         - confidence: 1-100 score of your estimation.
       `;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{ 
-          inlineData: { data: base64Data, mimeType } 
-        }, { text: prompt }],
-        config: { 
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              name: { type: Type.STRING },
-              kcal: { type: Type.NUMBER },
-              protein: { type: Type.NUMBER },
-              carbs: { type: Type.NUMBER },
-              fat: { type: Type.NUMBER },
-              confidence: { type: Type.NUMBER }
-            },
-            required: ["name", "kcal", "protein", "carbs", "fat"]
+      const response = await fetch('/api/ai/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: "gemini-3-flash-preview",
+          contents: [{ 
+            inlineData: { data: base64Data, mimeType } 
+          }, { text: prompt }],
+          config: { 
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                name: { type: "STRING" },
+                kcal: { type: "NUMBER" },
+                protein: { type: "NUMBER" },
+                carbs: { type: "NUMBER" },
+                fat: { type: "NUMBER" },
+                confidence: { type: "NUMBER" }
+              },
+              required: ["name", "kcal", "protein", "carbs", "fat"]
+            }
           }
-        }
+        })
       });
 
-      const result = JSON.parse(response.text.trim());
+      if (!response.ok) throw new Error('AI request failed');
+      const resultData = await response.json();
+
+      const result = JSON.parse(resultData.text.trim());
       onFoodDetected(result);
       toast.success(`Logged ${result.name}! (AI Confidence: ${result.confidence}%)`);
       onClose();

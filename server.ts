@@ -10,6 +10,52 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
 
+  // AI Proxy Endpoints
+  const validateAIRequest = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    // Basic validation
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+    const origin = req.get('origin');
+    // We could validate origin or token here, for now it's a basic check
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ error: 'GEMINI_API_KEY not configured' });
+    }
+    next();
+  };
+
+  app.post('/api/ai/chat', validateAIRequest, async (req, res) => {
+    try {
+      const { GoogleGenAI } = await import('@google/genai');
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const response = await ai.models.generateContent(req.body);
+      res.json({
+        text: response.text,
+        functionCalls: response.functionCalls,
+        candidates: response.candidates
+      });
+    } catch (error) {
+      console.error('AI Chat Error:', error);
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.post('/api/ai/generate', validateAIRequest, async (req, res) => {
+    try {
+      const { GoogleGenAI } = await import('@google/genai');
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const response = await ai.models.generateContent(req.body);
+      res.json({
+        text: response.text,
+        functionCalls: response.functionCalls,
+        candidates: response.candidates
+      });
+    } catch (error) {
+      console.error('AI Generate Error:', error);
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
   // Strava Auth Endpoint
   app.get("/api/strava/auth", (req, res) => {
     const redirectUri = `${process.env.APP_URL}/api/strava/callback`;

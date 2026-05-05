@@ -18,7 +18,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router';
-import { GoogleGenAI, Type } from '@google/genai';
 import { toast } from 'sonner';
 
 interface Message {
@@ -100,11 +99,12 @@ export default function AIChatbot() {
   };
 
   const processWithAI = async (userInput: string) => {
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY not configured');
-    }
-
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const Type = {
+      STRING: 'STRING',
+      NUMBER: 'NUMBER',
+      ARRAY: 'ARRAY',
+      OBJECT: 'OBJECT'
+    };
     
     // Define Tools
     const tools = [
@@ -154,10 +154,7 @@ export default function AIChatbot() {
       }
     ];
 
-    const chat = ai.chats.create({ 
-      model: 'gemini-3-flash-preview',
-      config: {
-        systemInstruction: `
+    const systemInstruction = `
           Bạn là FitMetric AI, một trợ lý sức khỏe thông minh và thân thiện cho ứng dụng FitMetric.
           Nhiệm vụ của bạn:
           1. Hướng dẫn người dùng mới về cách sử dụng ứng dụng (Scanner để quét cơ thể, Training để xem bài tập, Nutrition để theo dõi ăn uống).
@@ -171,71 +168,55 @@ export default function AIChatbot() {
           Nếu người dùng cung cấp thông tin như "Tôi nặng 75kg", hãy gọi hàm update_profile.
           Nếu người dùng nói "Sáng nay tôi ăn 1 quả trứng", hãy gọi hàm add_food_entry.
           Nếu người dùng nói "Lập cho tôi bài tập ngực", hãy gọi hàm request_workout_generation.
-        `,
-        tools: tools,
-      }
-    });
+        `;
 
-    const result = await chat.sendMessage({ message: userInput });
+    const callAI = async (contents: any[]) => {
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gemini-3-flash-preview',
+          contents,
+          config: {
+            systemInstruction,
+            tools
+          }
+        })
+      });
+      if (!response.ok) throw new Error('AI request failed');
+      return await response.json();
+    };
+
+    let currentContents = [{ role: 'user', parts: [{ text: userInput }] }];
+    const result = await callAI(currentContents);
     const calls = result.functionCalls;
 
     if (calls && calls.length > 0) {
       for (const call of calls) {
         if (call.name === 'update_profile') {
           handleUpdateProfile(call.args);
-          const followUp = await chat.sendMessage({
-            message: [
-              {
-                functionResponse: {
-                  name: 'update_profile',
-                  response: { success: true }
-                }
-              }
-            ]
-          });
-          setMessages(prev => [...prev, {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: followUp.text || '',
-            timestamp: Date.now(),
-          }]);
         } else if (call.name === 'add_food_entry') {
           handleAddFood(call.args);
-          const followUp = await chat.sendMessage({
-            message: [
-              {
-                functionResponse: {
-                  name: 'add_food_entry',
-                  response: { success: true }
-                }
-              }
-            ]
-          });
-          setMessages(prev => [...prev, {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: followUp.text || '',
-            timestamp: Date.now(),
-          }]);
         } else if (call.name === 'request_workout_generation') {
           handleRequestWorkout(call.args);
-          const followUp = await chat.sendMessage({
-            message: [
-              {
-                functionResponse: {
-                  name: 'request_workout_generation',
-                  response: { success: true }
-                }
-              }
-            ]
-          });
-          setMessages(prev => [...prev, {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: followUp.text || '',
-            timestamp: Date.now(),
-          }]);
         }
+
+        currentContents.push({
+          role: 'model',
+          parts: [{ functionCall: call }]
+        });
+        currentContents.push({
+          role: 'user',
+          parts: [{ functionResponse: { name: call.name, response: { success: true } } }]
+        });
+        
+        const followUp = await callAI(currentContents);
+        setMessages(prev => [...prev, {
+          id: Date.now().toString() + Math.random(),
+          role: 'assistant',
+          content: followUp.text || '',
+          timestamp: Date.now(),
+        }]);
       }
     } else {
       setMessages(prev => [...prev, {

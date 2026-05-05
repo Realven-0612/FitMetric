@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import { GoogleGenAI } from "@google/genai";
 import Webcam from "react-webcam";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -177,7 +176,6 @@ export default function Scanner() {
     setLoading(true);
     setAnalysis(null);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const base64Data = image.split(",")[1];
       const mimeType = image.split(";")[0].split(":")[1];
 
@@ -194,13 +192,20 @@ export default function Scanner() {
         "score": number between 1 to 100 representing overall fitness aesthetics
       }`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{ inlineData: { data: base64Data, mimeType } }, prompt],
-        config: { responseMimeType: "application/json" }
+      const response = await fetch('/api/ai/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: "gemini-3-flash-preview",
+          contents: [{ inlineData: { data: base64Data, mimeType } }, prompt],
+          config: { responseMimeType: "application/json" }
+        })
       });
 
-      const data = JSON.parse(response.text.trim());
+      if (!response.ok) throw new Error('AI request failed');
+      const resultData = await response.json();
+
+      const data = JSON.parse(resultData.text.trim());
       setAnalysis(data);
       
       const history = JSON.parse(localStorage.getItem('scan_history') || '[]');
