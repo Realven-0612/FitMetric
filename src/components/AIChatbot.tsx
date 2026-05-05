@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
+import { useFitness } from './FitnessProvider';
 
 interface Message {
   id: string;
@@ -29,6 +30,7 @@ interface Message {
 
 export default function AIChatbot() {
   const navigate = useNavigate();
+  const { updateProfile, addFoodEntry } = useFitness();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -229,46 +231,18 @@ export default function AIChatbot() {
   };
 
   const handleUpdateProfile = (args: any) => {
-    const saved = localStorage.getItem("user_profile");
-    let profile = saved ? JSON.parse(saved) : {};
-    
-    profile = { ...profile, ...args };
-    localStorage.setItem("user_profile", JSON.stringify(profile));
-    
-    // Dispatch event for components to listener
-    window.dispatchEvent(new Event('tdee_updated'));
+    updateProfile(args);
     toast.success('Chỉ số cơ thể đã được cập nhật!');
   };
 
   const handleAddFood = (args: any) => {
-    const savedDiary = localStorage.getItem("food_diary");
-    const diary = savedDiary ? JSON.parse(savedDiary) : [];
-    
-    const newEntry = {
+    addFoodEntry({
       name: args.name,
       kcal: args.kcal || 0,
       protein: args.protein || 0,
       carbs: args.carbs || 0,
       fat: args.fat || 0
-    };
-    
-    const updatedDiary = [...diary, newEntry];
-    localStorage.setItem("food_diary", JSON.stringify(updatedDiary));
-    localStorage.setItem("food_diary_date", new Date().toISOString().split('T')[0]);
-    
-    // Update consumption history (redundant but matches Nutrition.tsx logic)
-    const today = new Date().toISOString().split('T')[0];
-    const totalKcal = updatedDiary.reduce((acc: number, curr: any) => acc + (curr.kcal || 0), 0);
-    const historyStr = localStorage.getItem("consumption_history");
-    const history = historyStr ? JSON.parse(historyStr) : [];
-    if (history.length === 0 || history[history.length - 1].name !== today) {
-       history.push({ name: today, value: totalKcal });
-    } else {
-       history[history.length - 1].value = totalKcal;
-    }
-    localStorage.setItem("consumption_history", JSON.stringify(history));
-
-    window.dispatchEvent(new Event('food_diary_updated'));
+    });
     toast.success(`Đã thêm ${args.name} vào nhật ký!`);
   };
 
