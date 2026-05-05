@@ -299,12 +299,12 @@ export default function Dashboard() {
               
               <div className="flex items-center gap-2">
                 <Dialog>
-                  <DialogTrigger asChild>
+                  <DialogTrigger render={
                     <Button variant="outline" className="h-8 rounded-full bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/20 hover:text-indigo-300 text-xs px-3 font-bold border" onClick={generateInsights}>
                       <Sparkles className="w-3 h-3 mr-1" />
                       Review Progress
                     </Button>
-                  </DialogTrigger>
+                  } />
                   <DialogContent className="bg-[#111111] border-white/10 text-white rounded-[2rem] p-6 max-w-lg">
                     <DialogHeader>
                       <DialogTitle className="text-lg font-black uppercase tracking-wider items-center gap-2 text-indigo-400 flex border-b border-white/5 pb-4">
@@ -332,11 +332,11 @@ export default function Dashboard() {
                 </Dialog>
 
                 <Dialog>
-                  <DialogTrigger asChild>
+                  <DialogTrigger render={
                     <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white hover:bg-white/5 rounded-full h-8 w-8">
                       <Settings2 className="w-4 h-4" />
                     </Button>
-                  </DialogTrigger>
+                  } />
                   <DialogContent className="bg-[#111111] border-white/10 text-white rounded-[2rem] p-6 max-w-sm">
                     <DialogHeader>
                       <DialogTitle className="text-lg font-black uppercase tracking-wider">{t('adjust_weight_history')}</DialogTitle>
