@@ -61,12 +61,8 @@ Create a `.env` file in the root directory (you can copy from `.env.example`) an
 GEMINI_API_KEY=your_gemini_api_key
 
 # Firebase Configuration
-VITE_FIREBASE_API_KEY=your_firebase_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
+# Note: FitMetric automatically reads the Firebase config from firebase-applet-config.json
+# You only need the environment variables below for external APIs:
 
 # Strava Integration
 STRAVA_CLIENT_ID=your_strava_client_id
