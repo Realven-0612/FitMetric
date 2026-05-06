@@ -163,6 +163,37 @@ async function startServer() {
     }
   });
 
+  // Strava Refresh Token
+  app.post('/api/strava/refresh', async (req, res) => {
+    const { refresh_token } = req.body;
+    if (!refresh_token) {
+      return res.status(400).json({ error: "Missing refresh_token" });
+    }
+
+    try {
+      const response = await fetch('https://www.strava.com/oauth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: process.env.STRAVA_CLIENT_ID,
+          client_secret: process.env.STRAVA_CLIENT_SECRET,
+          grant_type: 'refresh_token',
+          refresh_token: refresh_token
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Strava Token Refresh error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error('Strava refresh error:', error);
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
   // Strava Activities
   app.get('/api/strava/activities', async (req, res) => {
     const authHeader = req.headers.authorization;

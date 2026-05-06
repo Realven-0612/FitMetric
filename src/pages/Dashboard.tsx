@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "../components/AuthProvider";
 import { db } from "../lib/firebase";
-import { doc, deleteDoc, collection, getDocs, getDoc } from "firebase/firestore";
+import { doc, deleteDoc, collection, getDocs, getDoc, updateDoc } from "firebase/firestore";
 import { handleFirestoreError, OperationType } from "../lib/firestoreUtils";
 import { useTranslation } from "../lib/i18n";
 import { useFitness } from "../components/FitnessProvider";
@@ -153,7 +153,31 @@ export default function Dashboard() {
               const s = await getDoc(authRef);
               if (s.exists()) {
                  setIsStravaConnected(true);
-                 const token = s.data().accessToken;
+                 let token = s.data().accessToken;
+                 const expiresAt = s.data().expiresAt;
+                 
+                 // Refresh token if expired (buffer of 5 minutes = 300 seconds)
+                 if (Date.now() / 1000 > expiresAt - 300) {
+                     try {
+                         const refreshRes = await fetch('/api/strava/refresh', {
+                             method: 'POST',
+                             headers: { 'Content-Type': 'application/json' },
+                             body: JSON.stringify({ refresh_token: s.data().refreshToken })
+                         });
+                         if (refreshRes.ok) {
+                             const refreshData = await refreshRes.json();
+                             token = refreshData.access_token;
+                             await updateDoc(authRef, {
+                                 accessToken: refreshData.access_token,
+                                 refreshToken: refreshData.refresh_token,
+                                 expiresAt: refreshData.expires_at
+                             });
+                         }
+                     } catch(err) {
+                         console.error('Failed to refresh Strava token', err);
+                     }
+                 }
+
                  setLoadingActivities(true);
                  const res = await fetch('/api/strava/activities?per_page=5', {
                     headers: {
