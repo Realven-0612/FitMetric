@@ -15,13 +15,19 @@ if (!process.env.STRAVA_CLIENT_ID) {
   console.warn("⚠️ Warning: STRAVA_CLIENT_ID is not configured in .env");
 }
 
-let aiClient: any = null;
+let currentKeyIndex = 0;
 async function getAIClient() {
-  if (!aiClient) {
-    const { GoogleGenAI } = await import('@google/genai');
-    aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const rawKeys = process.env.GEMINI_API_KEY || "";
+  const keys = rawKeys.split(",").map(k => k.trim()).filter(Boolean);
+  
+  if (keys.length === 0) {
+    throw new Error("No GEMINI_API_KEY configured.");
   }
-  return aiClient;
+  // Cycles through the keys for each request
+  const apiKey = keys[currentKeyIndex];
+  currentKeyIndex = (currentKeyIndex + 1) % keys.length;
+  const { GoogleGenAI } = await import('@google/genai');
+  return new GoogleGenAI({ apiKey });
 }
 
 async function startServer() {
