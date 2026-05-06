@@ -78,7 +78,7 @@ async function startServer() {
 
   // Strava Auth Endpoint
   app.get("/api/strava/auth", (req, res) => {
-    const redirectUri = `${process.env.APP_URL}/api/strava/callback`;
+    const redirectUri = `${process.env.APP_URL || 'http://localhost:3000'}/api/strava/callback`;
     const clientId = process.env.STRAVA_CLIENT_ID;
     
     if (!clientId) {
@@ -183,7 +183,7 @@ async function startServer() {
       }
 
       const activities = await response.json();
-      res.json({ activities });
+      res.json(activities);
     } catch (error) {
       res.status(500).json({ error: String(error) });
     }

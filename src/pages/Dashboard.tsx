@@ -161,15 +161,15 @@ export default function Dashboard() {
                     }
                  });
                  const data = await res.json();
-                 if (data.activities && Array.isArray(data.activities)) {
-                    setActivities(data.activities);
+                 if (Array.isArray(data)) {
+                    setActivities(data);
                     
                     // Sum today's active calories
                     const todayStr = new Date().toISOString().split('T')[0];
                     let totalCalories = 0;
-                    data.activities.forEach((a: any) => {
-                       if (a.start_date && a.start_date.startsWith(todayStr)) {
-                          totalCalories += a.calories || a.kilojoules || 0;
+                    data.forEach((a: any) => {
+                       if (a.start_date_local && a.start_date_local.startsWith(todayStr)) {
+                          totalCalories += a.calories || (a.kilojoules ? a.kilojoules / 4.184 : 0);
                        }
                     });
                     
@@ -511,7 +511,7 @@ export default function Dashboard() {
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {activities.map((a: any) => (
                     <div key={a.id} className="bg-gradient-to-br from-[#161618] to-[#0a0a0c] border border-white/5 rounded-2xl p-5 hover:border-[#FC4C02]/30 transition-all">
-                       <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">{new Date(a.start_date).toLocaleDateString()}</div>
+                       <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">{new Date(a.start_date_local).toLocaleDateString()}</div>
                        <div className="text-lg font-black text-white hover:text-[#FC4C02] transition-colors truncate">{a.name}</div>
                        <div className="mt-4 flex gap-4 text-xs font-medium text-slate-300">
                            <div className="flex items-center gap-1">
