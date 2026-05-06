@@ -306,7 +306,15 @@ const translations = {
     milestone_reached: 'Milestone reached! Initiating next-level program...',
     calendar_exported: 'Program timeline exported successfully!',
     today_: "Today's",
-    today_operation: 'Operation'
+    today_operation: 'Operation',
+    reset_metrics: 'Reset Metrics',
+    done: 'Done',
+    save_all: 'Save All',
+    synced: 'Synced',
+    sign_in_google: 'Sign in with Google',
+    setup_profile: 'Setup My Profile',
+    hello_champion: 'Hello, Champion.',
+    setup_greeting_desc: 'We need some initial numbers to calibrate your AI plan and Dashboard.'
   },
   vi: {
     dashboard: 'Bảng điều khiển',
@@ -610,7 +618,15 @@ const translations = {
     milestone_reached: 'Đã đạt cột mốc mới! Đang tạo lịch tập ở cấp độ tiếp theo...',
     calendar_exported: 'Đã xuất file lịch tập!',
     today_: 'Hoạt động',
-    today_operation: 'Hôm nay'
+    today_operation: 'Hôm nay',
+    reset_metrics: 'Khôi phục Mặc định',
+    done: 'Hoàn tất',
+    save_all: 'Lưu tất cả',
+    synced: 'Đã đồng bộ',
+    sign_in_google: 'Đăng nhập Google',
+    setup_profile: 'Thiết lập Hồ sơ',
+    hello_champion: 'Chào mừng, Nhà vô địch.',
+    setup_greeting_desc: 'Chúng tôi cần một vài chỉ số ban đầu để tối ưu hóa AI và Bảng điều khiển.'
   }
 };
 

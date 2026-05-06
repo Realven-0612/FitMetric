@@ -402,7 +402,7 @@ export default function Profile() {
          <div className="flex gap-3 items-center w-full md:w-auto">
             {!user ? (
                <Button onClick={signInWithGoogle} variant="outline" className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300 font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-6 w-full md:w-auto">
-                  <User className="mr-2 w-4 h-4" /> Sign In with Google
+                  <User className="mr-2 w-4 h-4" /> {t('sign_in_google')}
                </Button>
             ) : (
                <Button onClick={signOut} variant="outline" className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-4 w-full md:w-auto">
@@ -413,10 +413,10 @@ export default function Profile() {
             {isEditing ? (
               <div className="flex gap-2 w-full md:w-auto mt-4 md:mt-0 flex-col md:flex-row">
                  <Button onClick={handleReset} variant="destructive" className="bg-red-500 hover:bg-red-400 text-white font-black text-xs uppercase tracking-widest rounded-xl h-10 px-6">
-                    Reset Metrics
+                    {t('reset_metrics')}
                  </Button>
                  <Button onClick={handleSave} className="bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-widest rounded-xl h-10 px-6">
-                    Done
+                    {t('done')}
                  </Button>
               </div>
             ) : (
@@ -448,11 +448,11 @@ export default function Profile() {
                      </div>
                      <div className="space-y-2 group">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-purple-400 transition-colors">Weight <span className="text-slate-600 lowercase">(kg)</span></label>
-                        <Input type="number" name="weight" value={profile.weight} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-purple-500/50 focus-visible:ring-1 focus-visible:ring-purple-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
+                        <Input type="number" min="0" step="0.1" name="weight" value={profile.weight} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-purple-500/50 focus-visible:ring-1 focus-visible:ring-purple-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
                      </div>
                      <div className="space-y-2 group">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-orange-400 transition-colors">Height <span className="text-slate-600 lowercase">(cm)</span></label>
-                        <Input type="number" name="height" value={profile.height} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-orange-500/50 focus-visible:ring-1 focus-visible:ring-orange-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
+                        <Input type="number" min="0" step="0.5" name="height" value={profile.height} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-orange-500/50 focus-visible:ring-1 focus-visible:ring-orange-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
                      </div>
                      <div className="space-y-2 group">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-red-400 transition-colors">Body Fat <span className="text-slate-600 lowercase">(%)</span></label>
@@ -468,7 +468,7 @@ export default function Profile() {
                      </div>
                      <div className="space-y-2 group">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-cyan-400 transition-colors">Age</label>
-                        <Input type="number" name="age" value={profile.age} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-cyan-500/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
+                        <Input type="number" min="0" step="1" name="age" value={profile.age} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-cyan-500/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
                      </div>
                      <div className="space-y-2 group">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-emerald-400 transition-colors">Level</label>
@@ -777,7 +777,7 @@ export default function Profile() {
                   size="sm" 
                   className="bg-cyan-500 hover:bg-cyan-400 text-black font-black text-[10px] h-8 px-4 rounded-lg uppercase tracking-widest"
                 >
-                  Save All
+                  {t('save_all')}
                 </Button>
              </CardHeader>
              <CardContent className="p-6">
@@ -793,10 +793,13 @@ export default function Profile() {
                             <span className="text-[10px] font-bold text-white capitalize truncate pr-2">{ex}</span>
                             <div className="flex items-center gap-2 shrink-0">
                                <Input 
-                                 type="number" 
+                                 type="number"
+                                 min="0"
+                                 step="0.5" 
                                  value={weight} 
                                  onChange={(e) => {
-                                   const val = parseFloat(e.target.value) || 0;
+                                   let val = parseFloat(e.target.value) || 0;
+                                   if (val < 0) val = 0;
                                    setExerciseWeights(prev => ({ ...prev, [ex]: val }));
                                  }}
                                  className="w-16 h-6 bg-black/50 border-none text-center text-[10px] font-black focus-visible:ring-1 focus-visible:ring-cyan-500 text-white px-1"

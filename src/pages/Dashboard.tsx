@@ -258,10 +258,10 @@ export default function Dashboard() {
          <div className="w-24 h-24 bg-cyan-500/20 rounded-[2rem] flex items-center justify-center border border-cyan-500/30 mb-8 shadow-[0_0_50px_rgba(34,211,238,0.2)]">
             <User className="w-12 h-12 text-cyan-400" />
          </div>
-         <h1 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tight mb-4 text-center">Hello, Champion.</h1>
-         <p className="text-slate-400 text-center max-w-md text-lg mb-8">We need some initial numbers to calibrate your AI plan and Dashboard.</p>
+         <h1 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tight mb-4 text-center">{t('hello_champion')}</h1>
+         <p className="text-slate-400 text-center max-w-md text-lg mb-8">{t('setup_greeting_desc')}</p>
          <Button onClick={() => navigate('/profile')} className="bg-cyan-500 hover:bg-cyan-400 text-black font-black uppercase tracking-widest px-8 h-14 rounded-2xl text-sm transition-all shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:scale-105">
-            Setup My Profile
+            {t('setup_profile')}
          </Button>
       </div>
     );
@@ -474,9 +474,13 @@ export default function Dashboard() {
            
            {/* Empty State or Chart */}
            {weightHistoryData.length < 2 ? (
-               <div className="flex-1 flex flex-col items-center justify-center text-slate-500 space-y-4">
-                  <TrendingUp className="w-8 h-8 opacity-20" />
-                  <p className="text-sm font-medium">Log 2+ weight entries to see progression map.</p>
+               <div className="flex-1 w-full flex items-center justify-center text-slate-500 flex-col gap-3 py-6 border border-dashed border-white/10 rounded-2xl bg-white/5">
+                  <div className="w-12 h-12 rounded-full border border-indigo-500/30 bg-indigo-500/10 flex items-center justify-center mb-2">
+                     <TrendingUp className="w-5 h-5 text-indigo-400 opacity-60" />
+                  </div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-indigo-400/80 text-center max-w-[200px] leading-relaxed">
+                     {t('weight_progression_empty')}
+                  </p>
                </div>
            ) : (
                <div className="flex-1 w-full h-[200px] min-h-[200px]">
