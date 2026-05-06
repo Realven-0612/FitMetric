@@ -3,8 +3,17 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import cors from "cors";
 import dotenv from "dotenv";
+import { rateLimit } from "express-rate-limit";
 
 dotenv.config();
+
+// Environment Config Validation
+if (!process.env.GEMINI_API_KEY) {
+  console.warn("⚠️ Warning: GEMINI_API_KEY is not configured in .env");
+}
+if (!process.env.STRAVA_CLIENT_ID) {
+  console.warn("⚠️ Warning: STRAVA_CLIENT_ID is not configured in .env");
+}
 
 let aiClient: any = null;
 async function getAIClient() {
@@ -22,6 +31,16 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
 
+  // Rate Limiting (Anti-Abuse/DDoS)
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes).
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later.' }
+  });
+  app.use('/api/', apiLimiter);
+
   // AI Proxy Endpoints
   const validateAIRequest = (req: express.Request, res: express.Response, next: express.NextFunction) => {
     // Basic validation
@@ -36,7 +55,7 @@ async function startServer() {
     next();
   };
 
-  app.post('/api/ai/chat', validateAIRequest, async (req, res) => {
+  app.post('/api/ai/chat', validateAIRequest, async (req, res, next) => {
     try {
       const ai = await getAIClient();
       const requestPayload = {
@@ -52,11 +71,11 @@ async function startServer() {
       });
     } catch (error) {
       console.error('AI Chat Error:', error);
-      res.status(500).json({ error: String(error) });
+      next(error);
     }
   });
 
-  app.post('/api/ai/generate', validateAIRequest, async (req, res) => {
+  app.post('/api/ai/generate', validateAIRequest, async (req, res, next) => {
     try {
       const ai = await getAIClient();
       const requestPayload = {
@@ -72,7 +91,7 @@ async function startServer() {
       });
     } catch (error) {
       console.error('AI Generate Error:', error);
-      res.status(500).json({ error: String(error) });
+      next(error);
     }
   });
 
@@ -164,7 +183,7 @@ async function startServer() {
   });
 
   // Strava Refresh Token
-  app.post('/api/strava/refresh', async (req, res) => {
+  app.post('/api/strava/refresh', async (req, res, next) => {
     const { refresh_token } = req.body;
     if (!refresh_token) {
       return res.status(400).json({ error: "Missing refresh_token" });
@@ -190,12 +209,12 @@ async function startServer() {
       res.json(data);
     } catch (error) {
       console.error('Strava refresh error:', error);
-      res.status(500).json({ error: String(error) });
+      next(error);
     }
   });
 
   // Strava Activities
-  app.get('/api/strava/activities', async (req, res) => {
+  app.get('/api/strava/activities', async (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
       return res.status(401).json({ error: "Missing Authorization header" });
@@ -216,7 +235,7 @@ async function startServer() {
       const activities = await response.json();
       res.json(activities);
     } catch (error) {
-      res.status(500).json({ error: String(error) });
+      next(error);
     }
   });
 
@@ -234,6 +253,16 @@ async function startServer() {
       res.sendFile(path.resolve("dist/index.html"));
     });
   }
+
+  // Global Error Handler
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error('Global Error Handler:', err);
+    if (process.env.NODE_ENV === 'production') {
+      res.status(500).json({ error: 'Internal Server Error' });
+    } else {
+      res.status(500).json({ error: err.message || String(err) });
+    }
+  });
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);

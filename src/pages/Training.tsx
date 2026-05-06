@@ -441,7 +441,7 @@ export default function Training() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: "gemini-1.5-flash",
+          model: "gemini-2.0-flash",
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: {
             responseMimeType: "application/json",
@@ -1015,73 +1015,37 @@ export default function Training() {
           {/* Left main area */}
           <div className="flex flex-col gap-6">
             {/* Day selector */}
-            <div className="flex flex-col gap-3 pb-6 pt-8 items-center">
-              <div className="flex justify-center gap-1.5 md:gap-2">
-                {plan.days.slice(0, 4).map((day, staticIdx) => {
-                  const idx = staticIdx;
-                  const isToday =
-                    idx ===
-                    (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
-                  const isActive = selectedDay === idx;
-                  const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
-                  return (
-                    <div
-                      key={idx}
-                      className="snap-start shrink-0 relative"
+            <div className="flex flex-wrap justify-center gap-x-1.5 gap-y-3 md:gap-2 pb-6 pt-8 max-w-[265px] md:max-w-none mx-auto">
+              {plan.days.map((day, idx) => {
+                const isToday =
+                  idx ===
+                  (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
+                const isActive = selectedDay === idx;
+                const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+                return (
+                  <div
+                    key={idx}
+                    className="snap-start shrink-0 relative"
+                  >
+                    {isToday && (
+                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-cyan-500 text-black text-[9px] font-black uppercase tracking-widest px-2 py-1 flex flex-col items-center justify-center rounded-md z-10 text-center leading-3 shadow-[0_0_10px_rgba(34,211,238,0.5)] whitespace-nowrap">
+                         <span>{t('today_')}</span>
+                         <span>{t('today_operation')}</span>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => setSelectedDay(idx)}
+                      className={`w-[60px] h-[60px] md:w-[70px] md:h-[70px] rounded-2xl flex flex-col items-center justify-center gap-1 font-black transition-all border ${
+                        isActive
+                          ? "bg-cyan-500 text-black border-cyan-400 shadow-[0_0_30px_rgba(34,211,238,0.25)]"
+                          : "bg-[#111111]/80 text-slate-400 border-white/5 hover:bg-white/10 hover:text-white hover:border-white/20"
+                      }`}
                     >
-                      {isToday && (
-                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-cyan-500 text-black text-[9px] font-black uppercase tracking-widest px-2 py-1 flex flex-col items-center justify-center rounded-md z-10 text-center leading-3 shadow-[0_0_10px_rgba(34,211,238,0.5)] whitespace-nowrap">
-                           <span>{t('today_')}</span>
-                           <span>{t('today_operation')}</span>
-                        </div>
-                      )}
-                      <button
-                        onClick={() => setSelectedDay(idx)}
-                        className={`w-[60px] h-[60px] md:w-[70px] md:h-[70px] rounded-2xl flex flex-col items-center justify-center gap-1 font-black transition-all border ${
-                          isActive
-                            ? "bg-cyan-500 text-black border-cyan-400 shadow-[0_0_30px_rgba(34,211,238,0.25)]"
-                            : "bg-[#111111]/80 text-slate-400 border-white/5 hover:bg-white/10 hover:text-white hover:border-white/20"
-                        }`}
-                      >
-                        <span className="text-lg md:text-xl">{t(dayKeys[idx])}</span>
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex justify-center gap-1.5 md:gap-2">
-                {plan.days.slice(4, 7).map((day, staticIdx) => {
-                  const idx = staticIdx + 4;
-                  const isToday =
-                    idx ===
-                    (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
-                  const isActive = selectedDay === idx;
-                  const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
-                  return (
-                    <div
-                      key={idx}
-                      className="snap-start shrink-0 relative"
-                    >
-                      {isToday && (
-                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-cyan-500 text-black text-[9px] font-black uppercase tracking-widest px-2 py-1 flex flex-col items-center justify-center rounded-md z-10 text-center leading-3 shadow-[0_0_10px_rgba(34,211,238,0.5)] whitespace-nowrap">
-                           <span>{t('today_')}</span>
-                           <span>{t('today_operation')}</span>
-                        </div>
-                      )}
-                      <button
-                        onClick={() => setSelectedDay(idx)}
-                        className={`w-[60px] h-[60px] md:w-[70px] md:h-[70px] rounded-2xl flex flex-col items-center justify-center gap-1 font-black transition-all border ${
-                          isActive
-                            ? "bg-cyan-500 text-black border-cyan-400 shadow-[0_0_30px_rgba(34,211,238,0.25)]"
-                            : "bg-[#111111]/80 text-slate-400 border-white/5 hover:bg-white/10 hover:text-white hover:border-white/20"
-                        }`}
-                      >
-                        <span className="text-lg md:text-xl">{t(dayKeys[idx])}</span>
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+                      <span className="text-lg md:text-xl">{t(dayKeys[idx])}</span>
+                    </button>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Protocol View */}

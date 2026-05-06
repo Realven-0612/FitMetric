@@ -81,6 +81,16 @@ export default function Profile() {
     };
 
     loadUserData();
+
+    const handleHistoryUpdate = () => {
+      if (!user) {
+        const history = localStorage.getItem("scan_history");
+        if (history) setScanHistory(JSON.parse(history));
+      }
+    };
+
+    window.addEventListener('scan_history_updated', handleHistoryUpdate);
+    return () => window.removeEventListener('scan_history_updated', handleHistoryUpdate);
   }, [user]);
 
   useEffect(() => {

@@ -113,6 +113,17 @@
   html {
     @apply font-sans;
     }
+  
+  /* Hide scrollbar globally for a cleaner mobile app feel */
+  ::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+    display: none;
+  }
+  * {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 /* User targeted focus-mode style fix */

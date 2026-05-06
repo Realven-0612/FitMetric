@@ -9,6 +9,7 @@ import { db } from "../lib/firebase";
 import { doc, deleteDoc, collection, getDocs, getDoc, updateDoc } from "firebase/firestore";
 import { handleFirestoreError, OperationType } from "../lib/firestoreUtils";
 import { useTranslation } from "../lib/i18n";
+import { getQuoteOfTheDay } from "../lib/quotes";
 import { useFitness } from "../components/FitnessProvider";
 import Markdown from 'react-markdown';
 import { LocateIcon } from "lucide-react";
@@ -25,7 +26,8 @@ const defaultConsumptionData = [
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const quote = getQuoteOfTheDay();
   const [nextOperation, setNextOperation] = useState<string>("Rest");
   const [nextWeightHint, setNextWeightHint] = useState<string>("");
   const [isGeneratingInsight, setIsGeneratingInsight] = useState(false);
@@ -358,9 +360,14 @@ export default function Dashboard() {
               </div>
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">{t('todays_motivation')}</h3>
            </div>
-           <p className="text-slate-400 italic font-medium leading-relaxed">
-             {t('motivation_text')}
-           </p>
+           <div className="flex flex-col gap-2">
+             <p className="text-slate-400 italic font-medium leading-relaxed">
+               "{quote[language]}"
+             </p>
+             <p className="text-slate-500 font-bold text-sm">
+               — {quote.author}
+             </p>
+           </div>
         </Card>
       </div>
 

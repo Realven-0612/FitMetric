@@ -7,12 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Flame, Utensils, FileText, Info, Calculator, Target, Droplet, Apple, Loader2, Trash2, Camera, Sparkles } from "lucide-react";
 import { useTranslation } from "../lib/i18n";
+import { getQuoteOfTheDay } from "../lib/quotes";
 import { MealScanner } from "../components/MealScanner";
 import { RecipeGenerator } from "../components/RecipeGenerator";
 import { useFitness } from "../components/FitnessProvider";
 
 export default function Nutrition() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const quote = getQuoteOfTheDay();
   const { profile, updateProfile, diary, addFoodEntry, removeFoodEntry, macros, consumed, waterIntake, logWater: logWaterContext } = useFitness();
   const { weight, height, age, bodyFat, activityLevel, primaryGoal } = profile;
 
@@ -355,9 +357,14 @@ Trả về dữ liệu dưới dạng JSON với các trường:
                    </div>
                    <h2 className="text-xs font-black text-white uppercase tracking-wider">{t('todays_motivation')}</h2>
                 </div>
-                <p className="text-sm text-slate-400 italic">
-                  "The only bad workout is the one that didn't happen. Your phone and laptop are synced, no excuses left."
-                </p>
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm text-slate-400 italic">
+                    "{quote[language]}"
+                  </p>
+                  <p className="text-slate-500 font-bold text-xs">
+                    — {quote.author}
+                  </p>
+                </div>
               </div>
 
               <div className="bg-[#111111]/80 backdrop-blur-md rounded-3xl p-6 border border-white/5 flex flex-col">
