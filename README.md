@@ -2,7 +2,7 @@
 
 FitMetric is a comprehensive, AI-powered fitness and nutrition tracking application designed to simplify the way you achieve your fitness goals. Unlike traditional trackers, FitMetric acts as an intelligent personal trainer—utilizing AI to analyze your body composition, generate personalized workout plans, and automatically sync your daily cardio activities.
 
-![FitMetric](public/logo.png) 
+![FitMetric](public/assets/app_icon.png) 
 
 ## 🌟 Key Features
 
