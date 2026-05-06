@@ -34,27 +34,50 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(cors());
+  const allowedOrigins = [process.env.APP_URL || 'http://localhost:3000'];
+  app.use(cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    }
+  }));
+
   app.use(express.json());
 
   // Rate Limiting (Anti-Abuse/DDoS)
-  const apiLimiter = rateLimit({
+  const aiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    limit: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes).
+    limit: 50, // Stricter limit for AI endpoints
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: 'Too many AI requests, please try again later.' }
+  });
+
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, 
+    limit: 200, 
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     message: { error: 'Too many requests, please try again later.' }
   });
-  app.use('/api/', apiLimiter);
+
+  app.use('/api/ai/', aiLimiter);
+  app.use('/api/strava/', apiLimiter);
 
   // AI Proxy Endpoints
   const validateAIRequest = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    // Basic validation
     if (req.method !== 'POST') {
       return res.status(405).json({ error: 'Method not allowed' });
     }
-    const origin = req.get('origin');
-    // We could validate origin or token here, for now it's a basic check
+    
+    // Tighter validation on body parameters
+    if (!req.body || !req.body.contents) {
+      return res.status(400).json({ error: 'Missing contents in request body' });
+    }
+
     if (!process.env.GEMINI_API_KEY) {
       return res.status(500).json({ error: 'GEMINI_API_KEY not configured' });
     }
