@@ -1,16 +1,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Activity, Target, TrendingUp, Trash2, Dumbbell, Ruler, Zap, LogOut, Loader2, Link2 } from "lucide-react";
+import { User, Activity, Target, TrendingUp, Trash2, Dumbbell, Ruler, Zap, LogOut, Loader2, Link2, Bell } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthProvider";
-import { db } from "../lib/firebase";
+import { db, initMessaging } from "../lib/firebase";
+import { getToken } from "firebase/messaging";
 import { doc, getDoc, updateDoc, collection, getDocs, deleteDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { handleFirestoreError, OperationType } from "../lib/firestoreUtils";
 import { useTranslation } from "../lib/i18n";
 import { useFitness } from "../components/FitnessProvider";
+import { toast } from "sonner";
 
 export default function Profile() {
   const { user, loading: authLoading, signInWithGoogle, signOut } = useAuth();
@@ -32,6 +34,55 @@ export default function Profile() {
     gender: "Male",
     activityLevel: "Sedentary"
   });
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+  useEffect(() => {
+    if (("Notification" in window) && Notification.permission === 'granted') {
+      setNotificationsEnabled(true);
+    }
+  }, []);
+
+  const enableNotifications = async () => {
+    try {
+      if (!("Notification" in window)) {
+        toast.error("This browser does not support desktop notification");
+        return;
+      }
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        const msg = await initMessaging();
+        if (msg) {
+          try {
+            const token = await getToken(msg);
+            if (token) {
+              console.log('FCM Token:', token);
+              
+              if (user) {
+                // Save FCM token to user document
+                const userDocRef = doc(db, "users", user.uid);
+                await updateDoc(userDocRef, {
+                  fcmToken: token,
+                  updatedAt: serverTimestamp()
+                });
+              }
+            } else {
+              console.log('No registration token available. Request permission to generate one.');
+            }
+          } catch (err) {
+            console.error('An error occurred while retrieving token. ', err);
+            // It might fail without VAPID key in some environments, but we still enabled local perms
+          }
+          setNotificationsEnabled(true);
+          toast.success("Push notifications enabled! You will now receive reminders.");
+        }
+      } else {
+        toast.error("Permission denied for notifications");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to enable notifications");
+    }
+  };
 
   useEffect(() => {
     // Sync initial state from FitnessProvider when not editing
@@ -556,30 +607,69 @@ export default function Profile() {
                     </div>
                  </div>
 
-                 {/* Integrations */}
-                 <div className="mt-6 bg-gradient-to-br from-orange-950/30 to-orange-900/10 border border-orange-500/20 rounded-2xl p-5 shadow-[0_4px_20px_rgba(249,115,22,0.05)]">
-                    <h3 className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                       <Link2 className="w-4 h-4 hidden sm:block" /> Integrations
-                    </h3>
-                    <div className="flex items-center justify-between">
-                       <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-[#FC4C02]/20 border border-[#FC4C02]/30 flex items-center justify-center">
-                             <TrendingUp className="w-5 h-5 text-[#FC4C02]" />
-                          </div>
-                          <div>
-                             <div className="text-sm font-bold text-white tracking-tight">Strava</div>
-                             <div className="text-[10px] text-slate-500 font-medium">Sync Cardio & Runs</div>
-                          </div>
-                       </div>
-                       {isStravaConnected ? (
-                          <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">Connected</div>
-                       ) : (
-                          <Button disabled={!user} onClick={connectStrava} variant="outline" className="h-8 px-4 border-[#FC4C02]/30 text-[#FC4C02] hover:bg-[#FC4C02]/10 hover:text-[#FC4C02] font-bold text-[10px] uppercase tracking-widest rounded-lg transition-all">
-                             Connect
-                          </Button>
-                       )}
-                    </div>
-                    {!user && <p className="text-[9px] text-slate-500 mt-3">* Sign in first to connect integrations.</p>}
+                 {/* Integrations & Features */}
+                 <div className="mt-6 space-y-4">
+                   <div className="bg-gradient-to-br from-orange-950/30 to-orange-900/10 border border-orange-500/20 rounded-2xl p-5 shadow-[0_4px_20px_rgba(249,115,22,0.05)]">
+                      <h3 className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                         <Link2 className="w-4 h-4 hidden sm:block" /> Integrations
+                      </h3>
+                      <div className="flex items-center justify-between">
+                         <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-[#FC4C02]/20 border border-[#FC4C02]/30 flex items-center justify-center">
+                               <TrendingUp className="w-5 h-5 text-[#FC4C02]" />
+                            </div>
+                            <div>
+                               <div className="text-sm font-bold text-white tracking-tight">Strava</div>
+                               <div className="text-[10px] text-slate-500 font-medium">Sync Cardio & Runs</div>
+                            </div>
+                         </div>
+                         {isStravaConnected ? (
+                            <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">Connected</div>
+                         ) : (
+                            <Button disabled={!user} onClick={connectStrava} variant="outline" className="h-8 px-4 border-[#FC4C02]/30 text-[#FC4C02] hover:bg-[#FC4C02]/10 hover:text-[#FC4C02] font-bold text-[10px] uppercase tracking-widest rounded-lg transition-all">
+                               Connect
+                            </Button>
+                         )}
+                      </div>
+                      {!user && <p className="text-[9px] text-slate-500 mt-3">* Sign in first to connect integrations.</p>}
+                   </div>
+
+                   {/* Notifications */}
+                   <div className="bg-gradient-to-br from-purple-950/30 to-purple-900/10 border border-purple-500/20 rounded-2xl p-5 shadow-[0_4px_20px_rgba(168,85,247,0.05)]">
+                      <h3 className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                         <Bell className="w-4 h-4 hidden sm:block" /> Push Notifications
+                      </h3>
+                      <div className="flex items-center justify-between">
+                         <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+                               <Bell className="w-5 h-5 text-purple-400" />
+                            </div>
+                            <div>
+                               <div className="text-sm font-bold text-white tracking-tight">Reminders</div>
+                               <div className="text-[10px] text-slate-500 font-medium">Hydration, Workouts, Meals</div>
+                            </div>
+                         </div>
+                         {notificationsEnabled ? (
+                            <div className="flex items-center gap-2">
+                               <Button onClick={() => {
+                                 if (Notification.permission === 'granted') {
+                                    new Notification("Hydration Reminder", {
+                                      body: "It's been 2 hours, don't forget to drink water!",
+                                      icon: "/assets/app_icon.png"
+                                    });
+                                 }
+                               }} variant="outline" className="h-8 px-4 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300 font-bold text-[10px] uppercase tracking-widest rounded-lg transition-all">
+                                  Test
+                               </Button>
+                               <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">Enabled</div>
+                            </div>
+                         ) : (
+                            <Button onClick={enableNotifications} variant="outline" className="h-8 px-4 border-purple-500/30 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 font-bold text-[10px] uppercase tracking-widest rounded-lg transition-all">
+                               Enable
+                            </Button>
+                         )}
+                      </div>
+                   </div>
                  </div>
               </CardContent>
            </Card>
