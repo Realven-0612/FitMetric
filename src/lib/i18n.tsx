@@ -645,6 +645,12 @@ export function TranslationProvider({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     localStorage.setItem('app_language', language);
+    document.documentElement.lang = language;
+    if (language === 'vi') {
+      document.body.style.fontFamily = "'Be Vietnam Pro', sans-serif";
+    } else {
+      document.body.style.fontFamily = ""; // Revert to stylesheet default
+    }
   }, [language]);
 
   const t = (key: any, options?: { defaultValue?: string }, variables?: Record<string, string|number>) => {
