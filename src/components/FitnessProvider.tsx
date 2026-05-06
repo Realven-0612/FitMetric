@@ -40,6 +40,8 @@ export interface FitnessContextType {
   weightHistory: any[];
   consumptionStreak: number;
   consumptionChartData: any[];
+  activeCalories: number;
+  setActiveCalories: (c: number) => void;
 }
 
 const defaultProfile: UserProfile = {
@@ -61,6 +63,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   const [weightHistory, setWeightHistory] = useState<any[]>([]);
   const [consumptionStreak, setConsumptionStreak] = useState<number>(0);
   const [consumptionChartData, setConsumptionChartData] = useState<any[]>([]);
+  const [activeCalories, setActiveCalories] = useState<number>(0);
 
   // Load from local storage or Firestore on mount/auth change
   useEffect(() => {
@@ -140,23 +143,86 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('weight_history_updated', loadWeightHistory);
 
     const today = new Date().toISOString().split('T')[0];
-    const savedDate = localStorage.getItem('food_diary_date');
-    const savedDiary = localStorage.getItem('food_diary');
-    if (savedDate === today && savedDiary) {
-      try {
-        setDiary(JSON.parse(savedDiary));
-      } catch (e) {
-        console.error('Failed to parse food diary', e);
-      }
-    }
+    const loadDailyData = async () => {
+      if (user) {
+        try {
+          const diaryRef = doc(db, 'users', user.uid, 'foodDiary', today);
+          const diarySnap = await getDoc(diaryRef);
+          if (diarySnap.exists()) {
+            setDiary(diarySnap.data().items || []);
+          } else {
+            setDiary([]);
+          }
+          
+          const statsRef = doc(db, 'users', user.uid, 'dailyStats', today);
+          const statsSnap = await getDoc(statsRef);
+          if (statsSnap.exists()) {
+            setWaterIntake(statsSnap.data().waterIntake || 0);
+          } else {
+            setWaterIntake(0);
+          }
 
-    const savedWaterDate = localStorage.getItem('water_date');
-    const savedWater = localStorage.getItem('water_intake');
-    if (savedWaterDate === today && savedWater) {
-      setWaterIntake(Number(savedWater));
-    } else {
-      setWaterIntake(0);
-    }
+          const chartDataStore = [];
+          let currentStreak = 0;
+          let checkDate = new Date();
+
+          for (let i = 6; i >= 0; i--) {
+             const d = new Date();
+             d.setDate(d.getDate() - i);
+             const dStr = d.toISOString().split('T')[0];
+             const sRef = doc(db, 'users', user.uid, 'dailyStats', dStr);
+             const sSnap = await getDoc(sRef);
+             const value = sSnap.exists() ? sSnap.data().consumedCalories || 0 : 0;
+             chartDataStore.push({ name: dStr, value });
+          }
+
+          while (true) {
+             const dStr = checkDate.toISOString().split('T')[0];
+             const found = chartDataStore.find((e) => e.name === dStr && e.value > 0);
+             if (found) {
+                currentStreak++;
+                checkDate.setDate(checkDate.getDate() - 1);
+             } else {
+                if (currentStreak === 0 && dStr === today) {
+                    checkDate.setDate(checkDate.getDate() - 1);
+                    const yDayStr = checkDate.toISOString().split('T')[0];
+                    const yDayFound = chartDataStore.find((e) => e.name === yDayStr && e.value > 0);
+                    if (!yDayFound) break;
+                } else {
+                    break;
+                }
+             }
+          }
+          setConsumptionStreak(currentStreak);
+          setConsumptionChartData(chartDataStore.map(h => {
+              const parts = h.name.split('-');
+              return { name: `${parseInt(parts[1])}/${parseInt(parts[2])}`, value: h.value };
+          }));
+
+        } catch(e) {
+          console.error(e);
+        }
+      } else {
+        const savedDate = localStorage.getItem('food_diary_date');
+        const savedDiary = localStorage.getItem('food_diary');
+        if (savedDate === today && savedDiary) {
+          try {
+            setDiary(JSON.parse(savedDiary));
+          } catch (e) {
+            console.error('Failed to parse food diary', e);
+          }
+        }
+
+        const savedWaterDate = localStorage.getItem('water_date');
+        const savedWater = localStorage.getItem('water_intake');
+        if (savedWaterDate === today && savedWater) {
+          setWaterIntake(Number(savedWater));
+        } else {
+          setWaterIntake(0);
+        }
+      }
+    };
+    loadDailyData();
 
     return () => {
       window.removeEventListener('weight_history_updated', loadWeightHistory);
@@ -230,12 +296,37 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
     setProfile((prev) => ({ ...prev, ...updates }));
   };
 
-  const addFoodEntry = (entry: Omit<FoodEntry, 'id'>) => {
-    setDiary((prev) => [...prev, { ...entry, id: Date.now().toString() + Math.random().toString() }]);
+  const addFoodEntry = async (entry: Omit<FoodEntry, 'id'>) => {
+    const newEntry = { ...entry, id: Date.now().toString() + Math.random().toString() };
+    setDiary((prev) => {
+       const updated = [...prev, newEntry];
+       syncFirestoreDiary(updated);
+       return updated;
+    });
   };
 
-  const removeFoodEntry = (id: string) => {
-    setDiary((prev) => prev.filter((d) => d.id !== id));
+  const removeFoodEntry = async (id: string) => {
+    setDiary((prev) => {
+       const updated = prev.filter((d) => d.id !== id);
+       syncFirestoreDiary(updated);
+       return updated;
+    });
+  };
+
+  const syncFirestoreDiary = async (newDiary: FoodEntry[]) => {
+    if (user) {
+       try {
+          const today = new Date().toISOString().split('T')[0];
+          const docRef = doc(db, 'users', user.uid, 'foodDiary', today);
+          await setDoc(docRef, { userId: user.uid, date: today, items: newDiary, updatedAt: serverTimestamp() }, { merge: true });
+
+          const totalKcal = newDiary.reduce((acc, curr) => acc + curr.kcal, 0);
+          const statsRef = doc(db, 'users', user.uid, 'dailyStats', today);
+          await setDoc(statsRef, { userId: user.uid, date: today, consumedCalories: totalKcal, updatedAt: serverTimestamp() }, { merge: true });
+       } catch (e) {
+          handleFirestoreError(e, OperationType.WRITE, `users/${user.uid}/foodDiary`);
+       }
+    }
   };
 
   const macros = useMemo(() => {
@@ -249,14 +340,14 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
 
     let bmr = calculateBMR(profile.weight, profile.height, profile.age, profile.gender, profile.bodyFat);
 
-    const tdee = calculateTDEE(bmr, actKey);
+    const tdee = calculateTDEE(bmr, actKey, activeCalories);
 
     let goalKey: Goal = 'maintain';
     if (profile.primaryGoal === 'Lose Fat') goalKey = 'lose';
     if (profile.primaryGoal === 'Build Muscle') goalKey = 'gain';
 
     return calculateMacros(tdee, goalKey);
-  }, [profile]);
+  }, [profile, activeCalories]);
 
   const consumed = useMemo(() => {
     return diary.reduce(
@@ -271,8 +362,16 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
     );
   }, [diary]);
 
-  const logWater = (amount: number) => {
-    setWaterIntake(prev => prev + amount);
+  const logWater = async (amount: number) => {
+    setWaterIntake(prev => {
+       const newAmount = prev + amount;
+       if (user) {
+          const today = new Date().toISOString().split('T')[0];
+          const statsRef = doc(db, 'users', user.uid, 'dailyStats', today);
+          setDoc(statsRef, { userId: user.uid, date: today, waterIntake: newAmount, updatedAt: serverTimestamp() }, { merge: true }).catch(e => handleFirestoreError(e, OperationType.WRITE, `users/${user.uid}/dailyStats`));
+       }
+       return newAmount;
+    });
   };
 
   useEffect(() => {
@@ -296,6 +395,8 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         weightHistory,
         consumptionStreak,
         consumptionChartData,
+        activeCalories,
+        setActiveCalories,
       }}
     >
       {children}

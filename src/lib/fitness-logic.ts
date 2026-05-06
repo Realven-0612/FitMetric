@@ -22,8 +22,8 @@ export const activityMultipliers = {
 export type ActivityLevel = keyof typeof activityMultipliers;
 export type Goal = 'lose' | 'maintain' | 'gain';
 
-export function calculateTDEE(bmr: number, activityLevel: ActivityLevel): number {
-  return bmr * activityMultipliers[activityLevel];
+export function calculateTDEE(bmr: number, activityLevel: ActivityLevel, activeCalories: number = 0): number {
+  return bmr * activityMultipliers[activityLevel] + activeCalories;
 }
 
 export function calculateMacros(tdee: number, goal: Goal) {

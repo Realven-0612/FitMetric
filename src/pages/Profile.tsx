@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Activity, Target, TrendingUp, Trash2, Dumbbell, Ruler, Zap, LogOut, Loader2 } from "lucide-react";
+import { User, Activity, Target, TrendingUp, Trash2, Dumbbell, Ruler, Zap, LogOut, Loader2, Link2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 
@@ -18,6 +18,7 @@ export default function Profile() {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
+  const [isStravaConnected, setIsStravaConnected] = useState(false);
   const [scanHistory, setScanHistory] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>({
     name: "",
@@ -81,6 +82,56 @@ export default function Profile() {
 
     loadUserData();
   }, [user]);
+
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.data && event.data.type === 'STRAVA_AUTH_SUCCESS') {
+        if (user) {
+          try {
+            const authRef = doc(db, 'users', user.uid, 'stravaAuth', 'token');
+            await setDoc(authRef, {
+              userId: user.uid,
+              accessToken: event.data.payload.access_token,
+              refreshToken: event.data.payload.refresh_token,
+              expiresAt: event.data.payload.expires_at,
+              updatedAt: serverTimestamp()
+            });
+            setIsStravaConnected(true);
+          } catch (error) {
+             handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}/stravaAuth`);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      const checkStrava = async () => {
+         try {
+           const authRef = doc(db, 'users', user.uid, 'stravaAuth', 'token');
+           const s = await getDoc(authRef);
+           if (s.exists()) setIsStravaConnected(true);
+         } catch(e) {}
+      };
+      checkStrava();
+    }
+  }, [user]);
+
+  const connectStrava = async () => {
+      try {
+         const res = await fetch('/api/strava/auth');
+         const data = await res.json();
+         if (data.url) {
+            window.open(data.url, 'Strava Auth', 'width=600,height=700');
+         }
+      } catch (err) {
+         console.error('Failed to init strava auth', err);
+      }
+  };
 
   const handleChange = (e: any) => {
     setProfile((prev: any) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -493,6 +544,32 @@ export default function Profile() {
                           <span className="font-bold text-cyan-400">~35.3cm</span>
                        </div>
                     </div>
+                 </div>
+
+                 {/* Integrations */}
+                 <div className="mt-6 bg-gradient-to-br from-orange-950/30 to-orange-900/10 border border-orange-500/20 rounded-2xl p-5 shadow-[0_4px_20px_rgba(249,115,22,0.05)]">
+                    <h3 className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                       <Link2 className="w-4 h-4 hidden sm:block" /> Integrations
+                    </h3>
+                    <div className="flex items-center justify-between">
+                       <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-[#FC4C02]/20 border border-[#FC4C02]/30 flex items-center justify-center">
+                             <TrendingUp className="w-5 h-5 text-[#FC4C02]" />
+                          </div>
+                          <div>
+                             <div className="text-sm font-bold text-white tracking-tight">Strava</div>
+                             <div className="text-[10px] text-slate-500 font-medium">Sync Cardio & Runs</div>
+                          </div>
+                       </div>
+                       {isStravaConnected ? (
+                          <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">Connected</div>
+                       ) : (
+                          <Button disabled={!user} onClick={connectStrava} variant="outline" className="h-8 px-4 border-[#FC4C02]/30 text-[#FC4C02] hover:bg-[#FC4C02]/10 hover:text-[#FC4C02] font-bold text-[10px] uppercase tracking-widest rounded-lg transition-all">
+                             Connect
+                          </Button>
+                       )}
+                    </div>
+                    {!user && <p className="text-[9px] text-slate-500 mt-3">* Sign in first to connect integrations.</p>}
                  </div>
               </CardContent>
            </Card>

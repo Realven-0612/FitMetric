@@ -6,11 +6,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "../components/AuthProvider";
 import { db } from "../lib/firebase";
-import { doc, deleteDoc, collection, getDocs } from "firebase/firestore";
+import { doc, deleteDoc, collection, getDocs, getDoc } from "firebase/firestore";
 import { handleFirestoreError, OperationType } from "../lib/firestoreUtils";
 import { useTranslation } from "../lib/i18n";
 import { useFitness } from "../components/FitnessProvider";
 import Markdown from 'react-markdown';
+import { LocateIcon } from "lucide-react";
 
 const defaultConsumptionData = [
   { name: "t2", value: 0 },
@@ -51,7 +52,7 @@ export default function Dashboard() {
     window.dispatchEvent(new Event('weight_history_updated'));
   };
 
-   const { profile, macros, consumed, consumptionStreak: streak, consumptionChartData: consumptionData, weightHistory: rawWeightHistory, waterIntake } = useFitness();
+   const { profile, macros, consumed, consumptionStreak: streak, consumptionChartData: consumptionData, weightHistory: rawWeightHistory, waterIntake, setActiveCalories } = useFitness();
    const tdee = macros.calories;
    const weight = profile.weight;
    const consumedKcal = consumed.calories;
@@ -101,7 +102,7 @@ export default function Dashboard() {
       }
    };
 
-   useEffect(() => {
+    useEffect(() => {
      const updateDashboardData = () => {
        const workoutStr = localStorage.getItem("workout_plan");
        if (workoutStr) {
@@ -138,6 +139,57 @@ export default function Dashboard() {
      return () => {
         window.removeEventListener('workout_plan_updated', updateDashboardData);
      };
+   }, [user]);
+
+   const [activities, setActivities] = useState<any[]>([]);
+   const [loadingActivities, setLoadingActivities] = useState(false);
+   const [isStravaConnected, setIsStravaConnected] = useState(false);
+
+   useEffect(() => {
+     if (user) {
+        const fetchStravaActivities = async () => {
+           try {
+              const authRef = doc(db, 'users', user.uid, 'stravaAuth', 'token');
+              const s = await getDoc(authRef);
+              if (s.exists()) {
+                 setIsStravaConnected(true);
+                 const token = s.data().accessToken;
+                 setLoadingActivities(true);
+                 const res = await fetch('/api/strava/activities?per_page=5', {
+                    headers: {
+                       'Authorization': `Bearer ${token}`
+                    }
+                 });
+                 const data = await res.json();
+                 if (data.activities && Array.isArray(data.activities)) {
+                    setActivities(data.activities);
+                    
+                    // Sum today's active calories
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    let totalCalories = 0;
+                    data.activities.forEach((a: any) => {
+                       if (a.start_date && a.start_date.startsWith(todayStr)) {
+                          totalCalories += a.calories || a.kilojoules || 0;
+                       }
+                    });
+                    
+                    // Call the context to update TDEE dynamically
+                    if (totalCalories > 0) {
+                        try {
+                           setActiveCalories(totalCalories);
+                        } catch(e) {}
+                    }
+                 }
+              }
+           } catch(e) {
+              console.error('Failed to fetch strava', e);
+           } finally {
+              setLoadingActivities(false);
+           }
+        };
+
+        fetchStravaActivities();
+     }
    }, [user]);
 
    const currentHour = new Date().getHours();
@@ -439,6 +491,51 @@ export default function Dashboard() {
         </Card>
 
       </div>
+
+      {isStravaConnected && (
+         <Card className="bg-[#111111]/80 border-white/5 rounded-[2rem] shadow-none flex flex-col p-6 lg:p-8 mt-6">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+                 <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#FC4C02]/20 border border-[#FC4C02]/30 flex items-center justify-center">
+                       <TrendingUp className="w-5 h-5 text-[#FC4C02]" />
+                    </div>
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">Recent Activities (Strava)</h3>
+                 </div>
+                 {loadingActivities && <Loader2 className="w-4 h-4 text-slate-500 animate-spin" />}
+            </div>
+            {loadingActivities ? (
+               <div className="h-24 w-full flex items-center justify-center">
+                  <p className="text-xs font-medium text-slate-600 uppercase tracking-widest">Syncing with Strava...</p>
+               </div>
+            ) : activities.length > 0 ? (
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {activities.map((a: any) => (
+                    <div key={a.id} className="bg-gradient-to-br from-[#161618] to-[#0a0a0c] border border-white/5 rounded-2xl p-5 hover:border-[#FC4C02]/30 transition-all">
+                       <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">{new Date(a.start_date).toLocaleDateString()}</div>
+                       <div className="text-lg font-black text-white hover:text-[#FC4C02] transition-colors truncate">{a.name}</div>
+                       <div className="mt-4 flex gap-4 text-xs font-medium text-slate-300">
+                           <div className="flex items-center gap-1">
+                               <LocateIcon className="w-3 h-3 text-[#FC4C02]" />
+                               {(a.distance / 1000).toFixed(2)} km
+                           </div>
+                           {a.moving_time && (
+                               <div className="flex items-center gap-1">
+                                   <Target className="w-3 h-3 text-cyan-400" />
+                                   {Math.floor(a.moving_time / 60)} min
+                               </div>
+                           )}
+                       </div>
+                    </div>
+                  ))}
+               </div>
+            ) : (
+                <div className="h-24 w-full flex items-center justify-center">
+                   <p className="text-xs font-medium text-slate-600 uppercase tracking-widest">No recent activities found.</p>
+                </div>
+            )}
+         </Card>
+      )}
+
     </div>
   );
 }

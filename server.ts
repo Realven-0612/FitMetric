@@ -163,6 +163,32 @@ async function startServer() {
     }
   });
 
+  // Strava Activities
+  app.get('/api/strava/activities', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: "Missing Authorization header" });
+    }
+
+    try {
+      const perPage = req.query.per_page || 10;
+      const response = await fetch(`https://www.strava.com/api/v3/athlete/activities?per_page=${perPage}`, {
+        headers: {
+          'Authorization': authHeader
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Strava API error: ${response.statusText}`);
+      }
+
+      const activities = await response.json();
+      res.json({ activities });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
   // Vite middleware
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
