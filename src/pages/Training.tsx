@@ -1030,7 +1030,7 @@ export default function Training() {
                       className="snap-start shrink-0 relative"
                     >
                       {isToday && (
-                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-cyan-500 text-black text-[9px] font-black uppercase tracking-widest px-2 py-1 flex flex-col items-center justify-center rounded-md z-10 text-center leading-3 shadow-[0_0_10px_rgba(34,211,238,0.5)]">
+                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-cyan-500 text-black text-[9px] font-black uppercase tracking-widest px-2 py-1 flex flex-col items-center justify-center rounded-md z-10 text-center leading-3 shadow-[0_0_10px_rgba(34,211,238,0.5)] whitespace-nowrap">
                            <span>{t('today_')}</span>
                            <span>{t('today_operation')}</span>
                         </div>
@@ -1063,7 +1063,7 @@ export default function Training() {
                       className="snap-start shrink-0 relative"
                     >
                       {isToday && (
-                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-cyan-500 text-black text-[9px] font-black uppercase tracking-widest px-2 py-1 flex flex-col items-center justify-center rounded-md z-10 text-center leading-3 shadow-[0_0_10px_rgba(34,211,238,0.5)]">
+                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-cyan-500 text-black text-[9px] font-black uppercase tracking-widest px-2 py-1 flex flex-col items-center justify-center rounded-md z-10 text-center leading-3 shadow-[0_0_10px_rgba(34,211,238,0.5)] whitespace-nowrap">
                            <span>{t('today_')}</span>
                            <span>{t('today_operation')}</span>
                         </div>
