@@ -45,9 +45,9 @@ export interface FitnessContextType {
 }
 
 const defaultProfile: UserProfile = {
-  weight: 72,
-  height: 168,
-  age: 24,
+  weight: 0,
+  height: 0,
+  age: 0,
   gender: 'male',
   activityLevel: 'Lightly Active',
   primaryGoal: 'Lose Fat'

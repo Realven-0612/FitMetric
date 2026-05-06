@@ -22,11 +22,11 @@ export default function Profile() {
   const [scanHistory, setScanHistory] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>({
     name: "",
-    weight: "68",
-    height: "168",
+    weight: "",
+    height: "",
     bodyFat: "",
     preferredStyle: "Calisthenics",
-    age: "24",
+    age: "",
     level: "Beginner (0-1 y)",
     primaryGoal: "Lose Fat",
     gender: "Male",
@@ -38,11 +38,11 @@ export default function Profile() {
     if (!isEditing) {
       setProfile({
         name: sysProfile.name || "",
-        weight: sysProfile.weight?.toString() || "68",
-        height: sysProfile.height?.toString() || "168",
-        bodyFat: sysProfile.bodyFat?.toString() || "",
+        weight: sysProfile.weight ? sysProfile.weight.toString() : "",
+        height: sysProfile.height ? sysProfile.height.toString() : "",
+        bodyFat: sysProfile.bodyFat ? sysProfile.bodyFat.toString() : "",
         preferredStyle: sysProfile.preferredStyle || "Calisthenics",
-        age: sysProfile.age?.toString() || "24",
+        age: sysProfile.age ? sysProfile.age.toString() : "",
         level: sysProfile.level || "Beginner (0-1 y)",
         primaryGoal: sysProfile.primaryGoal || "Lose Fat",
         gender: sysProfile.gender === 'female' ? 'Female' : (sysProfile.gender === 'other' ? 'Other' : 'Male'),

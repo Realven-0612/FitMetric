@@ -1,4 +1,8 @@
 export function calculateBMR(weight: number, height: number, age: number, gender: 'male' | 'female' | 'other' = 'male', bodyFat?: number): number {
+  if (!weight || !height || !age) {
+    return 0;
+  }
+
   if (bodyFat && bodyFat > 0) {
     const lbm = weight * (100 - bodyFat) / 100;
     return 370 + (21.6 * lbm);
@@ -30,6 +34,8 @@ export function calculateMacros(tdee: number, goal: Goal) {
   let targetCalories = tdee;
   if (goal === 'lose') targetCalories -= 500;
   if (goal === 'gain') targetCalories += 500;
+  
+  if (targetCalories < 0) targetCalories = 0;
 
   // Generic split: 30% Protein, 40% Carbs, 30% Fat
   const protein = Math.round((targetCalories * 0.3) / 4);
