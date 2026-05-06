@@ -149,13 +149,13 @@ const translations = {
     no_entries_found: 'No entries found.',
     weight_progression_empty: 'Log 2+ weight entries to see progression map.',
     all_label: 'all',
-    mon: 'T2',
-    tue: 'T3',
-    wed: 'T4',
-    thu: 'T5',
-    fri: 'T6',
-    sat: 'T7',
-    sun: 'CN',
+    mon: 'Mon',
+    tue: 'Tue',
+    wed: 'Wed',
+    thu: 'Thu',
+    fri: 'Fri',
+    sat: 'Sat',
+    sun: 'Sun',
     chest: 'Chest',
     back: 'Back',
     legs: 'Legs',
@@ -296,7 +296,17 @@ const translations = {
     hydration_check: 'Hydration Check',
     hydration_check_msg: "You've had {{water}}L of water today. Drink up!",
     time_to_move: 'Time to Move',
-    time_to_move_msg: "Your {{workout}} workout awaits. Finish the day strong."
+    time_to_move_msg: "Your {{workout}} workout awaits. Finish the day strong.",
+    rest_day: 'Rest Day',
+    plan_regenerated_success: 'Optimal program successfully recalibrated.',
+    new_level_ready: 'New level ready! Program intensity upgraded.',
+    cannot_generate_plan: 'Failed to construct optimal sequence.',
+    cannot_complete_rest_day: 'Cannot complete a rest day.',
+    session_completed_msg: 'Session completed! Keep pushing!',
+    milestone_reached: 'Milestone reached! Initiating next-level program...',
+    calendar_exported: 'Program timeline exported successfully!',
+    today_: "Today's",
+    today_operation: 'Operation'
   },
   vi: {
     dashboard: 'Bảng điều khiển',
@@ -590,7 +600,17 @@ const translations = {
     hydration_check: 'Kiểm tra Nước',
     hydration_check_msg: "Hôm nay bạn uống {{water}}L nước. Uống nước ngay nào!",
     time_to_move: 'Khởi động nào',
-    time_to_move_msg: "Buổi tập {{workout}} đang chờ bạn. Hãy kết thúc ngày thật mạnh mẽ."
+    time_to_move_msg: "Buổi tập {{workout}} đang chờ bạn. Hãy kết thúc ngày thật mạnh mẽ.",
+    rest_day: 'Ngày nghỉ',
+    plan_regenerated_success: 'Lịch tập đã được tái thiết lập thành công.',
+    new_level_ready: 'Cấp độ mới đã sẵn sàng! Cường độ đã được nâng cấp.',
+    cannot_generate_plan: 'Không thể tạo lịch tập. Vui lòng kiểm tra kết nối.',
+    cannot_complete_rest_day: 'Không thể hoàn thành ngày nghỉ.',
+    session_completed_msg: 'Đã hoàn thành buổi tập! Tiếp tục cố gắng nhé!',
+    milestone_reached: 'Đã đạt cột mốc mới! Đang tạo lịch tập ở cấp độ tiếp theo...',
+    calendar_exported: 'Đã xuất file lịch tập!',
+    today_: 'Hoạt động',
+    today_operation: 'Hôm nay'
   }
 };
 

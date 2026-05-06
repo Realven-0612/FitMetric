@@ -501,7 +501,7 @@ export default function Training() {
         // Ensure 7 days
         const validDays = [];
         for (let i = 0; i < 7; i++) {
-          const d = result.days[i] || { focusName: "Ngày nghỉ", exercises: [] };
+          const d = result.days[i] || { focusName: t('rest_day'), exercises: [] };
           validDays.push({ ...d, dayName: ["T2", "T3", "T4", "T5", "T6", "T7", "CN"][i] });
         }
 
@@ -522,14 +522,14 @@ export default function Training() {
 
         if (!isAutoRefresh) {
           setOpen(false);
-          toast.success("Lịch tập tối ưu đã được tái lập thành công.");
+          toast.success(t('plan_regenerated_success'));
         } else {
-          toast.success("Cấp độ mới đã sẵn sàng! Cường độ lịch tập đã được nâng cấp.");
+          toast.success(t('new_level_ready'));
         }
       }
     } catch (e) {
       console.error(e);
-      toast.error("Không thể tạo lịch tập. Vui lòng kiểm tra kết nối.");
+      toast.error(t('cannot_generate_plan'));
     } finally {
       setIsGenerating(false);
     }
@@ -539,7 +539,7 @@ export default function Training() {
     if (!plan) return;
     const currentDay = plan.days[selectedDay];
     if (!currentDay || currentDay.exercises.length === 0) {
-      toast.info("Không thể hoàn thành ngày nghỉ.");
+      toast.info(t('cannot_complete_rest_day'));
       return;
     }
 
@@ -554,11 +554,11 @@ export default function Training() {
     localStorage.setItem('workout_completed_today', 'true');
     localStorage.setItem('workout_completed_date', today);
 
-    toast.success("Đã hoàn thành buổi tập! Tiếp tục cố gắng nhé!");
+    toast.success(t('session_completed_msg'));
 
     // Auto upgrade check (every 14 sessions)
     if (newPlan.completedSessions && newPlan.completedSessions % 14 === 0) {
-      toast("Đã đạt cột mốc mới! Đang tạo lịch tập ở cấp độ tiếp theo...");
+      toast(t('milestone_reached'));
       handleGenerate(true);
     }
   };
@@ -682,7 +682,7 @@ export default function Training() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("Đã xuất file lịch tập!");
+    toast.success(t('calendar_exported'));
   };
 
   const defaultDays = Array.from({ length: 7 }).map(
@@ -714,7 +714,7 @@ export default function Training() {
           </div>
 
           {plan && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0">
               <Dialog>
                 <DialogTrigger
                   render={
@@ -762,7 +762,10 @@ export default function Training() {
                             className="w-full h-12 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-xl flex items-center justify-between px-4 transition-all"
                           >
                             <div className="flex items-center gap-3">
-                              <span className="text-[10px] font-black text-emerald-500 w-10">{day.dayName}</span>
+                            {(() => {
+                              const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+                              return <span className="text-[10px] font-black text-emerald-500 w-10">{t(dayKeys[idx])}</span>;
+                            })()}
                               <span className="text-xs font-bold text-slate-300">{day.focusName}</span>
                             </div>
                             <ExternalLink className="w-3 h-3 text-emerald-500" />
@@ -1012,38 +1015,73 @@ export default function Training() {
           {/* Left main area */}
           <div className="flex flex-col gap-6">
             {/* Day selector */}
-            <div className="flex gap-3 overflow-x-auto pb-4 pt-2 scrollbar-hide snap-x items-end">
-              {plan.days.map((day, idx) => {
-                const isToday =
-                  idx ===
-                  (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
-                const isActive = selectedDay === idx;
-                const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
-                return (
-                  <div
-                    key={idx}
-                    className="snap-start shrink-0 flex flex-col items-center gap-2"
-                  >
-                    {isToday ? (
-                      <div className="bg-cyan-500 text-black text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full z-10 whitespace-nowrap shadow-[0_0_10px_rgba(34,211,238,0.5)]">
-                        {t('todays_operation')}
-                      </div>
-                    ) : (
-                      <div className="h-[18px]"></div>
-                    )}
-                    <button
-                      onClick={() => setSelectedDay(idx)}
-                      className={`w-[80px] h-[80px] rounded-2xl flex flex-col items-center justify-center gap-1 font-black transition-all border ${
-                        isActive
-                          ? "bg-cyan-500 text-black border-cyan-400 shadow-[0_0_30px_rgba(34,211,238,0.25)]"
-                          : "bg-[#111111]/80 text-slate-400 border-white/5 hover:bg-white/10 hover:text-white hover:border-white/20"
-                      }`}
+            <div className="flex flex-col gap-3 pb-6 pt-8 items-center">
+              <div className="flex justify-center gap-1.5 md:gap-2">
+                {plan.days.slice(0, 4).map((day, staticIdx) => {
+                  const idx = staticIdx;
+                  const isToday =
+                    idx ===
+                    (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
+                  const isActive = selectedDay === idx;
+                  const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+                  return (
+                    <div
+                      key={idx}
+                      className="snap-start shrink-0 relative"
                     >
-                      <span className="text-xl">{t(dayKeys[idx])}</span>
-                    </button>
-                  </div>
-                );
-              })}
+                      {isToday && (
+                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-cyan-500 text-black text-[9px] font-black uppercase tracking-widest px-2 py-1 flex flex-col items-center justify-center rounded-md z-10 text-center leading-3 shadow-[0_0_10px_rgba(34,211,238,0.5)]">
+                           <span>{t('today_')}</span>
+                           <span>{t('today_operation')}</span>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => setSelectedDay(idx)}
+                        className={`w-[60px] h-[60px] md:w-[70px] md:h-[70px] rounded-2xl flex flex-col items-center justify-center gap-1 font-black transition-all border ${
+                          isActive
+                            ? "bg-cyan-500 text-black border-cyan-400 shadow-[0_0_30px_rgba(34,211,238,0.25)]"
+                            : "bg-[#111111]/80 text-slate-400 border-white/5 hover:bg-white/10 hover:text-white hover:border-white/20"
+                        }`}
+                      >
+                        <span className="text-lg md:text-xl">{t(dayKeys[idx])}</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex justify-center gap-1.5 md:gap-2">
+                {plan.days.slice(4, 7).map((day, staticIdx) => {
+                  const idx = staticIdx + 4;
+                  const isToday =
+                    idx ===
+                    (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
+                  const isActive = selectedDay === idx;
+                  const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+                  return (
+                    <div
+                      key={idx}
+                      className="snap-start shrink-0 relative"
+                    >
+                      {isToday && (
+                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-cyan-500 text-black text-[9px] font-black uppercase tracking-widest px-2 py-1 flex flex-col items-center justify-center rounded-md z-10 text-center leading-3 shadow-[0_0_10px_rgba(34,211,238,0.5)]">
+                           <span>{t('today_')}</span>
+                           <span>{t('today_operation')}</span>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => setSelectedDay(idx)}
+                        className={`w-[60px] h-[60px] md:w-[70px] md:h-[70px] rounded-2xl flex flex-col items-center justify-center gap-1 font-black transition-all border ${
+                          isActive
+                            ? "bg-cyan-500 text-black border-cyan-400 shadow-[0_0_30px_rgba(34,211,238,0.25)]"
+                            : "bg-[#111111]/80 text-slate-400 border-white/5 hover:bg-white/10 hover:text-white hover:border-white/20"
+                        }`}
+                      >
+                        <span className="text-lg md:text-xl">{t(dayKeys[idx])}</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Protocol View */}
