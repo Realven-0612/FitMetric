@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Flame, Trophy, Calendar, Target, Zap, TrendingUp, Settings2, Trash2, Droplet, Sparkles, Loader2, AlertTriangle } from "lucide-react";
+import { Flame, Trophy, Calendar, Target, Zap, TrendingUp, Settings2, Trash2, Droplet, Sparkles, Loader2, AlertTriangle, User } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -13,6 +13,7 @@ import { getQuoteOfTheDay } from "../lib/quotes";
 import { useFitness } from "../components/FitnessProvider";
 import Markdown from 'react-markdown';
 import { LocateIcon } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const defaultConsumptionData = [
   { name: "t2", value: 0 },
@@ -26,6 +27,7 @@ const defaultConsumptionData = [
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { t, language } = useTranslation();
   const quote = getQuoteOfTheDay();
   const [nextOperation, setNextOperation] = useState<string>("Rest");
@@ -249,6 +251,21 @@ export default function Dashboard() {
          message: t('time_to_move_msg', undefined, { workout: t(nextOperation, { defaultValue: nextOperation }) })
       });
    }
+
+  if (!profile.weight || !profile.height || !profile.age) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 h-[70vh] animate-in fade-in zoom-in-95 duration-700">
+         <div className="w-24 h-24 bg-cyan-500/20 rounded-[2rem] flex items-center justify-center border border-cyan-500/30 mb-8 shadow-[0_0_50px_rgba(34,211,238,0.2)]">
+            <User className="w-12 h-12 text-cyan-400" />
+         </div>
+         <h1 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tight mb-4 text-center">Hello, Champion.</h1>
+         <p className="text-slate-400 text-center max-w-md text-lg mb-8">We need some initial numbers to calibrate your AI plan and Dashboard.</p>
+         <Button onClick={() => navigate('/profile')} className="bg-cyan-500 hover:bg-cyan-400 text-black font-black uppercase tracking-widest px-8 h-14 rounded-2xl text-sm transition-all shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:scale-105">
+            Setup My Profile
+         </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10">

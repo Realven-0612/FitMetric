@@ -30,6 +30,7 @@ import {
   ExternalLink,
   ArrowRight,
   Activity,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "../lib/i18n";
@@ -391,6 +392,15 @@ export default function Training() {
     }
   };
 
+  const deleteSet = (exName: string, index: number) => {
+    setSessionLogs(prev => {
+      const logs = prev[exName] || [];
+      const newLogs = [...logs];
+      newLogs.splice(index, 1);
+      return { ...prev, [exName]: newLogs };
+    });
+  };
+
   const calculateVolume = () => {
     let total = 0;
     Object.values(sessionLogs).forEach(sets => {
@@ -553,6 +563,33 @@ export default function Training() {
     const today = new Date().toISOString().split('T')[0];
     localStorage.setItem('workout_completed_today', 'true');
     localStorage.setItem('workout_completed_date', today);
+
+    // Save detailed history
+    const thStr = localStorage.getItem("training_history");
+    const th = thStr ? JSON.parse(thStr) : [];
+    
+    let totalVolume = 0;
+    const sessionDetails = currentDay.exercises.map(ex => {
+        const logs = sessionLogs[ex.name] || [];
+        const exVolume = logs.reduce((sum, log) => sum + (log.reps * log.weight), 0);
+        totalVolume += exVolume;
+        return {
+            name: ex.name,
+            sets: logs
+        };
+    });
+
+    th.push({
+        date: new Date().toISOString(),
+        focus: currentDay.focusName,
+        volume: totalVolume,
+        details: sessionDetails
+    });
+    localStorage.setItem("training_history", JSON.stringify(th));
+    window.dispatchEvent(new Event('training_history_updated'));
+
+    // Reset logs for next time
+    setSessionLogs({});
 
     toast.success(t('session_completed_msg'));
 
@@ -1213,6 +1250,7 @@ export default function Training() {
                                   const isHeavy = ex.name.toLowerCase().includes('squat') || ex.name.toLowerCase().includes('deadlift') || ex.name.toLowerCase().includes('bench');
                                   logSet(ex.name, w, r, isHeavy ? 180 : 90);
                                 }}
+                                onDeleteSet={(idx) => deleteSet(ex.name, idx)}
                               />
                             </div>
                             <Button
@@ -1393,11 +1431,12 @@ export default function Training() {
   );
 }
 
-function SetLogger({ exercise, currentWeight, logs, onLog }: { 
+function SetLogger({ exercise, currentWeight, logs, onLog, onDeleteSet }: { 
   exercise: Exercise; 
   currentWeight: number; 
   logs: LoggedSet[]; 
-  onLog: (weight: number, reps: number) => void 
+  onLog: (weight: number, reps: number) => void;
+  onDeleteSet?: (index: number) => void;
 }) {
   const { t } = useTranslation();
   const [weight, setWeight] = useState(currentWeight || 0);
@@ -1441,10 +1480,18 @@ function SetLogger({ exercise, currentWeight, logs, onLog }: {
 
       <div className="flex flex-wrap gap-1.5">
         {logs.map((set, i) => (
-          <div key={i} className="flex items-center gap-1 bg-white/5 border border-white/5 rounded px-2 py-1 group animate-in zoom-in-50 duration-300">
+          <div key={i} className="relative flex items-center gap-1 bg-white/5 border border-white/5 rounded pl-2 overflow-hidden group animate-in zoom-in-50 duration-300">
             <span className="text-[9px] font-black text-slate-500">{i + 1}</span>
-            <span className="text-[10px] font-black text-white">{set.weight}<span className="text-slate-600 italic">kg</span></span>
-            <span className="text-[10px] font-black text-cyan-400">×{set.reps}</span>
+            <span className="text-[10px] font-black text-white ml-1">{set.weight}<span className="text-slate-600 italic">kg</span></span>
+            <span className="text-[10px] font-black text-cyan-400 mr-2">×{set.reps}</span>
+            {onDeleteSet && (
+              <button 
+                onClick={() => onDeleteSet(i)}
+                className="absolute right-0 bg-red-500 hover:bg-red-600 text-white transition-all h-full px-2 flex items-center justify-center translate-x-full group-hover:translate-x-0 ease-out duration-200"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            )}
           </div>
         ))}
         {Array.from({ length: Math.max(0, parseInt(exercise.sets) - logs.length) }).map((_, i) => (

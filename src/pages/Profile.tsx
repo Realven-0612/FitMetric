@@ -34,7 +34,30 @@ export default function Profile() {
     gender: "Male",
     activityLevel: "Sedentary"
   });
+  const [trainingHistory, setTrainingHistory] = useState<any[]>([]);
+  const [exerciseWeights, setExerciseWeights] = useState<Record<string, number>>({});
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+  const loadLocalData = () => {
+    const thStr = localStorage.getItem("training_history");
+    if (thStr) {
+      try { setTrainingHistory(JSON.parse(thStr)); } catch(e){}
+    }
+    const ewStr = localStorage.getItem("exercise_weights");
+    if (ewStr) {
+      try { setExerciseWeights(JSON.parse(ewStr)); } catch(e){}
+    }
+  };
+
+  useEffect(() => {
+    loadLocalData();
+    window.addEventListener('training_history_updated', loadLocalData);
+    window.addEventListener('exercise_weights_updated', loadLocalData);
+    return () => {
+      window.removeEventListener('training_history_updated', loadLocalData);
+      window.removeEventListener('exercise_weights_updated', loadLocalData);
+    };
+  }, []);
 
   useEffect(() => {
     if (("Notification" in window) && Notification.permission === 'granted') {
@@ -198,6 +221,66 @@ export default function Profile() {
     setProfile((prev: any) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  const handleReset = async () => {
+    if (!window.confirm("Are you sure you want to reset all your fitness metrics and history? This cannot be undone.")) return;
+
+    // reset local storage
+    localStorage.removeItem("weight_history");
+    localStorage.removeItem("fitness_ai_plan");
+    localStorage.removeItem("training_history");
+    localStorage.removeItem("exercise_weights");
+
+    // reset profile state
+    setProfile({
+        name: profile.name,
+        weight: "",
+        height: "",
+        bodyFat: "",
+        preferredStyle: "Calisthenics",
+        age: "",
+        level: "Beginner (0-1 y)",
+        primaryGoal: "Lose Fat",
+        gender: "Male",
+        activityLevel: "Sedentary"
+    });
+
+    // reset global state
+    updateSysProfile({
+      weight: 0,
+      height: 0,
+      age: 0,
+      activityLevel: "Sedentary",
+    } as any);
+
+    if (user) {
+        try {
+            const userRef = doc(db, "users", user.uid);
+            await updateDoc(userRef, {
+                weight: null,
+                height: null,
+                age: null,
+                bodyFat: null,
+                updatedAt: serverTimestamp()
+            });
+
+            // Wipe out weight records
+            const weightRecordsRef = collection(db, "users", user.uid, "weightRecords");
+            const snap = await getDocs(weightRecordsRef);
+            for (const docSnap of snap.docs) {
+                 await deleteDoc(docSnap.ref);
+            }
+        } catch (error) {
+            handleFirestoreError(error, OperationType.UPDATE, "users/" + user.uid);
+        }
+    }
+    
+    // clear local states
+    setExerciseWeights({});
+    setTrainingHistory([]);
+    setIsEditing(false);
+    toast.success("Metrics reset successfully.");
+  };
+
   const handleSave = async () => {
     // Update global fitness context
     const updates = {
@@ -328,9 +411,14 @@ export default function Profile() {
             )}
 
             {isEditing ? (
-              <Button onClick={handleSave} className="bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-widest rounded-xl h-10 px-6 w-full md:w-auto mt-4 md:mt-0">
-                 Done
-              </Button>
+              <div className="flex gap-2 w-full md:w-auto mt-4 md:mt-0 flex-col md:flex-row">
+                 <Button onClick={handleReset} variant="destructive" className="bg-red-500 hover:bg-red-400 text-white font-black text-xs uppercase tracking-widest rounded-xl h-10 px-6">
+                    Reset Metrics
+                 </Button>
+                 <Button onClick={handleSave} className="bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-widest rounded-xl h-10 px-6">
+                    Done
+                 </Button>
+              </div>
             ) : (
               <Button onClick={() => setIsEditing(true)} variant="outline" className="border-white/10 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-6 w-full md:w-auto mt-4 md:mt-0">
                  {t('update_stats')}
@@ -672,6 +760,96 @@ export default function Profile() {
                    </div>
                  </div>
               </CardContent>
+           </Card>
+
+           {/* Personal Records & Training History */}
+           <Card className="bg-gradient-to-br from-[#161618] to-[#0a0a0c] border border-white/5 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.4)] overflow-hidden relative group">
+             <CardHeader className="border-b border-white/5 pb-4 flex flex-row items-center justify-between">
+                <CardTitle className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                   <Target className="w-4 h-4 text-cyan-400" />
+                   Personal Records & History
+                </CardTitle>
+                <Button 
+                  onClick={() => {
+                    localStorage.setItem("exercise_weights", JSON.stringify(exerciseWeights));
+                    toast.success("Saved PRs");
+                  }} 
+                  size="sm" 
+                  className="bg-cyan-500 hover:bg-cyan-400 text-black font-black text-[10px] h-8 px-4 rounded-lg uppercase tracking-widest"
+                >
+                  Save All
+                </Button>
+             </CardHeader>
+             <CardContent className="p-6">
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-3 flex items-center gap-2">Exercise PRs (kg)</h3>
+                    {Object.keys(exerciseWeights).length === 0 ? (
+                      <p className="text-[10px] text-slate-500">No PRs recorded yet. Complete a workout to log PRs.</p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {Object.entries(exerciseWeights).map(([ex, weight]) => (
+                          <div key={ex} className="flex items-center justify-between bg-white/5 border border-white/5 px-3 py-2 rounded-xl group/pr">
+                            <span className="text-[10px] font-bold text-white capitalize truncate pr-2">{ex}</span>
+                            <div className="flex items-center gap-2 shrink-0">
+                               <Input 
+                                 type="number" 
+                                 value={weight} 
+                                 onChange={(e) => {
+                                   const val = parseFloat(e.target.value) || 0;
+                                   setExerciseWeights(prev => ({ ...prev, [ex]: val }));
+                                 }}
+                                 className="w-16 h-6 bg-black/50 border-none text-center text-[10px] font-black focus-visible:ring-1 focus-visible:ring-cyan-500 text-white px-1"
+                               />
+                               <button 
+                                 onClick={() => {
+                                   setExerciseWeights(prev => {
+                                     const n = { ...prev };
+                                     delete n[ex];
+                                     return n;
+                                   });
+                                 }}
+                                 className="text-red-500 hover:text-red-400 opacity-50 group-hover/pr:opacity-100 transition-all p-1"
+                               >
+                                 <Trash2 className="w-3 h-3" />
+                               </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-3 flex items-center gap-2">Training History</h3>
+                     {trainingHistory.length === 0 ? (
+                      <p className="text-[10px] text-slate-500">No workout history found. Start training to see it here.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                        {[...trainingHistory].reverse().map((h, i) => (
+                          <div key={i} className="bg-white/5 border border-white/5 p-3 rounded-xl">
+                            <div className="flex justify-between items-center border-b border-white/5 pb-2 mb-2">
+                               <div className="text-[10px] font-bold text-slate-400">{new Date(h.date).toLocaleDateString()}</div>
+                               <div className="flex items-center gap-2">
+                                 <span className="text-[9px] font-black uppercase text-purple-400 tracking-widest bg-purple-400/10 px-2 py-0.5 rounded">{h.focus}</span>
+                                 <span className="text-[9px] font-black uppercase text-cyan-400 tracking-widest bg-cyan-400/10 px-2 py-0.5 rounded">{h.volume} kg</span>
+                               </div>
+                            </div>
+                            <div className="space-y-1">
+                              {h.details && h.details.map((d: any, idx: number) => (
+                                <div key={idx} className="flex justify-between items-center text-[9px]">
+                                   <span className="text-slate-300 capitalize">{d.name}</span>
+                                   <span className="text-slate-500 font-medium">({d.sets?.length || 0} Sets)</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+             </CardContent>
            </Card>
 
         </div>
