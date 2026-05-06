@@ -15,20 +15,67 @@ if (!process.env.STRAVA_CLIENT_ID) {
   console.warn("⚠️ Warning: STRAVA_CLIENT_ID is not configured in .env");
 }
 
+// ==================== GEMINI API KEY ROTATION ====================
 let currentKeyIndex = 0;
+const keyBlacklist = new Map<string, number>(); // key -> ban until timestamp
+
+/**
+ * Lấy Gemini client với key rotation thông minh
+ */
 async function getAIClient() {
   const rawKeys = process.env.GEMINI_API_KEY || "";
-  const keys = rawKeys.split(",").map(k => k.trim()).filter(Boolean);
-  
+  let keys = rawKeys
+    .split(",")
+    .map(k => k.trim())
+    .filter(Boolean);
+
   if (keys.length === 0) {
-    throw new Error("No GEMINI_API_KEY configured.");
+    throw new Error("❌ No GEMINI_API_KEY configured in .env");
   }
-  // Cycles through the keys for each request
-  const apiKey = keys[currentKeyIndex];
-  currentKeyIndex = (currentKeyIndex + 1) % keys.length;
-  const { GoogleGenAI } = await import('@google/genai');
-  return new GoogleGenAI({ apiKey });
+
+  // Giới hạn tối đa 5 keys (theo yêu cầu)
+  if (keys.length > 5) {
+    console.warn(`⚠️ Found ${keys.length} keys, but only using first 5`);
+    keys = keys.slice(0, 5);
+  }
+
+  const now = Date.now();
+  // Xóa key khỏi blacklist nếu đã hết thời gian
+  for (const [key, banUntil] of keyBlacklist.entries()) {
+    if (banUntil < now) keyBlacklist.delete(key);
+  }
+
+  // Thử tối đa 5 lần (mỗi key 1 lần)
+  for (let attempt = 0; attempt < keys.length; attempt++) {
+    const apiKey = keys[currentKeyIndex];
+    currentKeyIndex = (currentKeyIndex + 1) % keys.length;
+
+    // Bỏ qua key đang bị blacklist
+    if (keyBlacklist.has(apiKey)) {
+      continue;
+    }
+
+    try {
+      const { GoogleGenAI } = await import('@google/genai');
+      const ai = new GoogleGenAI({ apiKey });
+
+      console.log(`🔑 Using Gemini key [${currentKeyIndex}] (${keys.length} keys available)`);
+      return ai;
+
+    } catch (err: any) {
+      if (err.message?.includes("API key") || 
+          err.message?.includes("quota") || 
+          err.message?.includes("rate limit")) {
+        
+        console.warn(`🚫 Key [${currentKeyIndex}] temporarily blacklisted: ${err.message}`);
+        keyBlacklist.set(apiKey, now + 10 * 60 * 1000); // ban 10 phút
+      }
+    }
+  }
+
+  throw new Error("❌ All Gemini API keys are currently unavailable or rate limited.");
 }
+// ==================== END KEY ROTATION ====================
 
 async function startServer() {
   const app = express();
@@ -90,7 +137,7 @@ async function startServer() {
       const requestPayload = {
         model: req.body.model || 'gemini-2.0-flash',
         contents: req.body.contents,
-        config: req.body.config
+        config: req.body.config?.generationConfig || req.body.config
       };
       const response = await ai.models.generateContent(requestPayload);
       res.json({
@@ -110,7 +157,7 @@ async function startServer() {
       const requestPayload = {
         model: req.body.model || 'gemini-2.0-flash',
         contents: req.body.contents,
-        config: req.body.config
+        config: req.body.config?.generationConfig || req.body.config
       };
       const response = await ai.models.generateContent(requestPayload);
       res.json({
