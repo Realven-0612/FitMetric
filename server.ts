@@ -139,6 +139,7 @@ async function startServer() {
         contents: req.body.contents,
         config: req.body.config?.generationConfig || req.body.config
       };
+      console.log("📏 Request size:", JSON.stringify(req.body.contents).length, "bytes");
       const response = await ai.models.generateContent(requestPayload);
       res.json({
         text: response.text,
