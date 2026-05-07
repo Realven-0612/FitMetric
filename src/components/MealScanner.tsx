@@ -3,6 +3,7 @@ import Webcam from "react-webcam";
 import { Button } from "@/components/ui/button";
 import { Camera, UploadCloud, Loader2, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
+import { analyzeAIImage } from "../lib/ai";
 
 interface MealScannerProps {
   onFoodDetected: (food: { name: string; kcal: number; protein: number; carbs: number; fat: number }) => void;
@@ -53,40 +54,20 @@ export function MealScanner({ onFoodDetected, onClose }: MealScannerProps) {
         - confidence: 1-100 score of your estimation.
       `;
 
-      const response = await fetch('/api/ai/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: "gemini-2.0-flash",
-          contents: [{ 
-            role: "user",
-            parts: [
-              { inlineData: { data: base64Data, mimeType } },
-              { text: prompt }
-            ]
-          }],
-          config: { 
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: "OBJECT",
-              properties: {
-                name: { type: "STRING" },
-                kcal: { type: "NUMBER" },
-                protein: { type: "NUMBER" },
-                carbs: { type: "NUMBER" },
-                fat: { type: "NUMBER" },
-                confidence: { type: "NUMBER" }
-              },
-              required: ["name", "kcal", "protein", "carbs", "fat"]
-            }
-          }
-        })
-      });
+      const schema = {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          kcal: { type: "number" },
+          protein: { type: "number" },
+          carbs: { type: "number" },
+          fat: { type: "number" },
+          confidence: { type: "number" }
+        },
+        required: ["name", "kcal", "protein", "carbs", "fat"]
+      };
 
-      if (!response.ok) throw new Error('AI request failed');
-      const resultData = await response.json();
-
-      const result = JSON.parse(resultData.text.trim());
+      const result = await analyzeAIImage(prompt, base64Data, mimeType, schema);
       onFoodDetected(result);
       toast.success(`Logged ${result.name}! (AI Confidence: ${result.confidence}%)`);
       onClose();

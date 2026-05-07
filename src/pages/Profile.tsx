@@ -1,344 +1,91 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Activity, Target, TrendingUp, Trash2, Dumbbell, Ruler, Zap, LogOut, Loader2, Link2, Bell } from "lucide-react";
+import { User, Activity, Target, TrendingUp, Trash2, Dumbbell, Ruler, Zap, LogOut, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthProvider";
-import { db, initMessaging } from "../lib/firebase";
-import { getToken } from "firebase/messaging";
-import { doc, getDoc, updateDoc, collection, getDocs, deleteDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { handleFirestoreError, OperationType } from "../lib/firestoreUtils";
+import { db } from "../lib/firebase";
+import { doc, collection, getDocs, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { useTranslation } from "../lib/i18n";
-import { useFitness } from "../components/FitnessProvider";
-import { toast } from "sonner";
+import { useStore } from "../lib/store";
+import { handleFirestoreError, OperationType } from "../services/firebaseService";
 
 export default function Profile() {
   const { user, loading: authLoading, signInWithGoogle, signOut } = useAuth();
-  const { profile: sysProfile, updateProfile: updateSysProfile } = useFitness();
   const { t } = useTranslation();
+  const { profile: storeProfile, setProfile: setStoreProfile } = useStore();
+  
   const [isEditing, setIsEditing] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
-  const [isStravaConnected, setIsStravaConnected] = useState(false);
   const [scanHistory, setScanHistory] = useState<any[]>([]);
-  const [profile, setProfile] = useState<any>({
+  const [profile, setProfile] = useState({
     name: "",
-    weight: "",
-    height: "",
+    weight: "68",
+    height: "168",
     bodyFat: "",
     preferredStyle: "Calisthenics",
-    age: "",
+    age: "24",
     level: "Beginner (0-1 y)",
     primaryGoal: "Lose Fat",
     gender: "Male",
     activityLevel: "Sedentary"
   });
-  const [trainingHistory, setTrainingHistory] = useState<any[]>([]);
-  const [exerciseWeights, setExerciseWeights] = useState<Record<string, number>>({});
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-
-  const loadLocalData = () => {
-    const thStr = localStorage.getItem("training_history");
-    if (thStr) {
-      try { setTrainingHistory(JSON.parse(thStr)); } catch(e){}
-    }
-    const ewStr = localStorage.getItem("exercise_weights");
-    if (ewStr) {
-      try { setExerciseWeights(JSON.parse(ewStr)); } catch(e){}
-    }
-  };
 
   useEffect(() => {
-    loadLocalData();
-    window.addEventListener('training_history_updated', loadLocalData);
-    window.addEventListener('exercise_weights_updated', loadLocalData);
-    return () => {
-      window.removeEventListener('training_history_updated', loadLocalData);
-      window.removeEventListener('exercise_weights_updated', loadLocalData);
-    };
-  }, []);
+    if (storeProfile) {
+      setProfile(prev => ({
+        ...prev,
+        ...storeProfile,
+        weight: storeProfile.weight?.toString() || prev.weight,
+        height: storeProfile.height?.toString() || prev.height,
+        age: storeProfile.age?.toString() || prev.age,
+      }));
+    }
+  }, [storeProfile]);
 
   useEffect(() => {
-    if (("Notification" in window) && Notification.permission === 'granted') {
-      setNotificationsEnabled(true);
+    if (!user) {
+      const history = localStorage.getItem("scan_history");
+      if (history) setScanHistory(JSON.parse(history));
+      return;
     }
-  }, []);
 
-  const enableNotifications = async () => {
-    try {
-      if (!("Notification" in window)) {
-        toast.error("This browser does not support desktop notification");
-        return;
-      }
-      const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
-        const msg = await initMessaging();
-        if (msg) {
-          try {
-            const token = await getToken(msg);
-            if (token) {
-              console.log('FCM Token:', token);
-              
-              if (user) {
-                // Save FCM token to user document
-                const userDocRef = doc(db, "users", user.uid);
-                await updateDoc(userDocRef, {
-                  fcmToken: token,
-                  updatedAt: serverTimestamp()
-                });
-              }
-            } else {
-              console.log('No registration token available. Request permission to generate one.');
-            }
-          } catch (err) {
-            console.error('An error occurred while retrieving token. ', err);
-            // It might fail without VAPID key in some environments, but we still enabled local perms
-          }
-          setNotificationsEnabled(true);
-          toast.success("Push notifications enabled! You will now receive reminders.");
-        }
-      } else {
-        toast.error("Permission denied for notifications");
-      }
-    } catch (e) {
-      console.error(e);
-      toast.error("Failed to enable notifications");
-    }
-  };
-
-  useEffect(() => {
-    // Sync initial state from FitnessProvider when not editing
-    if (!isEditing) {
-      setProfile({
-        name: sysProfile.name || "",
-        weight: sysProfile.weight ? sysProfile.weight.toString() : "",
-        height: sysProfile.height ? sysProfile.height.toString() : "",
-        bodyFat: sysProfile.bodyFat ? sysProfile.bodyFat.toString() : "",
-        preferredStyle: sysProfile.preferredStyle || "Calisthenics",
-        age: sysProfile.age ? sysProfile.age.toString() : "",
-        level: sysProfile.level || "Beginner (0-1 y)",
-        primaryGoal: sysProfile.primaryGoal || "Lose Fat",
-        gender: sysProfile.gender === 'female' ? 'Female' : (sysProfile.gender === 'other' ? 'Other' : 'Male'),
-        activityLevel: sysProfile.activityLevel || "Sedentary"
-      });
-    }
-  }, [sysProfile, isEditing]);
-
-  useEffect(() => {
-    const loadUserData = async () => {
+    const loadScans = async () => {
       setDataLoading(true);
-      if (!user) {
-        const history = localStorage.getItem("scan_history");
-        if (history) setScanHistory(JSON.parse(history));
-        setDataLoading(false);
-        return;
-      }
-
       try {
-        // Load scans
         const scansRef = collection(db, "users", user.uid, "scans");
         const querySnapshot = await getDocs(scansRef);
         const scans: any[] = [];
         querySnapshot.forEach((doc) => {
           scans.push({ id: doc.id, ...doc.data() });
         });
-        // Sort newest first
         scans.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setScanHistory(scans);
-
       } catch (error) {
-        handleFirestoreError(error, OperationType.GET, "users/" + user.uid);
+        console.error("Error loading scans:", error);
       } finally {
         setDataLoading(false);
       }
     };
 
-    loadUserData();
-
-    const handleHistoryUpdate = () => {
-      if (!user) {
-        const history = localStorage.getItem("scan_history");
-        if (history) setScanHistory(JSON.parse(history));
-      }
-    };
-
-    window.addEventListener('scan_history_updated', handleHistoryUpdate);
-    return () => window.removeEventListener('scan_history_updated', handleHistoryUpdate);
+    loadScans();
   }, [user]);
-
-  useEffect(() => {
-    const handleMessage = async (event: MessageEvent) => {
-      if (event.data && event.data.type === 'STRAVA_AUTH_SUCCESS') {
-        if (user) {
-          try {
-            const authRef = doc(db, 'users', user.uid, 'stravaAuth', 'token');
-            await setDoc(authRef, {
-              userId: user.uid,
-              accessToken: event.data.payload.access_token,
-              refreshToken: event.data.payload.refresh_token,
-              expiresAt: event.data.payload.expires_at,
-              updatedAt: serverTimestamp()
-            });
-            setIsStravaConnected(true);
-          } catch (error) {
-             handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}/stravaAuth`);
-          }
-        }
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [user]);
-
-  useEffect(() => {
-    if (user) {
-      const checkStrava = async () => {
-         try {
-           const authRef = doc(db, 'users', user.uid, 'stravaAuth', 'token');
-           const s = await getDoc(authRef);
-           if (s.exists()) setIsStravaConnected(true);
-         } catch(e) {}
-      };
-      checkStrava();
-    }
-  }, [user]);
-
-  const connectStrava = async () => {
-      try {
-         const res = await fetch('/api/strava/auth');
-         const data = await res.json();
-         if (data.url) {
-            window.open(data.url, 'Strava Auth', 'width=600,height=700');
-         }
-      } catch (err) {
-         console.error('Failed to init strava auth', err);
-      }
-  };
 
   const handleChange = (e: any) => {
-    setProfile((prev: any) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const handleReset = async () => {
-    if (!window.confirm("Are you sure you want to reset all your fitness metrics and history? This cannot be undone.")) return;
-
-    // reset local storage
-    localStorage.removeItem("weight_history");
-    localStorage.removeItem("fitness_ai_plan");
-    localStorage.removeItem("training_history");
-    localStorage.removeItem("exercise_weights");
-
-    // reset profile state
-    setProfile({
-        name: profile.name,
-        weight: "",
-        height: "",
-        bodyFat: "",
-        preferredStyle: "Calisthenics",
-        age: "",
-        level: "Beginner (0-1 y)",
-        primaryGoal: "Lose Fat",
-        gender: "Male",
-        activityLevel: "Sedentary"
-    });
-
-    // reset global state
-    updateSysProfile({
-      weight: 0,
-      height: 0,
-      age: 0,
-      activityLevel: "Sedentary",
-    } as any);
-
-    if (user) {
-        try {
-            const userRef = doc(db, "users", user.uid);
-            await updateDoc(userRef, {
-                weight: null,
-                height: null,
-                age: null,
-                bodyFat: null,
-                updatedAt: serverTimestamp()
-            });
-
-            // Wipe out weight records
-            const weightRecordsRef = collection(db, "users", user.uid, "weightRecords");
-            const snap = await getDocs(weightRecordsRef);
-            for (const docSnap of snap.docs) {
-                 await deleteDoc(docSnap.ref);
-            }
-        } catch (error) {
-            handleFirestoreError(error, OperationType.UPDATE, "users/" + user.uid);
-        }
-    }
-    
-    // clear local states
-    setExerciseWeights({});
-    setTrainingHistory([]);
-    setIsEditing(false);
-    toast.success("Metrics reset successfully.");
+    setProfile(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSave = async () => {
-    // Update global fitness context
-    const updates = {
-      name: profile.name,
-      weight: parseFloat(profile.weight) || undefined,
-      height: parseFloat(profile.height) || undefined,
-      age: parseFloat(profile.age) || undefined,
-      bodyFat: profile.bodyFat ? parseFloat(profile.bodyFat) : undefined,
-      preferredStyle: profile.preferredStyle,
-      level: profile.level,
-      primaryGoal: profile.primaryGoal,
-      gender: profile.gender.toLowerCase() as 'male' | 'female' | 'other',
-      activityLevel: profile.activityLevel,
+    const updatedProfile = {
+      ...profile,
+      weight: Number(profile.weight),
+      height: Number(profile.height),
+      age: Number(profile.age),
     };
-    updateSysProfile(updates as any);
-
-    if (!user) {
-      // Guest mode additions (weights history)
-      const historyStr = localStorage.getItem("weight_history");
-      const weightHistory = historyStr ? JSON.parse(historyStr) : [];
-      const today = new Date().toISOString().split('T')[0];
-      if (profile.weight) {
-        if (weightHistory.length === 0 || weightHistory[weightHistory.length - 1].date !== today) {
-          weightHistory.push({ date: today, value: parseFloat(profile.weight) });
-        } else {
-          weightHistory[weightHistory.length - 1].value = parseFloat(profile.weight);
-        }
-        localStorage.setItem("weight_history", JSON.stringify(weightHistory));
-        window.dispatchEvent(new Event('weight_history_updated'));
-      }
-      setIsEditing(false);
-      return;
-    }
-
-    // Save to Firestore
-    try {
-      const userDocRef = doc(db, "users", user.uid);
-      await updateDoc(userDocRef, {
-        ...profile,
-        updatedAt: serverTimestamp(),
-      });
-
-      // Save Weight Record if needed
-      if (profile.weight) {
-        const today = new Date().toISOString().split('T')[0];
-        const recordId = today; // using date as ID for simplicity
-        const recordRef = doc(db, "users", user.uid, "weightRecords", recordId);
-        await setDoc(recordRef, {
-          userId: user.uid,
-          date: today,
-          value: parseFloat(profile.weight)
-        });
-        window.dispatchEvent(new Event('weight_history_updated'));
-      }
-      setIsEditing(false);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, "users/" + user.uid);
-    }
+    setStoreProfile(updatedProfile);
+    setIsEditing(false);
   };
 
   const handleDeleteScan = async (idx: number, id?: string) => {
@@ -402,7 +149,7 @@ export default function Profile() {
          <div className="flex gap-3 items-center w-full md:w-auto">
             {!user ? (
                <Button onClick={signInWithGoogle} variant="outline" className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300 font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-6 w-full md:w-auto">
-                  <User className="mr-2 w-4 h-4" /> {t('sign_in_google')}
+                  <User className="mr-2 w-4 h-4" /> Sign In with Google
                </Button>
             ) : (
                <Button onClick={signOut} variant="outline" className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-4 w-full md:w-auto">
@@ -411,14 +158,9 @@ export default function Profile() {
             )}
 
             {isEditing ? (
-              <div className="flex gap-2 w-full md:w-auto mt-4 md:mt-0 flex-col md:flex-row">
-                 <Button onClick={handleReset} variant="destructive" className="bg-red-500 hover:bg-red-400 text-white font-black text-xs uppercase tracking-widest rounded-xl h-10 px-6">
-                    {t('reset_metrics')}
-                 </Button>
-                 <Button onClick={handleSave} className="bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-widest rounded-xl h-10 px-6">
-                    {t('done')}
-                 </Button>
-              </div>
+              <Button onClick={handleSave} className="bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-widest rounded-xl h-10 px-6 w-full md:w-auto mt-4 md:mt-0">
+                 Done
+              </Button>
             ) : (
               <Button onClick={() => setIsEditing(true)} variant="outline" className="border-white/10 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-6 w-full md:w-auto mt-4 md:mt-0">
                  {t('update_stats')}
@@ -448,11 +190,11 @@ export default function Profile() {
                      </div>
                      <div className="space-y-2 group">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-purple-400 transition-colors">Weight <span className="text-slate-600 lowercase">(kg)</span></label>
-                        <Input type="number" min="0" step="0.1" name="weight" value={profile.weight} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-purple-500/50 focus-visible:ring-1 focus-visible:ring-purple-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
+                        <Input type="number" name="weight" value={profile.weight} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-purple-500/50 focus-visible:ring-1 focus-visible:ring-purple-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
                      </div>
                      <div className="space-y-2 group">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-orange-400 transition-colors">Height <span className="text-slate-600 lowercase">(cm)</span></label>
-                        <Input type="number" min="0" step="0.5" name="height" value={profile.height} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-orange-500/50 focus-visible:ring-1 focus-visible:ring-orange-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
+                        <Input type="number" name="height" value={profile.height} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-orange-500/50 focus-visible:ring-1 focus-visible:ring-orange-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
                      </div>
                      <div className="space-y-2 group">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-red-400 transition-colors">Body Fat <span className="text-slate-600 lowercase">(%)</span></label>
@@ -468,7 +210,7 @@ export default function Profile() {
                      </div>
                      <div className="space-y-2 group">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-cyan-400 transition-colors">Age</label>
-                        <Input type="number" min="0" step="1" name="age" value={profile.age} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-cyan-500/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
+                        <Input type="number" name="age" value={profile.age} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-cyan-500/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
                      </div>
                      <div className="space-y-2 group">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-emerald-400 transition-colors">Level</label>
@@ -694,165 +436,7 @@ export default function Profile() {
                        </div>
                     </div>
                  </div>
-
-                 {/* Integrations & Features */}
-                 <div className="mt-6 space-y-4">
-                   <div className="bg-gradient-to-br from-orange-950/30 to-orange-900/10 border border-orange-500/20 rounded-2xl p-5 shadow-[0_4px_20px_rgba(249,115,22,0.05)]">
-                      <h3 className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                         <Link2 className="w-4 h-4 hidden sm:block" /> Integrations
-                      </h3>
-                      <div className="flex items-center justify-between">
-                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-[#FC4C02]/20 border border-[#FC4C02]/30 flex items-center justify-center">
-                               <TrendingUp className="w-5 h-5 text-[#FC4C02]" />
-                            </div>
-                            <div>
-                               <div className="text-sm font-bold text-white tracking-tight">Strava</div>
-                               <div className="text-[10px] text-slate-500 font-medium">Sync Cardio & Runs</div>
-                            </div>
-                         </div>
-                         {isStravaConnected ? (
-                            <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">Connected</div>
-                         ) : (
-                            <Button disabled={!user} onClick={connectStrava} variant="outline" className="h-8 px-4 border-[#FC4C02]/30 text-[#FC4C02] hover:bg-[#FC4C02]/10 hover:text-[#FC4C02] font-bold text-[10px] uppercase tracking-widest rounded-lg transition-all">
-                               Connect
-                            </Button>
-                         )}
-                      </div>
-                      {!user && <p className="text-[9px] text-slate-500 mt-3">* Sign in first to connect integrations.</p>}
-                   </div>
-
-                   {/* Notifications */}
-                   <div className="bg-gradient-to-br from-purple-950/30 to-purple-900/10 border border-purple-500/20 rounded-2xl p-5 shadow-[0_4px_20px_rgba(168,85,247,0.05)]">
-                      <h3 className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                         <Bell className="w-4 h-4 hidden sm:block" /> Push Notifications
-                      </h3>
-                      <div className="flex items-center justify-between">
-                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
-                               <Bell className="w-5 h-5 text-purple-400" />
-                            </div>
-                            <div>
-                               <div className="text-sm font-bold text-white tracking-tight">Reminders</div>
-                               <div className="text-[10px] text-slate-500 font-medium">Hydration, Workouts, Meals</div>
-                            </div>
-                         </div>
-                         {notificationsEnabled ? (
-                            <div className="flex items-center gap-2">
-                               <Button onClick={() => {
-                                 if (Notification.permission === 'granted') {
-                                    new Notification("Hydration Reminder", {
-                                      body: "It's been 2 hours, don't forget to drink water!",
-                                      icon: "/assets/app_icon.png"
-                                    });
-                                 }
-                               }} variant="outline" className="h-8 px-4 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300 font-bold text-[10px] uppercase tracking-widest rounded-lg transition-all">
-                                  Test
-                               </Button>
-                               <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">Enabled</div>
-                            </div>
-                         ) : (
-                            <Button onClick={enableNotifications} variant="outline" className="h-8 px-4 border-purple-500/30 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 font-bold text-[10px] uppercase tracking-widest rounded-lg transition-all">
-                               Enable
-                            </Button>
-                         )}
-                      </div>
-                   </div>
-                 </div>
               </CardContent>
-           </Card>
-
-           {/* Personal Records & Training History */}
-           <Card className="bg-gradient-to-br from-[#161618] to-[#0a0a0c] border border-white/5 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.4)] overflow-hidden relative group">
-             <CardHeader className="border-b border-white/5 pb-4 flex flex-row items-center justify-between">
-                <CardTitle className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                   <Target className="w-4 h-4 text-cyan-400" />
-                   Personal Records & History
-                </CardTitle>
-                <Button 
-                  onClick={() => {
-                    localStorage.setItem("exercise_weights", JSON.stringify(exerciseWeights));
-                    toast.success("Saved PRs");
-                  }} 
-                  size="sm" 
-                  className="bg-cyan-500 hover:bg-cyan-400 text-black font-black text-[10px] h-8 px-4 rounded-lg uppercase tracking-widest"
-                >
-                  {t('save_all')}
-                </Button>
-             </CardHeader>
-             <CardContent className="p-6">
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-3 flex items-center gap-2">Exercise PRs (kg)</h3>
-                    {Object.keys(exerciseWeights).length === 0 ? (
-                      <p className="text-[10px] text-slate-500">No PRs recorded yet. Complete a workout to log PRs.</p>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {Object.entries(exerciseWeights).map(([ex, weight]) => (
-                          <div key={ex} className="flex items-center justify-between bg-white/5 border border-white/5 px-3 py-2 rounded-xl group/pr">
-                            <span className="text-[10px] font-bold text-white capitalize truncate pr-2">{ex}</span>
-                            <div className="flex items-center gap-2 shrink-0">
-                               <Input 
-                                 type="number"
-                                 min="0"
-                                 step="0.5" 
-                                 value={weight} 
-                                 onChange={(e) => {
-                                   let val = parseFloat(e.target.value) || 0;
-                                   if (val < 0) val = 0;
-                                   setExerciseWeights(prev => ({ ...prev, [ex]: val }));
-                                 }}
-                                 className="w-16 h-6 bg-black/50 border-none text-center text-[10px] font-black focus-visible:ring-1 focus-visible:ring-cyan-500 text-white px-1"
-                               />
-                               <button 
-                                 onClick={() => {
-                                   setExerciseWeights(prev => {
-                                     const n = { ...prev };
-                                     delete n[ex];
-                                     return n;
-                                   });
-                                 }}
-                                 className="text-red-500 hover:text-red-400 opacity-50 group-hover/pr:opacity-100 transition-all p-1"
-                               >
-                                 <Trash2 className="w-3 h-3" />
-                               </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-3 flex items-center gap-2">Training History</h3>
-                     {trainingHistory.length === 0 ? (
-                      <p className="text-[10px] text-slate-500">No workout history found. Start training to see it here.</p>
-                    ) : (
-                      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                        {[...trainingHistory].reverse().map((h, i) => (
-                          <div key={i} className="bg-white/5 border border-white/5 p-3 rounded-xl">
-                            <div className="flex justify-between items-center border-b border-white/5 pb-2 mb-2">
-                               <div className="text-[10px] font-bold text-slate-400">{new Date(h.date).toLocaleDateString()}</div>
-                               <div className="flex items-center gap-2">
-                                 <span className="text-[9px] font-black uppercase text-purple-400 tracking-widest bg-purple-400/10 px-2 py-0.5 rounded">{h.focus}</span>
-                                 <span className="text-[9px] font-black uppercase text-cyan-400 tracking-widest bg-cyan-400/10 px-2 py-0.5 rounded">{h.volume} kg</span>
-                               </div>
-                            </div>
-                            <div className="space-y-1">
-                              {h.details && h.details.map((d: any, idx: number) => (
-                                <div key={idx} className="flex justify-between items-center text-[9px]">
-                                   <span className="text-slate-300 capitalize">{d.name}</span>
-                                   <span className="text-slate-500 font-medium">({d.sets?.length || 0} Sets)</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-             </CardContent>
            </Card>
 
         </div>

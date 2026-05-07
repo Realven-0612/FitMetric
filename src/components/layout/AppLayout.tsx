@@ -19,7 +19,6 @@ import { useTranslation } from "../../lib/i18n";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [imgError, setImgError] = useState(false);
   const { language, setLanguage, t } = useTranslation();
 
   const navItems = [
@@ -48,19 +47,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <div className="flex flex-col items-center justify-center mr-1 relative group cursor-pointer">
-                <div className="absolute -inset-1 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300"></div>
-                <div className="w-12 h-12 rounded-2xl bg-[#0a0a0a] shadow-[0_0_20px_rgba(34,211,238,0.3)] group-hover:shadow-[0_0_25px_rgba(34,211,238,0.5)] transition-all duration-300 transform group-hover:scale-105 flex items-center justify-center relative overflow-hidden">
-                   {!imgError && (
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 p-[2px] shadow-[0_0_20px_rgba(34,211,238,0.3)] group-hover:shadow-[0_0_25px_rgba(34,211,238,0.5)] transition-all duration-300 transform group-hover:scale-105">
+                  <div className="w-full h-full bg-[#111111] rounded-[14px] flex items-center justify-center overflow-hidden relative">
+                     <Activity className="h-6 w-6 text-cyan-400 absolute z-0 group-hover:scale-110 transition-transform duration-300" />
                      <img 
                         src="/assets/app_icon.png" 
                         alt="Logo" 
-                        className="w-full h-full object-contain z-10 relative" 
-                        onError={() => setImgError(true)} 
+                        className="w-full h-full object-cover z-10 relative" 
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }} 
                      />
-                   )}
-                   {imgError && (
-                     <Activity className="h-6 w-6 text-cyan-400 relative z-10 group-hover:scale-110 transition-transform duration-300" />
-                   )}
+                  </div>
                 </div>
               </div>
               <div className="border-l border-white/10 pl-4">

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sparkles, Utensils, Loader2, Info, CheckCircle2, ChevronRight, X } from "lucide-react";
 import Markdown from "react-markdown";
+import { generateAIContent } from "../lib/ai";
 
 interface RecipeGeneratorProps {
   remainingMacros: { kcal: number; protein: number; carbs: number; fat: number };
@@ -33,21 +34,11 @@ export function RecipeGenerator({ remainingMacros, onClose }: RecipeGeneratorPro
         - Macro Breakdown of this specific meal
       `;
 
-      const response = await fetch('/api/ai/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: "gemini-2.0-flash",
-          contents: [{ role: 'user', parts: [{ text: prompt }] }]
-        })
-      });
-
-      if (!response.ok) throw new Error('AI request failed');
-      const resultData = await response.json();
-
-      setRecipe(resultData.text);
+      const response = await generateAIContent(prompt);
+      setRecipe(response.text || (typeof response === "string" ? response : JSON.stringify(response)));
     } catch (err) {
       console.error(err);
+      setRecipe("Failed to generate recipe. Please try again.");
     } finally {
       setLoading(false);
     }

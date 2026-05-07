@@ -78,52 +78,28 @@ service cloud.firestore {
         allow update: if isSignedIn() && isValidId(userId) && isValidId(recordId) && request.auth.uid == userId && isValidWeightRecord(incoming()) && incoming().userId == existing().userId;
         allow delete: if isSignedIn() && request.auth.uid == userId;
       }
-      match /foodDiary/{dateId} {
-        function isValidFoodDiaryEntry(data) {
-          return data.keys().hasAll(['userId', 'date']) &&
-                 data.userId == request.auth.uid &&
-                 data.date is string && data.date.size() <= 50 &&
-                 (!('items' in data) || data.items is list) &&
-                 (!('updatedAt' in data) || data.updatedAt == request.time);
-        }
 
+      match /plans/{planId} {
+        function isValidPlan(data) {
+          return (!('progressionGuide' in data) || data.progressionGuide is string) &&
+                 (!('days' in data) || data.days is list) &&
+                 (!('completedSessions' in data) || data.completedSessions is number) &&
+                 (!('currentCycle' in data) || data.currentCycle is number);
+        }
         allow read: if isSignedIn() && request.auth.uid == userId;
-        allow list: if isSignedIn() && request.auth.uid == userId;
-        allow create: if isSignedIn() && isValidId(userId) && isValidId(dateId) && request.auth.uid == userId && isValidFoodDiaryEntry(incoming());
-        allow update: if isSignedIn() && isValidId(userId) && isValidId(dateId) && request.auth.uid == userId && isValidFoodDiaryEntry(incoming()) && incoming().userId == existing().userId;
-        allow delete: if isSignedIn() && request.auth.uid == userId;
+        allow create, update: if isSignedIn() && request.auth.uid == userId && isValidPlan(incoming());
       }
 
-      match /dailyStats/{dateId} {
-        function isValidDailyStats(data) {
-          return data.keys().hasAll(['userId', 'date']) &&
-                 data.userId == request.auth.uid &&
-                 data.date is string && data.date.size() <= 50 &&
-                 (!('waterIntake' in data) || data.waterIntake is number) &&
-                 (!('consumedCalories' in data) || data.consumedCalories is number) &&
-                 (!('updatedAt' in data) || data.updatedAt == request.time);
+      match /nutrition/{entryId} {
+        function isValidNutritionEntry(data) {
+          return data.keys().hasAll(['name', 'kcal', 'protein', 'carbs', 'fat', 'timestamp']) &&
+                 data.name is string && data.name.size() <= 200 &&
+                 data.kcal is number && data.protein is number &&
+                 data.carbs is number && data.fat is number &&
+                 data.timestamp is string && data.timestamp.size() <= 100;
         }
-
-        allow read: if isSignedIn() && request.auth.uid == userId;
-        allow list: if isSignedIn() && request.auth.uid == userId;
-        allow create: if isSignedIn() && isValidId(userId) && isValidId(dateId) && request.auth.uid == userId && isValidDailyStats(incoming());
-        allow update: if isSignedIn() && isValidId(userId) && isValidId(dateId) && request.auth.uid == userId && isValidDailyStats(incoming()) && incoming().userId == existing().userId;
-        allow delete: if isSignedIn() && request.auth.uid == userId;
-      }
-
-      match /stravaAuth/{tokenId} {
-        function isValidStravaAuth(data) {
-          return data.keys().hasAll(['userId']) &&
-                 data.userId == request.auth.uid &&
-                 (!('accessToken' in data) || data.accessToken is string) &&
-                 (!('refreshToken' in data) || data.refreshToken is string) &&
-                 (!('expiresAt' in data) || data.expiresAt is number);
-        }
-
-        allow read: if isSignedIn() && request.auth.uid == userId;
-        allow list: if isSignedIn() && request.auth.uid == userId;
-        allow create: if isSignedIn() && isValidId(userId) && isValidId(tokenId) && request.auth.uid == userId && isValidStravaAuth(incoming());
-        allow update: if isSignedIn() && isValidId(userId) && isValidId(tokenId) && request.auth.uid == userId && isValidStravaAuth(incoming()) && incoming().userId == existing().userId;
+        allow read, list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && request.auth.uid == userId && isValidNutritionEntry(incoming());
         allow delete: if isSignedIn() && request.auth.uid == userId;
       }
     }

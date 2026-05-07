@@ -13,39 +13,30 @@ import {
   ChevronRight,
   Dumbbell,
   Apple,
-  Activity,
-  ImageIcon,
-  ImagePlus
+  Activity
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router';
+import { GoogleGenAI, Type } from '@google/genai';
 import { toast } from 'sonner';
-import { useFitness } from './FitnessProvider';
-import { useAuth } from './AuthProvider';
-import { collection, addDoc } from 'firebase/firestore';
-import { db } from '@/src/lib/firebase';
+import { useStore } from '../lib/store';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: number;
-  image?: string;
 }
 
 export default function AIChatbot() {
   const navigate = useNavigate();
-  const { updateProfile, addFoodEntry } = useFitness();
-  const { user } = useAuth();
+  const { profile, setProfile, addNutritionEntry } = useStore();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const lastUploadedImage = useRef<string | null>(null);
 
   // Initialize Welcome Message
   useEffect(() => {
@@ -55,7 +46,7 @@ export default function AIChatbot() {
         {
           id: 'welcome',
           role: 'assistant',
-          content: 'Xin chào! Tôi là FitMetric AI, trợ lý sức khỏe của bạn. Dưới đây là các tính năng chính bạn có thể sử dụng:\n📊 Dashboard: Theo dõi Calo & TDEE.\n📸 Scanner: Quét hình thể.\n🏋️‍♂️ Training: Tạo giáo án tự động.\n🔗 Profile: Kết nối Strava.',
+          content: 'Xin chào! Tôi là FitMetric AI. Tôi có thể giúp bạn theo dõi dinh dưỡng, cập nhật chỉ số cơ thể hoặc thiết kế bài tập cá nhân hóa. Bạn muốn bắt đầu từ đâu?',
           timestamp: Date.now(),
         }
       ]);
@@ -81,53 +72,22 @@ export default function AIChatbot() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Kích thước ảnh quá lớn. Vui lòng chọn ảnh dưới 5MB.');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSelectedImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const removeSelectedImage = () => {
-    setSelectedImage(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
   const handleSend = async () => {
-    if ((!input.trim() && !selectedImage) || isTyping) return;
+    if (!input.trim() || isTyping) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input || 'Tôi đã gửi một hình ảnh.',
+      content: input,
       timestamp: Date.now(),
-      image: selectedImage || undefined
     };
 
     setMessages(prev => [...prev, userMessage]);
-    
-    const textToSend = input;
-    const imageToSend = selectedImage;
-    if (selectedImage) {
-      lastUploadedImage.current = selectedImage;
-    }
-
     setInput('');
-    removeSelectedImage();
     setIsTyping(true);
 
     try {
-      await processWithAI(textToSend, imageToSend);
+      await processWithAI(input);
     } catch (error) {
       console.error('AI Chat Error:', error);
       setMessages(prev => [...prev, {
@@ -141,13 +101,12 @@ export default function AIChatbot() {
     }
   };
 
-  const processWithAI = async (userInput: string, imageInput: string | null = null) => {
-    const Type = {
-      STRING: 'STRING',
-      NUMBER: 'NUMBER',
-      ARRAY: 'ARRAY',
-      OBJECT: 'OBJECT'
-    };
+  const processWithAI = async (userInput: string) => {
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY not configured');
+    }
+
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     
     // Define Tools
     const tools = [
@@ -192,113 +151,93 @@ export default function AIChatbot() {
                 focus: { type: Type.STRING, description: 'Specific area to focus on, e.g., "chest", "legs", "full body"' }
               }
             }
-          },
-          {
-            name: 'save_body_scan',
-            description: 'Lưu báo cáo scan cơ thể (Body Scan) vào kho lưu trữ.',
-            parameters: {
-              type: Type.OBJECT,
-              properties: {
-                bodyFatEstimate: { type: Type.NUMBER, description: 'Percentage of body fat estimated' },
-                physiqueType: { type: Type.STRING, description: 'Short description of body type' },
-                muscleMass: { type: Type.STRING, description: 'Low / Average / High' },
-                strengths: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'List of strong points' },
-                weaknesses: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'List of areas to improve' },
-                recommendation: { type: Type.STRING, description: 'Actionable advice' },
-                score: { type: Type.NUMBER, description: 'Score between 1 and 100' }
-              },
-              required: ['bodyFatEstimate', 'score', 'recommendation']
-            }
           }
         ]
       }
     ];
 
-    const systemInstruction = `
+    const chat = ai.chats.create({ 
+      model: 'gemini-1.5-flash',
+      config: {
+        systemInstruction: `
           Bạn là FitMetric AI, một trợ lý sức khỏe thông minh và thân thiện cho ứng dụng FitMetric.
           Nhiệm vụ của bạn:
           1. Hướng dẫn người dùng mới về cách sử dụng ứng dụng (Scanner để quét cơ thể, Training để xem bài tập, Nutrition để theo dõi ăn uống).
-          2. Hướng dẫn kết nối Strava: Nếu người dùng hỏi cách kết nối Strava, hãy hướng dẫn họ vào thẻ Profile, ấn "Connect to Strava". Sau đó kết nối đồng hồ bằng cách: iOS -> App Strava -> Settings -> Applications, Services -> Health -> bật Automatic Uploads. Android -> App Strava -> Link Other Services -> chọn Google Fit/Garmin/Samsung Health.
-          3. Phân tích hình ảnh:
-             - Nếu người dùng tải ảnh Bữa ăn/Thức ăn: phân tích tên món, ước lượng Calo, Protein, Carbs, Fat. Sau đó TỰ ĐỘNG gọi tool 'add_food_entry' để lưu vào nhật ký.
-             - Nếu người dùng tải ảnh Body/Hình thể: phân tích tỷ lệ mỡ (body fat), các điểm mạnh, yếu, fitness score (1-100) và TỰ ĐỘNG gọi tool 'save_body_scan' để lưu báo cáo.
-             - Nếu người dùng tải ảnh chụp màn hình (screenshot) ứng dụng: hãy xem lỗi gì hoặc hiểu lầm gì để giải thích và hỗ trợ họ.
-          4. Tương tác và trả lời các câu hỏi về sức khỏe, tập luyện.
-          5. Thực hiện các hành động hệ thống thông qua Function Calling:
+          2. Tương tác và trả lời các câu hỏi về sức khỏe, tập luyện.
+          3. Thực hiện các hành động hệ thống thông qua Function Calling:
              - Cập nhật chỉ số cơ thể (cân nặng, chiều cao, tuổi, mỡ, mục tiêu).
              - Thêm mục vào nhật ký thực phẩm (tên món, kcal, protein, carb, fat).
              - Yêu cầu tạo bài tập mới.
-             - Lưu kết quả Body Scan.
           
           Luôn trả lời bằng tiếng Việt, súc tích, chuyên nghiệp và có động lực.
           Nếu người dùng cung cấp thông tin như "Tôi nặng 75kg", hãy gọi hàm update_profile.
+          Nếu người dùng nói "Sáng nay tôi ăn 1 quả trứng", hãy gọi hàm add_food_entry.
           Nếu người dùng nói "Lập cho tôi bài tập ngực", hãy gọi hàm request_workout_generation.
-        `;
+        `,
+        tools: tools,
+      }
+    });
 
-    const callAI = async (contents: any[]) => {
-      const response = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'gemini-2.0-flash',
-          contents,
-          config: {
-            systemInstruction,
-            tools
-          }
-        })
-      });
-      if (!response.ok) throw new Error('AI request failed');
-      return await response.json();
-    };
-
-    let userParts: any[] = [];
-    if (userInput) {
-      userParts.push({ text: userInput });
-    } else {
-      userParts.push({ text: 'Đây là hình ảnh tôi vừa tải lên.' });
-    }
-    
-    if (imageInput) {
-      const base64Data = imageInput.split(",")[1];
-      const mimeType = imageInput.split(";")[0].split(":")[1];
-      userParts.push({
-        inlineData: { data: base64Data, mimeType }
-      });
-    }
-
-    let currentContents = [{ role: 'user', parts: userParts }];
-    const result = await callAI(currentContents);
+    const result = await chat.sendMessage({ message: userInput });
     const calls = result.functionCalls;
 
     if (calls && calls.length > 0) {
       for (const call of calls) {
         if (call.name === 'update_profile') {
           handleUpdateProfile(call.args);
+          const followUp = await chat.sendMessage({
+            message: [
+              {
+                functionResponse: {
+                  name: 'update_profile',
+                  response: { success: true }
+                }
+              }
+            ]
+          });
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: followUp.text || '',
+            timestamp: Date.now(),
+          }]);
         } else if (call.name === 'add_food_entry') {
           handleAddFood(call.args);
+          const followUp = await chat.sendMessage({
+            message: [
+              {
+                functionResponse: {
+                  name: 'add_food_entry',
+                  response: { success: true }
+                }
+              }
+            ]
+          });
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: followUp.text || '',
+            timestamp: Date.now(),
+          }]);
         } else if (call.name === 'request_workout_generation') {
           handleRequestWorkout(call.args);
-        } else if (call.name === 'save_body_scan') {
-          handleSaveBodyScan(call.args);
+          const followUp = await chat.sendMessage({
+            message: [
+              {
+                functionResponse: {
+                  name: 'request_workout_generation',
+                  response: { success: true }
+                }
+              }
+            ]
+          });
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: followUp.text || '',
+            timestamp: Date.now(),
+          }]);
         }
-
-        currentContents.push({
-          role: 'model',
-          parts: [{ functionCall: call } as any]
-        });
-        currentContents.push({
-          role: 'user',
-          parts: [{ functionResponse: { name: call.name, response: { success: true } } } as any]
-        });
-        
-        const followUp = await callAI(currentContents);
-        setMessages(prev => [...prev, {
-          id: Date.now().toString() + Math.random(),
-          role: 'assistant',
-          content: followUp.text || '',
-          timestamp: Date.now(),
-        }]);
       }
     } else {
       setMessages(prev => [...prev, {
@@ -311,17 +250,19 @@ export default function AIChatbot() {
   };
 
   const handleUpdateProfile = (args: any) => {
-    updateProfile(args);
+    const updatedProfile = { ...profile, ...args };
+    setProfile(updatedProfile);
     toast.success('Chỉ số cơ thể đã được cập nhật!');
   };
 
   const handleAddFood = (args: any) => {
-    addFoodEntry({
+    addNutritionEntry({
       name: args.name,
       kcal: args.kcal || 0,
       protein: args.protein || 0,
       carbs: args.carbs || 0,
-      fat: args.fat || 0
+      fat: args.fat || 0,
+      timestamp: new Date().toISOString()
     });
     toast.success(`Đã thêm ${args.name} vào nhật ký!`);
   };
@@ -329,40 +270,15 @@ export default function AIChatbot() {
   const handleRequestWorkout = (args: any) => {
     localStorage.setItem('workout_request_intent', args.focus || 'updated');
     navigate('/training');
+    // small delay to ensure page is mounted
     setTimeout(() => {
       window.dispatchEvent(new Event('request_workout_generation'));
     }, 100);
     toast.info('Đang chuyển hướng đến trang bài tập...');
   };
 
-  const handleSaveBodyScan = async (args: any) => {
-    try {
-      const history = JSON.parse(localStorage.getItem('scan_history') || '[]');
-      const dateStr = new Date().toISOString();
-      const newEntry = { 
-        date: dateStr, 
-        image: lastUploadedImage.current, 
-        ...args 
-      };
-      // Local storage save
-      history.unshift(newEntry);
-      localStorage.setItem('scan_history', JSON.stringify(history));
-
-      // Firebase save
-      if (user) {
-        const scansRef = collection(db, "users", user.uid, "scans");
-        await addDoc(scansRef, newEntry);
-      }
-
-      toast.success('Đã lưu kết quả phân tích hình thể vào kho lưu trữ Scanner!');
-      window.dispatchEvent(new Event('scan_history_updated'));
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const quickActions = [
-    { label: 'Cách kết nối Strava?', icon: Activity },
+    { label: 'Cập nhật cân nặng', icon: Activity },
     { label: 'Thêm bữa ăn', icon: Apple },
     { label: 'Tạo bài tập mới', icon: Dumbbell },
   ];
@@ -454,20 +370,13 @@ export default function AIChatbot() {
                       {m.role === 'assistant' ? <Sparkles className="w-4 h-4" /> : <User className="w-4 h-4" />}
                     </div>
                     <div className={`space-y-1 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
-                      {m.image && (
-                         <div className="mb-2 max-w-[200px] rounded-2xl overflow-hidden border border-white/10">
-                            <img src={m.image} alt="User upload" className="w-full h-auto" />
-                         </div>
-                      )}
-                      {m.content && (
-                        <div className={`p-4 rounded-2xl whitespace-pre-wrap text-xs font-medium leading-relaxed break-words overflow-hidden ${
-                          m.role === 'assistant'
-                            ? 'bg-[#1a1a1a] text-slate-200 border border-white/5'
-                            : 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/10'
-                        }`}>
-                          {m.content}
-                        </div>
-                      )}
+                      <div className={`p-4 rounded-2xl text-xs font-medium leading-relaxed break-words overflow-hidden ${
+                        m.role === 'assistant'
+                          ? 'bg-[#1a1a1a] text-slate-200 border border-white/5'
+                          : 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/10'
+                      }`}>
+                        {m.content}
+                      </div>
                       <span className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.1em] px-1">
                         {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
@@ -515,53 +424,21 @@ export default function AIChatbot() {
 
             {/* Input Area */}
             <div className="p-6 border-t border-white/5 bg-[#161616]">
-              {selectedImage && (
-                <div className="mb-4 relative w-24 h-24 rounded-xl overflow-hidden border border-white/10 group">
-                  <img src={selectedImage} alt="Selected" className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <button onClick={removeSelectedImage} className="text-white hover:text-red-400 p-1 bg-black/50 rounded-full transition-colors">
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              )}
-              <div className="relative flex gap-2 group">
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  ref={fileInputRef} 
-                  onChange={handleFileUpload} 
-                  className="hidden" 
+              <div className="relative group">
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                  placeholder="Type a message..."
+                  className="w-full bg-black/40 border-white/10 focus-visible:border-cyan-500/50 focus-visible:ring-cyan-500/30 rounded-2xl h-14 pl-5 pr-14 text-sm text-white placeholder:text-slate-500 transition-all font-medium"
                 />
                 <Button 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="h-14 w-14 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center justify-center p-0 flex-shrink-0 border border-white/5 transition-all focus-visible:border-cyan-500/50"
-                  variant="ghost"
-                  title="Tải ảnh lên"
+                  onClick={handleSend}
+                  disabled={!input.trim() || isTyping}
+                  className="absolute right-2 top-2 h-10 w-10 bg-cyan-500 hover:bg-cyan-400 rounded-xl flex items-center justify-center p-0 shadow-[0_0_15px_rgba(34,211,238,0.3)] disabled:opacity-50 disabled:grayscale transition-all"
                 >
-                  <ImagePlus className="w-5 h-5 text-slate-300" />
+                  <Send className="w-4 h-4 text-black" />
                 </Button>
-                <div className="relative flex-1">
-                  <Input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSend();
-                      }
-                    }}
-                    placeholder="Type a message..."
-                    className="w-full bg-black/40 border-white/10 focus-visible:border-cyan-500/50 focus-visible:ring-cyan-500/30 rounded-2xl h-14 pl-5 pr-14 text-sm text-white placeholder:text-slate-500 transition-all font-medium"
-                  />
-                  <Button 
-                    onClick={handleSend}
-                    disabled={(!input.trim() && !selectedImage) || isTyping}
-                    className="absolute right-2 top-2 h-10 w-10 bg-cyan-500 hover:bg-cyan-400 rounded-xl flex items-center justify-center p-0 shadow-[0_0_15px_rgba(34,211,238,0.3)] disabled:opacity-50 disabled:grayscale transition-all"
-                  >
-                    <Send className="w-4 h-4 text-black" />
-                  </Button>
-                </div>
               </div>
               <p className="text-[10px] text-center text-slate-600 font-bold uppercase tracking-widest mt-4 flex items-center justify-center gap-2">
                 <Sparkles className="w-3 h-3 text-purple-400" /> Powered by Gemini Ultra Intelligence

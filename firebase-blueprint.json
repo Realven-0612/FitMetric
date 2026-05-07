@@ -47,42 +47,30 @@
       },
       "required": ["userId", "date", "value"]
     },
-    "FoodDiaryEntry": {
-      "title": "Food Diary Entry",
-      "description": "Daily food entries",
+    "WorkoutPlan": {
+      "title": "Workout Plan",
+      "description": "User's current AI generated workout plan",
       "type": "object",
       "properties": {
-        "userId": { "type": "string" },
-        "date": { "type": "string" },
-        "items": { "type": "array" },
+        "progressionGuide": { "type": "string" },
+        "days": { "type": "array" },
+        "completedSessions": { "type": "number" },
+        "currentCycle": { "type": "number" },
         "updatedAt": { "type": "string", "format": "timestamp" }
-      },
-      "required": ["userId", "date"]
+      }
     },
-    "DailyStats": {
-      "title": "Daily Stats",
-      "description": "Daily water and calories stats",
+    "NutritionEntry": {
+      "title": "Nutrition Entry",
+      "description": "Single food item logged",
       "type": "object",
       "properties": {
-        "userId": { "type": "string" },
-        "date": { "type": "string" },
-        "waterIntake": { "type": "number" },
-        "consumedCalories": { "type": "number" },
-        "updatedAt": { "type": "string", "format": "timestamp" }
-      },
-      "required": ["userId", "date"]
-    },
-    "StravaAuth": {
-      "title": "Strava Auth Token",
-      "description": "User Strava tokens",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "accessToken": { "type": "string" },
-        "refreshToken": { "type": "string" },
-        "expiresAt": { "type": "number" }
-      },
-      "required": ["userId"]
+        "name": { "type": "string" },
+        "kcal": { "type": "number" },
+        "protein": { "type": "number" },
+        "carbs": { "type": "number" },
+        "fat": { "type": "number" },
+        "timestamp": { "type": "string", "format": "timestamp" }
+      }
     }
   },
   "firestore": {
@@ -98,17 +86,13 @@
       "schema": "WeightRecord",
       "description": "Weight history matching dates"
     },
-    "users/{userId}/foodDiary/{dateId}": {
-      "schema": "FoodDiaryEntry",
-      "description": "Daily food entries"
+    "users/{userId}/plans/current": {
+      "schema": "WorkoutPlan",
+      "description": "Current workout plan"
     },
-    "users/{userId}/dailyStats/{dateId}": {
-      "schema": "DailyStats",
-      "description": "Daily stats like water and calories"
-    },
-    "users/{userId}/stravaAuth/{tokenId}": {
-      "schema": "StravaAuth",
-      "description": "Strava API tokens"
+    "users/{userId}/nutrition/{entryId}": {
+      "schema": "NutritionEntry",
+      "description": "Daily nutrition logs"
     }
   }
 }

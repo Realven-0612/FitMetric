@@ -30,10 +30,10 @@ import {
   ExternalLink,
   ArrowRight,
   Activity,
-  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "../lib/i18n";
+import { heartRateService } from "../services/heartRateService";
 import {
   Select,
   SelectContent,
@@ -41,6 +41,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useStore } from "../lib/store";
+import { generateAIContent } from "../lib/ai";
 
 export interface LoggedSet {
   weight: number;
@@ -202,28 +204,65 @@ const VIDEO_LIBRARY: Record<string, string> = {
 
 export default function Training() {
   const { t } = useTranslation();
+  const { 
+    profile, 
+    workoutPlan: plan, 
+    setWorkoutPlan: setPlan,
+    exerciseWeights, 
+    updateExerciseWeight,
+    sessionLogs,
+    logSet: storeLogSet,
+    clearSessionLogs
+  } = useStore();
+
   const [selectedDay, setSelectedDay] = useState(() =>
     new Date().getDay() === 0 ? 6 : new Date().getDay() - 1,
   );
   const [isGenerating, setIsGenerating] = useState(false);
   const [open, setOpen] = useState(false);
-  const [plan, setPlan] = useState<WorkoutPlan | null>(null);
-  const [profile, setProfile] = useState<any>(null);
 
   // Customization state
   const [focus, setFocus] = useState("");
   const [frequency, setFrequency] = useState("4");
   const [equipment, setEquipment] = useState("gym");
   const [goal, setGoal] = useState("hypertrophy");
-  const [exerciseWeights, setExerciseWeights] = useState<
-    Record<string, number>
-  >({});
-  const [sessionLogs, setSessionLogs] = useState<TrainingLogs>({});
+  
   const [timerActive, setTimerActive] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [timerTotal, setTimerTotal] = useState(0);
   const [activeVideoIndex, setActiveVideoIndex] = useState<number | null>(null);
+  const [heartRate, setHeartRate] = useState<number | null>(null);
+  const [hrConnected, setHrConnected] = useState(false);
   const hasTriggeredAutoGenerate = useRef(false);
+
+  const toggleHeartRate = async () => {
+    if (hrConnected) {
+      heartRateService.disconnect();
+      setHrConnected(false);
+      setHeartRate(null);
+      toast.info(t('hr_disconnected'));
+    } else {
+      try {
+        await heartRateService.connect((update) => {
+          setHeartRate(update.heartRate);
+        });
+        setHrConnected(true);
+        toast.success(t('hr_connected'));
+      } catch (err) {
+        toast.error(t('hr_connect_failed'));
+      }
+    }
+  };
+
+  const applyAllRecommendedWeights = () => {
+    if (!currentDayData?.exercises) return;
+    currentDayData.exercises.forEach(ex => {
+      if (ex.rec) {
+        updateExerciseWeight(ex.id, ex.rec);
+      }
+    });
+    toast.success(t('apply_all'));
+  };
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -261,45 +300,22 @@ export default function Training() {
     return () => {
       window.removeEventListener('request_workout_generation', handleRemoteRequest);
     };
-  }, [profile, goal, equipment, frequency]); // Dependencies that handleGenerate uses
+  }, [profile, goal, equipment, frequency]);
 
   useEffect(() => {
-    const weightsStr = localStorage.getItem("exercise_weights");
-    if (weightsStr) {
-      try {
-        setExerciseWeights(JSON.parse(weightsStr));
-      } catch (e) {}
+    if (profile?.primaryGoal) {
+      if (profile.primaryGoal.includes("Fat")) setGoal("fatloss");
+      else if (profile.primaryGoal.includes("Muscle")) setGoal("hypertrophy");
+      else if (profile.primaryGoal.includes("Strength")) setGoal("strength");
     }
-
-    const pStr = localStorage.getItem("user_profile");
-    if (pStr) {
-      const p = JSON.parse(pStr);
-      setProfile(p);
-      if (p.primaryGoal) {
-        if (p.primaryGoal.includes("Fat")) setGoal("fatloss");
-        else if (p.primaryGoal.includes("Muscle")) setGoal("hypertrophy");
-        else if (p.primaryGoal.includes("Strength")) setGoal("strength");
-      }
-    }
-
-    const wStr = localStorage.getItem("workout_plan");
-    if (wStr) {
-      try {
-        const w = JSON.parse(wStr);
-        if (w && w.days && w.days.length === 7) {
-          setPlan(w);
-        }
-      } catch (e) {}
-    }
-  }, []);
+  }, [profile]);
 
   useEffect(() => {
     if (
       profile &&
       !plan &&
       !isGenerating &&
-      !hasTriggeredAutoGenerate.current &&
-      !localStorage.getItem("workout_plan")
+      !hasTriggeredAutoGenerate.current
     ) {
       hasTriggeredAutoGenerate.current = true;
       handleGenerate(false);
@@ -307,31 +323,18 @@ export default function Training() {
   }, [profile, plan, isGenerating]);
 
   const handleWeightChange = (exName: string, delta: number) => {
-    setExerciseWeights((prev) => {
-      const current = prev[exName] || 0;
-      let newW = current + delta;
-
-      // Handle floating point weirdness
-      newW = Math.max(0, Math.round(newW * 10) / 10);
-
-      const updated = { ...prev, [exName]: newW };
-      localStorage.setItem("exercise_weights", JSON.stringify(updated));
-      return updated;
-    });
+    const current = exerciseWeights[exName] || 0;
+    let newW = current + delta;
+    newW = Math.max(0, Math.round(newW * 10) / 10);
+    updateExerciseWeight(exName, newW);
   };
 
   const applyRecommendedWeight = (ex: any) => {
     if (!ex.recommendedWeight) return;
-    
-    // Improved extraction: look for decimal or integer
     const match = ex.recommendedWeight.match(/(\d+(\.\d+)?)/);
     if (match) {
       const weight = parseFloat(match[1]);
-      setExerciseWeights((prev) => {
-        const updated = { ...prev, [ex.name]: weight };
-        localStorage.setItem("exercise_weights", JSON.stringify(updated));
-        return updated;
-      });
+      updateExerciseWeight(ex.name, weight);
       toast.success(`${t('suggested')} ${ex.name}: ${weight}kg`, {
         icon: <Sparkles className="w-4 h-4 text-cyan-400" />
       });
@@ -340,65 +343,16 @@ export default function Training() {
     }
   };
 
-  const applyAllRecommendedWeights = () => {
-    if (!plan) return;
-    const currentDay = plan.days[selectedDay];
-    if (!currentDay || !currentDay.exercises) return;
-
-    let updatedCount = 0;
-    setExerciseWeights((prev) => {
-      const updated = { ...prev };
-      currentDay.exercises.forEach((ex) => {
-        if (!ex.recommendedWeight) return;
-        const match = ex.recommendedWeight.match(/(\d+(\.\d+)?)/);
-        if (match) {
-          const weight = parseFloat(match[1]);
-          updated[ex.name] = weight;
-          updatedCount++;
-        }
-      });
-      if (updatedCount > 0) {
-        localStorage.setItem("exercise_weights", JSON.stringify(updated));
-      }
-      return updatedCount > 0 ? updated : prev;
-    });
-
-    if (updatedCount > 0) {
-      toast.success(`${t('apply_all')} (${updatedCount})`, {
-        icon: <Sparkles className="w-4 h-4 text-cyan-400" />
-      });
-    } else {
-      toast.info("No recommended weights to apply.", {
-        icon: <Sparkles className="w-4 h-4 text-cyan-400" />
-      });
-    }
-  };
-
   const logSet = (exName: string, weight: number, reps: number, restSeconds: number = 60) => {
-    setSessionLogs(prev => {
-      const logs = prev[exName] || [];
-      const newLogs = [...logs, { weight, reps, completed: true, timestamp: Date.now() }];
-      return { ...prev, [exName]: newLogs };
-    });
+    storeLogSet(exName, { weight, reps, completed: true, timestamp: Date.now() });
 
-    // Start rest timer
     setTimerSeconds(restSeconds);
     setTimerTotal(restSeconds);
     setTimerActive(true);
     
-    // Auto update PB if higher
     if (weight > (exerciseWeights[exName] || 0)) {
-      handleWeightChange(exName, weight - (exerciseWeights[exName] || 0));
+      updateExerciseWeight(exName, weight);
     }
-  };
-
-  const deleteSet = (exName: string, index: number) => {
-    setSessionLogs(prev => {
-      const logs = prev[exName] || [];
-      const newLogs = [...logs];
-      newLogs.splice(index, 1);
-      return { ...prev, [exName]: newLogs };
-    });
   };
 
   const calculateVolume = () => {
@@ -447,71 +401,56 @@ export default function Training() {
          IMPORTANT: If an exercise exists in "Current Personal Best Weights", recommend a weight that is 2.5% to 5% higher (Progressive Overload). 
          If it's a new exercise, estimate based on the user's weight (e.g. Bench Press often starts around 40-50% bodyweight for beginners, Squat 60-70%).`;
 
-      const response = await fetch('/api/ai/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: "gemini-2.0-flash",
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: "OBJECT",
+      const schema = {
+        type: "object",
+        properties: {
+          progressionGuide: { type: "string" },
+          days: {
+            type: "array",
+            items: {
+              type: "object",
               properties: {
-                progressionGuide: { type: "STRING" },
-                days: {
-                  type: "ARRAY",
+                dayName: { type: "string" },
+                focusName: { type: "string" },
+                description: { type: "string" },
+                warmup: {
+                  type: "array",
+                  items: { type: "string" },
+                },
+                cooldown: {
+                  type: "array",
+                  items: { type: "string" },
+                },
+                exercises: {
+                  type: "array",
                   items: {
-                    type: "OBJECT",
+                    type: "object",
                     properties: {
-                      dayName: { type: "STRING" },
-                      focusName: { type: "STRING" },
-                      description: { type: "STRING" },
-                      warmup: {
-                        type: "ARRAY",
-                        items: { type: "STRING" },
-                      },
-                      cooldown: {
-                        type: "ARRAY",
-                        items: { type: "STRING" },
-                      },
-                      exercises: {
-                        type: "ARRAY",
-                        items: {
-                          type: "OBJECT",
-                          properties: {
-                            name: { type: "STRING" },
-                            muscle: { type: "STRING" },
-                            sets: { type: "STRING" },
-                            load: { type: "STRING" },
-                            rest: { type: "STRING" },
-                            youtubeQuery: { type: "STRING" },
-                            recommendedWeight: { type: "STRING" },
-                          },
-                          required: ["name", "muscle", "sets"],
-                        },
-                      },
+                      name: { type: "string" },
+                      muscle: { type: "string" },
+                      sets: { type: "string" },
+                      load: { type: "string" },
+                      rest: { type: "string" },
+                      youtubeQuery: { type: "string" },
+                      recommendedWeight: { type: "string" },
                     },
-                    required: ["dayName", "focusName", "exercises"],
+                    required: ["name", "muscle", "sets"],
                   },
                 },
               },
-              required: ["progressionGuide", "days"],
+              required: ["dayName", "focusName", "exercises"],
             },
           },
-        })
-      });
+        },
+        required: ["progressionGuide", "days"],
+      };
 
-      if (!response.ok) throw new Error('AI request failed');
-      const resultData = await response.json();
+      const result = await generateAIContent(prompt, schema, "gemini-2.0-flash");
 
-      if (resultData.text) {
-        const result = JSON.parse(resultData.text);
-
-        // Ensure 7 days
+      if (result) {
         const validDays = [];
         for (let i = 0; i < 7; i++) {
-          const d = result.days[i] || { focusName: t('rest_day'), exercises: [] };
+          const d = result.days[i] || { focusName: "Ngày nghỉ", exercises: [] };
           validDays.push({ ...d, dayName: ["T2", "T3", "T4", "T5", "T6", "T7", "CN"][i] });
         }
 
@@ -527,19 +466,18 @@ export default function Training() {
         };
 
         setPlan(newPlan);
-        localStorage.setItem("workout_plan", JSON.stringify(newPlan));
         window.dispatchEvent(new Event("workout_plan_updated"));
 
         if (!isAutoRefresh) {
           setOpen(false);
-          toast.success(t('plan_regenerated_success'));
+          toast.success("Lịch tập tối ưu đã được tái lập thành công.");
         } else {
-          toast.success(t('new_level_ready'));
+          toast.success("Cấp độ mới đã sẵn sàng! Cường độ lịch tập đã được nâng cấp.");
         }
       }
     } catch (e) {
       console.error(e);
-      toast.error(t('cannot_generate_plan'));
+      toast.error("Không thể tạo lịch tập. Vui lòng kiểm tra kết nối.");
     } finally {
       setIsGenerating(false);
     }
@@ -549,7 +487,7 @@ export default function Training() {
     if (!plan) return;
     const currentDay = plan.days[selectedDay];
     if (!currentDay || currentDay.exercises.length === 0) {
-      toast.info(t('cannot_complete_rest_day'));
+      toast.info("Không thể hoàn thành ngày nghỉ.");
       return;
     }
 
@@ -558,44 +496,11 @@ export default function Training() {
       completedSessions: (plan.completedSessions || 0) + 1,
     };
     setPlan(newPlan);
-    localStorage.setItem("workout_plan", JSON.stringify(newPlan));
-    
-    const today = new Date().toISOString().split('T')[0];
-    localStorage.setItem('workout_completed_today', 'true');
-    localStorage.setItem('workout_completed_date', today);
-
-    // Save detailed history
-    const thStr = localStorage.getItem("training_history");
-    const th = thStr ? JSON.parse(thStr) : [];
-    
-    let totalVolume = 0;
-    const sessionDetails = currentDay.exercises.map(ex => {
-        const logs = sessionLogs[ex.name] || [];
-        const exVolume = logs.reduce((sum, log) => sum + (log.reps * log.weight), 0);
-        totalVolume += exVolume;
-        return {
-            name: ex.name,
-            sets: logs
-        };
-    });
-
-    th.push({
-        date: new Date().toISOString(),
-        focus: currentDay.focusName,
-        volume: totalVolume,
-        details: sessionDetails
-    });
-    localStorage.setItem("training_history", JSON.stringify(th));
-    window.dispatchEvent(new Event('training_history_updated'));
-
-    // Reset logs for next time
-    setSessionLogs({});
-
-    toast.success(t('session_completed_msg'));
+    toast.success("Đã hoàn thành buổi tập! Tiếp tục cố gắng nhé!");
 
     // Auto upgrade check (every 14 sessions)
     if (newPlan.completedSessions && newPlan.completedSessions % 14 === 0) {
-      toast(t('milestone_reached'));
+      toast("Đã đạt cột mốc mới! Đang tạo lịch tập ở cấp độ tiếp theo...");
       handleGenerate(true);
     }
   };
@@ -719,7 +624,7 @@ export default function Training() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success(t('calendar_exported'));
+    toast.success("Đã xuất file lịch tập!");
   };
 
   const defaultDays = Array.from({ length: 7 }).map(
@@ -751,7 +656,7 @@ export default function Training() {
           </div>
 
           {plan && (
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0">
+            <div className="flex items-center gap-2">
               <Dialog>
                 <DialogTrigger
                   render={
@@ -799,10 +704,7 @@ export default function Training() {
                             className="w-full h-12 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-xl flex items-center justify-between px-4 transition-all"
                           >
                             <div className="flex items-center gap-3">
-                            {(() => {
-                              const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
-                              return <span className="text-[10px] font-black text-emerald-500 w-10">{t(dayKeys[idx])}</span>;
-                            })()}
+                              <span className="text-[10px] font-black text-emerald-500 w-10">{day.dayName}</span>
                               <span className="text-xs font-bold text-slate-300">{day.focusName}</span>
                             </div>
                             <ExternalLink className="w-3 h-3 text-emerald-500" />
@@ -1052,7 +954,7 @@ export default function Training() {
           {/* Left main area */}
           <div className="flex flex-col gap-6">
             {/* Day selector */}
-            <div className="flex flex-wrap justify-center gap-x-1.5 gap-y-3 md:gap-2 pb-6 pt-8 max-w-[265px] md:max-w-none mx-auto">
+            <div className="flex gap-3 overflow-x-auto pb-4 pt-2 scrollbar-hide snap-x items-end">
               {plan.days.map((day, idx) => {
                 const isToday =
                   idx ===
@@ -1062,23 +964,24 @@ export default function Training() {
                 return (
                   <div
                     key={idx}
-                    className="snap-start shrink-0 relative"
+                    className="snap-start shrink-0 flex flex-col items-center gap-2"
                   >
-                    {isToday && (
-                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-cyan-500 text-black text-[9px] font-black uppercase tracking-widest px-2 py-1 flex flex-col items-center justify-center rounded-md z-10 text-center leading-3 shadow-[0_0_10px_rgba(34,211,238,0.5)] whitespace-nowrap">
-                         <span>{t('today_')}</span>
-                         <span>{t('today_operation')}</span>
+                    {isToday ? (
+                      <div className="bg-cyan-500 text-black text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full z-10 whitespace-nowrap shadow-[0_0_10px_rgba(34,211,238,0.5)]">
+                        {t('todays_operation')}
                       </div>
+                    ) : (
+                      <div className="h-[18px]"></div>
                     )}
                     <button
                       onClick={() => setSelectedDay(idx)}
-                      className={`w-[60px] h-[60px] md:w-[70px] md:h-[70px] rounded-2xl flex flex-col items-center justify-center gap-1 font-black transition-all border ${
+                      className={`w-[80px] h-[80px] rounded-2xl flex flex-col items-center justify-center gap-1 font-black transition-all border ${
                         isActive
                           ? "bg-cyan-500 text-black border-cyan-400 shadow-[0_0_30px_rgba(34,211,238,0.25)]"
                           : "bg-[#111111]/80 text-slate-400 border-white/5 hover:bg-white/10 hover:text-white hover:border-white/20"
                       }`}
                     >
-                      <span className="text-lg md:text-xl">{t(dayKeys[idx])}</span>
+                      <span className="text-xl">{t(dayKeys[idx])}</span>
                     </button>
                   </div>
                 );
@@ -1110,6 +1013,32 @@ export default function Training() {
 
                   {!isRestDay && (
                     <div className="flex flex-wrap gap-3">
+                      {hrConnected ? (
+                        <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 px-4 rounded-xl h-12">
+                          <Activity className="w-5 h-5 text-red-500 animate-pulse" />
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-black text-red-400 uppercase tracking-widest leading-none">{t('heart_rate')}</span>
+                            <span className="text-xl font-black text-white leading-none mt-1">{heartRate || '--'} <small className="text-[8px] opacity-50">BPM</small></span>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={toggleHeartRate}
+                            className="w-8 h-8 rounded-lg hover:bg-red-500/10 text-red-400/50 hover:text-red-400"
+                          >
+                            <Unlink className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          onClick={toggleHeartRate}
+                          variant="outline"
+                          className="border-red-500/30 bg-red-500/5 text-red-400 hover:bg-red-500 hover:text-white font-black uppercase tracking-widest text-[10px] h-12 px-5 rounded-xl transition-all"
+                        >
+                          <Activity className="w-4 h-4 mr-2" /> {t('connect_hr')}
+                        </Button>
+                      )}
+                      
                       <Button
                         onClick={applyAllRecommendedWeights}
                         variant="outline"
@@ -1215,7 +1144,7 @@ export default function Training() {
                                 </span>
                               </div>
                             )}
-                            {ex.recommendedWeight && !/bodyweight/i.test(ex.recommendedWeight) && (
+                            {ex.recommendedWeight && (
                               <button 
                                 onClick={() => applyRecommendedWeight(ex)}
                                 className="flex flex-col text-left group/suggest hover:bg-cyan-500/5 p-1 rounded-lg transition-colors cursor-pointer"
@@ -1231,7 +1160,7 @@ export default function Training() {
                             <div className="flex flex-col col-span-2 md:col-span-1 mt-2 md:mt-0">
                               <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5 flex items-center justify-between gap-2">
                                 {t('weight_kg_alt')}
-                                {ex.recommendedWeight && !/bodyweight/i.test(ex.recommendedWeight) && (
+                                {ex.recommendedWeight && (
                                   <button 
                                     onClick={() => applyRecommendedWeight(ex)}
                                     className="text-[9px] text-cyan-500/80 font-black animate-pulse hover:text-cyan-400 hover:scale-105 transition-all cursor-pointer"
@@ -1250,7 +1179,6 @@ export default function Training() {
                                   const isHeavy = ex.name.toLowerCase().includes('squat') || ex.name.toLowerCase().includes('deadlift') || ex.name.toLowerCase().includes('bench');
                                   logSet(ex.name, w, r, isHeavy ? 180 : 90);
                                 }}
-                                onDeleteSet={(idx) => deleteSet(ex.name, idx)}
                               />
                             </div>
                             <Button
@@ -1398,45 +1326,16 @@ export default function Training() {
           </div>
         </div>
       )}
-      {plan && timerActive && timerSeconds > 0 && (
-        <div className="fixed bottom-24 right-4 z-50">
-          <Card className="bg-[#0a0c10]/95 backdrop-blur-xl border border-white/10 shadow-2xl p-4 pr-6 rounded-2xl flex items-center gap-4 animate-in slide-in-from-right-8 duration-300">
-            <div className="relative w-12 h-12 flex items-center justify-center">
-              <svg className="absolute inset-0 w-full h-full -rotate-90">
-                <circle cx="24" cy="24" r="22" stroke="rgba(255,255,255,0.1)" strokeWidth="4" fill="none" />
-                <circle 
-                  cx="24" cy="24" r="22" 
-                  stroke="currentColor" 
-                  strokeWidth="4" 
-                  fill="none" 
-                  className="text-cyan-400 transition-all duration-1000 linear"
-                  strokeDasharray="138"
-                  strokeDashoffset={138 - (138 * ((timerTotal > 0 ? timerSeconds : 0) / (timerTotal || 1)))}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <span className="text-sm font-black text-white">{timerSeconds}</span>
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">{t('rest_timer' as any)}</p>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setTimerSeconds(prev => prev + 30)} className="text-xs font-bold text-slate-300 hover:text-white">+30s</button>
-                <button onClick={() => setTimerSeconds(0)} className="text-xs font-bold text-slate-300 hover:text-white">{t('skip' as any)}</button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
+      {plan && <RestTimerUI />}
     </div>
   );
 }
 
-function SetLogger({ exercise, currentWeight, logs, onLog, onDeleteSet }: { 
+function SetLogger({ exercise, currentWeight, logs, onLog }: { 
   exercise: Exercise; 
   currentWeight: number; 
   logs: LoggedSet[]; 
-  onLog: (weight: number, reps: number) => void;
-  onDeleteSet?: (index: number) => void;
+  onLog: (weight: number, reps: number) => void 
 }) {
   const { t } = useTranslation();
   const [weight, setWeight] = useState(currentWeight || 0);
@@ -1480,18 +1379,10 @@ function SetLogger({ exercise, currentWeight, logs, onLog, onDeleteSet }: {
 
       <div className="flex flex-wrap gap-1.5">
         {logs.map((set, i) => (
-          <div key={i} className="relative flex items-center gap-1 bg-white/5 border border-white/5 rounded pl-2 overflow-hidden group animate-in zoom-in-50 duration-300">
+          <div key={i} className="flex items-center gap-1 bg-white/5 border border-white/5 rounded px-2 py-1 group animate-in zoom-in-50 duration-300">
             <span className="text-[9px] font-black text-slate-500">{i + 1}</span>
-            <span className="text-[10px] font-black text-white ml-1">{set.weight}<span className="text-slate-600 italic">kg</span></span>
-            <span className="text-[10px] font-black text-cyan-400 mr-2">×{set.reps}</span>
-            {onDeleteSet && (
-              <button 
-                onClick={() => onDeleteSet(i)}
-                className="absolute right-0 bg-red-500 hover:bg-red-600 text-white transition-all h-full px-2 flex items-center justify-center translate-x-full group-hover:translate-x-0 ease-out duration-200"
-              >
-                <Trash2 className="w-3 h-3" />
-              </button>
-            )}
+            <span className="text-[10px] font-black text-white">{set.weight}<span className="text-slate-600 italic">kg</span></span>
+            <span className="text-[10px] font-black text-cyan-400">×{set.reps}</span>
           </div>
         ))}
         {Array.from({ length: Math.max(0, parseInt(exercise.sets) - logs.length) }).map((_, i) => (
@@ -1499,6 +1390,45 @@ function SetLogger({ exercise, currentWeight, logs, onLog, onDeleteSet }: {
             <span className="text-[8px] font-black text-slate-700">{logs.length + i + 1}</span>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function RestTimerUI() {
+  const { t } = useTranslation();
+  const [seconds, setSeconds] = useState(0);
+  const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    let interval: any;
+    if (active) {
+      interval = setInterval(() => setSeconds(s => s + 1), 1000);
+    }
+    return () => clearInterval(interval);
+  }, [active]);
+
+  if (!active && seconds === 0) return (
+    <Button 
+      onClick={() => setActive(true)}
+      className="fixed bottom-24 right-6 bg-cyan-600 text-white rounded-full p-4 shadow-xl z-50 overflow-hidden group hover:scale-110 transition-all border border-cyan-400/50"
+    >
+      <Zap className="w-6 h-6" />
+    </Button>
+  );
+
+  return (
+    <div className="fixed bottom-24 right-6 bg-[#0a0a0c] border border-cyan-500/30 rounded-3xl p-4 shadow-2xl z-50 flex items-center gap-4 animate-in slide-in-from-right-4">
+      <div className="text-2xl font-black text-cyan-400 font-mono w-16 text-center">
+        {Math.floor(seconds / 60)}:{(seconds % 60).toString().padStart(2, '0')}
+      </div>
+      <div className="flex gap-2">
+        <Button size="icon" onClick={() => setActive(!active)} variant="ghost" className="text-white hover:bg-white/10">
+          <Play className="w-4 h-4" />
+        </Button>
+        <Button size="icon" onClick={() => { setActive(false); setSeconds(0); }} variant="ghost" className="text-red-400 hover:bg-red-500/10">
+          <RotateCcw className="w-4 h-4" />
+        </Button>
       </div>
     </div>
   );
