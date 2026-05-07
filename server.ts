@@ -22,7 +22,7 @@ const keyBlacklist = new Map<string, number>(); // key -> ban until timestamp
 /**
  * Lấy Gemini client với key rotation thông minh
  */
-async function getAIClient() {
+async function executeWithAIFallback<T>(operation: (ai: any) => Promise<T>): Promise<T> {
   const rawKeys = process.env.GEMINI_API_KEY || "";
   let keys = rawKeys
     .split(",")
@@ -45,13 +45,18 @@ async function getAIClient() {
     if (banUntil < now) keyBlacklist.delete(key);
   }
 
-  // Thử tối đa 5 lần (mỗi key 1 lần)
-  for (let attempt = 0; attempt < keys.length; attempt++) {
+  let lastError: any = null;
+  let attemptsMade = 0;
+
+  // Thử tối đa số lần bằng với số lượng key hợp lệ
+  while (attemptsMade < keys.length) {
     const apiKey = keys[currentKeyIndex];
+    const keyIndexToLog = currentKeyIndex;
     currentKeyIndex = (currentKeyIndex + 1) % keys.length;
 
     // Bỏ qua key đang bị blacklist
     if (keyBlacklist.has(apiKey)) {
+      attemptsMade++;
       continue;
     }
 
@@ -59,21 +64,30 @@ async function getAIClient() {
       const { GoogleGenAI } = await import('@google/genai');
       const ai = new GoogleGenAI({ apiKey });
 
-      console.log(`🔑 Using Gemini key [${currentKeyIndex}] (${keys.length} keys available)`);
-      return ai;
-
+      console.log(`🔑 Using Gemini key [${keyIndexToLog}] (${keys.length} keys available)`);
+      
+      const result = await operation(ai);
+      return result;
     } catch (err: any) {
-      if (err.message?.includes("API key") || 
-          err.message?.includes("quota") || 
-          err.message?.includes("rate limit")) {
+      lastError = err;
+      const errorMessage = err.message || "";
+      if (errorMessage.includes("API key") || 
+          errorMessage.includes("quota") || 
+          errorMessage.includes("rate limit") ||
+          errorMessage.includes("429") ||
+          errorMessage.includes("RESOURCE_EXHAUSTED")) {
         
-        console.warn(`🚫 Key [${currentKeyIndex}] temporarily blacklisted: ${err.message}`);
+        console.warn(`🚫 Key [${keyIndexToLog}] temporarily blacklisted: ${errorMessage}`);
         keyBlacklist.set(apiKey, now + 10 * 60 * 1000); // ban 10 phút
+        attemptsMade++;
+      } else {
+        // Ném ra lỗi ngay nếu lỗi không liên quan đến quota/rate limit (vd bad request)
+        throw err;
       }
     }
   }
 
-  throw new Error("❌ All Gemini API keys are currently unavailable or rate limited.");
+  throw lastError || new Error("❌ All Gemini API keys are currently unavailable or rate limited.");
 }
 // ==================== END KEY ROTATION ====================
 
@@ -133,14 +147,13 @@ async function startServer() {
 
   app.post('/api/ai/chat', validateAIRequest, async (req, res, next) => {
     try {
-      const ai = await getAIClient();
       const requestPayload = {
         model: req.body.model || 'gemini-1.5-flash',
         contents: req.body.contents,
         config: req.body.config?.generationConfig || req.body.config
       };
       console.log("📏 Request size:", JSON.stringify(req.body.contents).length, "bytes");
-      const response = await ai.models.generateContent(requestPayload);
+      const response = await executeWithAIFallback(ai => ai.models.generateContent(requestPayload));
       res.json({
         text: response.text,
         functionCalls: response.functionCalls,
@@ -154,13 +167,12 @@ async function startServer() {
 
   app.post('/api/ai/generate', validateAIRequest, async (req, res, next) => {
     try {
-      const ai = await getAIClient();
       const requestPayload = {
         model: req.body.model || 'gemini-1.5-flash',
         contents: req.body.contents,
         config: req.body.config?.generationConfig || req.body.config
       };
-      const response = await ai.models.generateContent(requestPayload);
+      const response = await executeWithAIFallback(ai => ai.models.generateContent(requestPayload));
       res.json({
         text: response.text,
         functionCalls: response.functionCalls,
