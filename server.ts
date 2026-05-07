@@ -135,7 +135,7 @@ async function startServer() {
     try {
       const ai = await getAIClient();
       const requestPayload = {
-        model: req.body.model || 'gemini-2.0-flash',
+        model: req.body.model || 'gemini-1.5-flash',
         contents: req.body.contents,
         config: req.body.config?.generationConfig || req.body.config
       };
@@ -156,7 +156,7 @@ async function startServer() {
     try {
       const ai = await getAIClient();
       const requestPayload = {
-        model: req.body.model || 'gemini-2.0-flash',
+        model: req.body.model || 'gemini-1.5-flash',
         contents: req.body.contents,
         config: req.body.config?.generationConfig || req.body.config
       };
