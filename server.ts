@@ -148,7 +148,7 @@ async function startServer() {
   app.post('/api/ai/chat', validateAIRequest, async (req, res, next) => {
     try {
       const requestPayload = {
-        model: req.body.model || 'gemini-2.5-flash',
+        model: req.body.model || 'gemini-2.0-flash',
         contents: req.body.contents,
         config: req.body.config?.generationConfig || req.body.config
       };
@@ -168,7 +168,7 @@ async function startServer() {
   app.post('/api/ai/generate', validateAIRequest, async (req, res, next) => {
     try {
       const requestPayload = {
-        model: req.body.model || 'gemini-2.5-flash',
+        model: req.body.model || 'gemini-2.0-flash',
         contents: req.body.contents,
         config: req.body.config?.generationConfig || req.body.config
       };
