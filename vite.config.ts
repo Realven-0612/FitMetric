@@ -2,11 +2,42 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig, loadEnv} from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      react(), 
+      tailwindcss(),
+      VitePWA({
+        registerType: 'autoUpdate',
+        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+        workbox: {
+          maximumFileSizeToCacheInBytes: 5000000 // 5 MB
+        },
+        manifest: {
+          name: 'FitMetric',
+          short_name: 'FitMetric',
+          description: 'Your personal fitness and nutrition tracker',
+          theme_color: '#00f2ff',
+          background_color: '#0a0a0c',
+          display: 'standalone',
+          icons: [
+            {
+              src: '/icon-192x192.svg',
+              sizes: '192x192',
+              type: 'image/svg+xml'
+            },
+            {
+              src: '/icon-512x512.svg',
+              sizes: '512x512',
+              type: 'image/svg+xml'
+            }
+          ]
+        }
+      })
+    ],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
