@@ -259,12 +259,20 @@ export default function Training() {
 
   const applyAllRecommendedWeights = () => {
     if (!currentDayData?.exercises) return;
+    let appliedCount = 0;
     currentDayData.exercises.forEach(ex => {
-      if (ex.rec) {
-        updateExerciseWeight(ex.id, ex.rec);
+      if (ex.recommendedWeight && !/body\s*weight/i.test(ex.recommendedWeight)) {
+        const match = ex.recommendedWeight.match(/(\d+(\.\d+)?)/);
+        if (match) {
+          const weight = parseFloat(match[1]);
+          updateExerciseWeight(ex.name, weight);
+          appliedCount++;
+        }
       }
     });
-    toast.success(t('apply_all'));
+    if (appliedCount > 0) {
+      toast.success(t('apply_all'));
+    }
   };
 
   useEffect(() => {
@@ -659,13 +667,13 @@ export default function Training() {
           </div>
 
           {plan && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               <Dialog>
                 <DialogTrigger
                   render={
                     <Button
                       variant="outline"
-                      className="border-white/10 bg-black/50 text-white hover:bg-white/10 hover:text-white font-bold h-12 px-6 rounded-[1rem] gap-2"
+                      className="border-white/10 bg-black/50 text-white hover:bg-white/10 hover:text-white font-bold h-12 px-6 rounded-[1rem] gap-2 flex-1 min-w-[140px]"
                     >
                       <Calendar className="w-4 h-4" /> {t('export_calendar')}
                     </Button>
@@ -729,7 +737,7 @@ export default function Training() {
                   render={
                     <Button
                       variant="outline"
-                      className="border-white/10 bg-black/50 text-white hover:bg-white/10 hover:text-white font-bold h-12 px-6 rounded-[1rem] gap-2 transition-all"
+                      className="border-white/10 bg-black/50 text-white hover:bg-white/10 hover:text-white font-bold h-12 px-6 rounded-[1rem] gap-2 transition-all flex-1 min-w-[160px]"
                     >
                       <Settings2 className="w-4 h-4" /> {t('customize_plan')}
                     </Button>
@@ -957,21 +965,18 @@ export default function Training() {
           {/* Left main area */}
           <div className="flex flex-col gap-6">
             {/* Day selector */}
-            <div className="flex gap-3 overflow-x-auto pb-4 pt-2 scrollbar-hide snap-x items-end">
+            {/* Desktop: scroll ngang */}
+            <div className="hidden sm:flex gap-3 overflow-x-auto pb-4 pt-2 scrollbar-hide snap-x items-end">
               {plan.days.map((day, idx) => {
-                const isToday =
-                  idx ===
-                  (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
+                const isToday = idx === (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
                 const isActive = selectedDay === idx;
                 const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
                 return (
-                  <div
-                    key={idx}
-                    className="snap-start shrink-0 flex flex-col items-center gap-2"
-                  >
+                  <div key={idx} className="snap-start shrink-0 flex flex-col items-center gap-2">
                     {isToday ? (
-                      <div className="bg-cyan-500 text-black text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full z-10 whitespace-nowrap shadow-[0_0_10px_rgba(34,211,238,0.5)]">
-                        {t('todays_operation')}
+                      <div className="bg-cyan-500 text-black text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.5)] leading-tight text-center">
+                        <span className="whitespace-pre-line">
+                      {t('todays_operation')}</span>
                       </div>
                     ) : (
                       <div className="h-[18px]"></div>
@@ -989,6 +994,69 @@ export default function Training() {
                   </div>
                 );
               })}
+            </div>
+            {/* Mobile: 4 trên + 3 dưới căn giữa */}
+            <div className="sm:hidden pt-2 pb-4 space-y-3">
+              <div className="grid grid-cols-4 gap-2 items-end">
+                {plan.days.slice(0, 4).map((day, idx) => {
+                  const isToday = idx === (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
+                  const isActive = selectedDay === idx;
+                  const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+                  return (
+                    <div key={idx} className="flex flex-col items-center gap-1">
+                      {isToday ? (
+                        <div className="bg-cyan-500 text-black text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.5)] leading-tight text-center">
+                          <span className="whitespace-pre-line">
+                        {t('todays_operation')}</span>
+                        </div>
+                      ) : (
+                        <div className="h-[16px]"></div>
+                      )}
+                      <button
+                        onClick={() => setSelectedDay(idx)}
+                        className={`w-full aspect-square rounded-2xl flex items-center justify-center font-black transition-all border ${
+                          isActive
+                            ? "bg-cyan-500 text-black border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.25)]"
+                            : "bg-[#111111]/80 text-slate-400 border-white/5 hover:bg-white/10 hover:text-white"
+                        }`}
+                      >
+                        <span className="text-lg">{t(dayKeys[idx])}</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* 3 nút cuối căn giữa đều */}
+              <div className="flex justify-center gap-2 items-end">
+                {plan.days.slice(4).map((day, i) => {
+                  const idx = i + 4;
+                  const isToday = idx === (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
+                  const isActive = selectedDay === idx;
+                  const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+                  return (
+                    <div key={idx} className="flex flex-col items-center gap-1 w-[calc(25%-6px)]">
+                      {isToday ? (
+                       <div className="bg-cyan-500 text-black text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.5)] leading-tight text-center">
+                        <span className="whitespace-pre-line">
+                       {t('todays_operation')}</span>
+                       </div>
+                      ) : (
+                        <div className="h-[16px]"></div>
+                      )}
+                      <button
+                        onClick={() => setSelectedDay(idx)}
+                        className={`w-full aspect-square rounded-2xl flex items-center justify-center font-black transition-all border ${
+                          isActive
+                            ? "bg-cyan-500 text-black border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.25)]"
+                            : "bg-[#111111]/80 text-slate-400 border-white/5 hover:bg-white/10 hover:text-white"
+                        }`}
+                      >
+                        <span className="text-lg">{t(dayKeys[idx])}</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Protocol View */}
@@ -1151,7 +1219,7 @@ export default function Training() {
                                 </span>
                               </div>
                             )}
-                            {ex.recommendedWeight && (
+                            {ex.recommendedWeight && !/body\s*weight/i.test(ex.recommendedWeight) && (
                               <button 
                                 onClick={() => applyRecommendedWeight(ex)}
                                 className="flex flex-col text-left group/suggest hover:bg-cyan-500/5 p-1 rounded-lg transition-colors cursor-pointer"
@@ -1167,7 +1235,7 @@ export default function Training() {
                             <div className="flex flex-col col-span-2 md:col-span-1 mt-2 md:mt-0">
                               <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5 flex items-center justify-between gap-2">
                                 {t('weight_kg_alt')}
-                                {ex.recommendedWeight && (
+                                {ex.recommendedWeight && !/body\s*weight/i.test(ex.recommendedWeight) && (
                                   <button 
                                     onClick={() => applyRecommendedWeight(ex)}
                                     className="text-[9px] text-cyan-500/80 font-black animate-pulse hover:text-cyan-400 hover:scale-105 transition-all cursor-pointer"
