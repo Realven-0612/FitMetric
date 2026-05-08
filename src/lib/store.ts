@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { syncProfile, saveWorkoutPlan, logFoodItem, logWeightRecord } from '../services/firebaseService';
+import { syncProfile, saveWorkoutPlan, logFoodItem, logWeightRecord, deleteFoodItem } from '../services/firebaseService';
 
 interface UserProfile {
   name?: string;
@@ -24,6 +24,7 @@ interface TrainingLogs {
 }
 
 interface NutritionEntry {
+  id?: string;
   name: string;
   kcal: number;
   protein: number;
@@ -153,14 +154,25 @@ export const useStore = create<AppState>()(
 
       nutritionDiary: [],
       addNutritionEntry: (entry) => {
+        const enhancedEntry = {
+          ...entry,
+          id: entry.id || crypto.randomUUID(),
+          timestamp: entry.timestamp || new Date().toISOString()
+        };
         set((state) => ({
-          nutritionDiary: [entry, ...state.nutritionDiary]
+          nutritionDiary: [enhancedEntry, ...state.nutritionDiary]
         }));
-        logFoodItem(entry);
+        logFoodItem(enhancedEntry);
       },
-      removeNutritionEntry: (index) => set((state) => ({
-        nutritionDiary: state.nutritionDiary.filter((_, i) => i !== index)
-      })),
+      removeNutritionEntry: (index) => {
+        const item = get().nutritionDiary[index];
+        if (item && item.id) {
+          deleteFoodItem(item.id);
+        }
+        set((state) => ({
+          nutritionDiary: state.nutritionDiary.filter((_, i) => i !== index)
+        }));
+      },
       clearNutritionDiary: () => set({ nutritionDiary: [] }),
       waterIntake: 0,
       addWater: (amount) => {

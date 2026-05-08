@@ -8,7 +8,8 @@ import {
   getDocs, 
   deleteDoc,
   onSnapshot,
-  serverTimestamp
+  serverTimestamp,
+  where
 } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 
@@ -78,14 +79,34 @@ export async function saveWorkoutPlan(plan: any) {
 export async function logFoodItem(food: any) {
   const userId = auth.currentUser?.uid;
   if (!userId) return;
-  const path = `users/${userId}/nutrition`;
+  const entryId = food.id; // use provided ID
   try {
-    await addDoc(collection(db, path), {
-      ...food,
-      timestamp: new Date().toISOString()
-    });
+    if (entryId) {
+      const path = `users/${userId}/nutrition/${entryId}`;
+      await setDoc(doc(db, 'users', userId, 'nutrition', entryId), {
+        ...food,
+        timestamp: food.timestamp || new Date().toISOString()
+      });
+    } else {
+      const path = `users/${userId}/nutrition`;
+      await addDoc(collection(db, path), {
+        ...food,
+        timestamp: food.timestamp || new Date().toISOString()
+      });
+    }
   } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, path);
+    handleFirestoreError(error, OperationType.CREATE, `users/${userId}/nutrition`);
+  }
+}
+
+export async function deleteFoodItem(entryId: string) {
+  const userId = auth.currentUser?.uid;
+  if (!userId || !entryId) return;
+  const path = `users/${userId}/nutrition/${entryId}`;
+  try {
+    await deleteDoc(doc(db, 'users', userId, 'nutrition', entryId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
 
@@ -110,8 +131,16 @@ export async function logWeightRecord(weight: number) {
 export async function fetchNutritionDiary(userId: string) {
   if (!userId) return [];
   const path = `users/${userId}/nutrition`;
+  
+  const todayStart = new Date().toISOString().split('T')[0] + 'T00:00:00.000Z';
+  const todayEnd = new Date().toISOString().split('T')[0] + 'T23:59:59.999Z';
+
   try {
-    const q = query(collection(db, path));
+    const q = query(
+      collection(db, path),
+      where('timestamp', '>=', todayStart),
+      where('timestamp', '<=', todayEnd)
+    );
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {

@@ -26,8 +26,8 @@ const defaultConsumptionData = [
 export default function Dashboard() {
   const { user } = useAuth();
   const { t } = useTranslation();
-  const { profile, workoutPlan, nutritionDiary, stravaCalories, setStravaCalories, language } = useStore();
-  const { targetKcal, consumedKcal } = useNutritionStats();
+  const { profile, workoutPlan, nutritionDiary, stravaCalories, setStravaCalories, language, sessionLogs, waterIntake } = useStore();
+  const { targetKcal, consumedKcal, targetPro, consumedPro, waterTarget } = useNutritionStats();
 
   const [weight, setWeight] = useState<number | string>("--");
   const [nextOperation, setNextOperation] = useState<string>("Rest");
@@ -153,6 +153,10 @@ export default function Dashboard() {
   }, [user]);
 
   const dailyQuote = getDailyQuote(language);
+  const currentHour = new Date().getHours();
+  const showProteinAlert = currentHour >= 16 && consumedPro < (targetPro * 0.8);
+  const showWaterAlert = (currentHour >= 14 && waterIntake < (waterTarget * 0.5)) || (currentHour >= 18 && waterIntake < waterTarget);
+  const showWorkoutAlert = currentHour >= 17 && nextOperation !== "Rest" && Object.keys(sessionLogs || {}).length === 0;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10">
@@ -177,7 +181,7 @@ export default function Dashboard() {
               </div>
 
               <blockquote className="text-lg text-slate-300 font-medium italic mt-2 mb-4">
-                "{dailyQuote}"
+                "{t('discipline_freedom')}"
               </blockquote>
 
               {/* Metrics Grid */}
@@ -256,6 +260,42 @@ export default function Dashboard() {
            </p>
         </Card>
       </div>
+
+      {/* Proactive Alerts */}
+      {(showProteinAlert || showWaterAlert || showWorkoutAlert) && (
+        <div className="flex flex-col sm:flex-row gap-4 w-full">
+           {showProteinAlert && (
+             <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-3 flex-1">
+                <div className="flex items-center gap-2 text-orange-400 text-xs font-bold uppercase tracking-wider mb-1">
+                   <Target className="w-3.5 h-3.5" /> PROTEIN DEFICIT
+                </div>
+                <p className="text-sm text-slate-300">
+                   You are falling behind on protein today. Try to get a high-protein meal in!
+                </p>
+             </div>
+           )}
+           {showWaterAlert && (
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 flex-1">
+                 <div className="flex items-center gap-2 text-blue-400 text-xs font-bold uppercase tracking-wider mb-1">
+                    <Target className="w-3.5 h-3.5" /> DEHYDRATION RISK
+                 </div>
+                 <p className="text-sm text-slate-300">
+                    You haven't been drinking enough water. Stay hydrated!
+                 </p>
+              </div>
+           )}
+           {showWorkoutAlert && (
+             <div className="bg-[#a855f7]/10 border border-[#a855f7]/20 rounded-xl p-3 flex-1">
+                <div className="flex items-center gap-2 text-[#a855f7] text-xs font-bold uppercase tracking-wider mb-1">
+                   <Zap className="w-3.5 h-3.5" /> TRAINING PENDING
+                </div>
+                <p className="text-sm text-slate-300">
+                   You have a <span className="font-bold text-white">{nextOperation}</span> session scheduled. Time to get after it!
+                </p>
+             </div>
+           )}
+        </div>
+      )}
 
       {/* Bottom Row: Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
