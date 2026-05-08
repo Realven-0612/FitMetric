@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { syncProfile, saveWorkoutPlan, logFoodItem, logWeightRecord, deleteFoodItem } from '../services/firebaseService';
+import { syncProfile, saveWorkoutPlan, logFoodItem, logWeightRecord, deleteFoodItem, saveExerciseWeights } from '../services/firebaseService';
 
 interface UserProfile {
   name?: string;
@@ -51,6 +51,7 @@ interface AppState {
   sessionLogs: TrainingLogs;
   setWorkoutPlan: (plan: any) => void;
   updateExerciseWeight: (name: string, weight: number) => void;
+  setExerciseWeights: (weights: Record<string, number>) => void;
   logSet: (exName: string, set: any) => void;
   clearSessionLogs: () => void;
 
@@ -111,10 +112,12 @@ export const useStore = create<AppState>()(
           }
 
           return {
+            ...state,
             profile: data.profile || state.profile,
             workoutPlan: data.workoutPlan || state.workoutPlan,
             nutritionDiary: diary,
             waterIntake: totalWater,
+            exerciseWeights: data.exerciseWeights || state.exerciseWeights,
             lastActiveDate: today,
           };
         });
@@ -138,9 +141,17 @@ export const useStore = create<AppState>()(
         set({ workoutPlan });
         saveWorkoutPlan(workoutPlan);
       },
-      updateExerciseWeight: (name, weight) => set((state) => ({
-        exerciseWeights: { ...state.exerciseWeights, [name]: weight }
-      })),
+      updateExerciseWeight: (name, weight) => {
+        set((state) => {
+          const updated = { ...state.exerciseWeights, [name]: weight };
+          saveExerciseWeights(updated);
+          return { exerciseWeights: updated };
+        });
+      },
+      setExerciseWeights: (weights) => {
+        set({ exerciseWeights: weights });
+        saveExerciseWeights(weights);
+      },
       logSet: (exName, setEntry) => set((state) => {
         const currentLogs = state.sessionLogs[exName] || [];
         return {

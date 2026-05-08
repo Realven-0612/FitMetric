@@ -1,8 +1,7 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Sparkles, Utensils, Loader2, Info, CheckCircle2, ChevronRight, X } from "lucide-react";
-import Markdown from "react-markdown";
+import { Sparkles, Utensils, Loader2, X, Clock, Flame, Beef, Wheat, Droplets, ChefHat } from "lucide-react";
 import { generateAIContent } from "../lib/ai";
 
 interface RecipeGeneratorProps {
@@ -10,35 +9,43 @@ interface RecipeGeneratorProps {
   onClose: () => void;
 }
 
+interface Recipe {
+  name: string;
+  prepTime: string;
+  cookTime: string;
+  ingredients: string[];
+  steps: string[];
+  macros: { kcal: number; protein: number; carbs: number; fat: number };
+}
+
 export function RecipeGenerator({ remainingMacros, onClose }: RecipeGeneratorProps) {
-  const [recipe, setRecipe] = useState<string | null>(null);
+  const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
 
   const generateRecipe = async () => {
     setLoading(true);
+    setError(false);
     try {
       const prompt = `
-        You are an elite fitness chef. 
-        Create 1 high-protein recipe for dinner that fits exactly within these remaining daily macros:
-        - Calories: ${remainingMacros.kcal} kcal
-        - Protein: ${remainingMacros.protein}g
-        - Carbs: ${remainingMacros.carbs}g
-        - Fat: ${remainingMacros.fat}g
-        
-        The recipe should be healthy, easy to cook, and professional.
-        Format the output clearly with:
-        - Recipe Name
-        - Prep Time
-        - Ingredients List
-        - Steps
-        - Macro Breakdown of this specific meal
+        Create 1 high-protein dinner recipe fitting these macros:
+        ${remainingMacros.kcal} kcal | ${remainingMacros.protein}g protein | ${remainingMacros.carbs}g carbs | ${remainingMacros.fat}g fat
+        Return ONLY a valid JSON object, no markdown, no explanation:
+        {
+          "name": "Recipe Name",
+          "prepTime": "10 min",
+          "cookTime": "20 min",
+          "ingredients": ["200g chicken", "100g rice", "..."],
+          "steps": ["Step one.", "Step two.", "..."],
+          "macros": { "kcal": 500, "protein": 40, "carbs": 45, "fat": 12 }
+        }
       `;
-
       const response = await generateAIContent(prompt);
-      setRecipe(response.text || (typeof response === "string" ? response : JSON.stringify(response)));
-    } catch (err) {
-      console.error(err);
-      setRecipe("Failed to generate recipe. Please try again.");
+      const text = response.text || response;
+      const json = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g, '').trim());
+      setRecipe(json);
+    } catch {
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -46,76 +53,122 @@ export function RecipeGenerator({ remainingMacros, onClose }: RecipeGeneratorPro
 
   return (
     <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-300">
-      <Card className="bg-[#0a0a0a] border border-white/10 rounded-[3rem] w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col relative shadow-[0_0_50px_rgba(0,0,0,1)]">
-        <Button 
-          variant="ghost" 
-          onClick={onClose} 
-          className="absolute top-8 right-8 z-20 w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 text-white p-0 border border-white/10"
-        >
-          <X className="w-5 h-5" />
-        </Button>
-
-        <div className="p-10 pb-6 border-b border-white/5 bg-gradient-to-b from-purple-500/10 to-transparent">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/20 flex items-center justify-center border border-purple-500/30">
-              <Sparkles className="w-6 h-6 text-purple-400" />
+      <Card className="bg-[#0a0a0a] border border-white/10 rounded-[2.5rem] w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col shadow-[0_0_60px_rgba(112,0,255,0.15)]">
+        
+        {/* Header */}
+        <div className="p-6 border-b border-white/5 bg-gradient-to-b from-purple-500/10 to-transparent flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-purple-400" />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic">Macro-Gen Engine</h2>
-              <div className="flex gap-4 mt-2">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-white/5 px-3 py-1 rounded-full">{remainingMacros.kcal} kcal Left</span>
-                <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest bg-purple-500/10 px-3 py-1 rounded-full">{remainingMacros.protein}g Protein Target</span>
+              <h2 className="text-sm font-black text-white uppercase tracking-widest italic">Macro-Gen Engine</h2>
+              <div className="flex gap-2 mt-1">
+                <span className="text-[9px] font-black text-slate-500 bg-white/5 px-2 py-0.5 rounded-full uppercase tracking-widest">{remainingMacros.kcal} kcal left</span>
+                <span className="text-[9px] font-black text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full uppercase tracking-widest">{remainingMacros.protein}g protein</span>
               </div>
             </div>
           </div>
+          <Button variant="ghost" onClick={onClose} className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-white p-0 border border-white/10">
+            <X className="w-4 h-4" />
+          </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto">
           {!recipe ? (
-            <div className="h-full flex flex-col items-center justify-center text-center space-y-8 py-10">
-               <div className="w-24 h-24 rounded-full bg-purple-500/5 flex items-center justify-center border border-purple-500/10">
-                  <Utensils className="w-10 h-10 text-slate-600" />
-               </div>
-               <div className="space-y-2 max-w-md">
-                 <h3 className="text-xl font-black text-white italic capitalize">Your remaining macros are calculated.</h3>
-                 <p className="text-sm text-slate-500 font-medium leading-relaxed">
-                   Our AI chef will analyze your current intake vs targets and craft a meal that hits your numbers perfectly.
-                 </p>
-               </div>
-               <Button 
+            /* Empty state */
+            <div className="flex flex-col items-center justify-center text-center py-16 px-8 gap-6">
+              <div className="w-20 h-20 rounded-full bg-purple-500/5 border border-purple-500/10 flex items-center justify-center">
+                <Utensils className="w-9 h-9 text-slate-700" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-base font-black text-white italic">AI Chef sẵn sàng</h3>
+                <p className="text-xs text-slate-500 leading-relaxed max-w-xs">Tạo công thức bữa tối khớp chính xác với macro còn lại của bạn hôm nay.</p>
+              </div>
+              {error && <p className="text-xs text-red-400">Lỗi tạo công thức. Thử lại nhé!</p>}
+              <Button
                 onClick={generateRecipe}
                 disabled={loading}
-                className="bg-purple-500 hover:bg-purple-400 text-black font-black uppercase text-xs tracking-widest h-14 px-10 rounded-2xl shadow-[0_0_30px_rgba(112,0,255,0.3)] w-full max-w-xs"
-               >
-                 {loading ? <Loader2 className="animate-spin w-5 h-5 mr-3" /> : null}
-                 {loading ? "Synthesizing Recipe..." : "Generate Dinner Plan"}
-               </Button>
+                className="bg-purple-500 hover:bg-purple-400 text-black font-black uppercase text-[10px] tracking-widest h-12 px-8 rounded-2xl shadow-[0_0_20px_rgba(112,0,255,0.3)] w-full max-w-xs"
+              >
+                {loading ? <><Loader2 className="animate-spin w-4 h-4 mr-2" /> Đang tạo...</> : <><ChefHat className="w-4 h-4 mr-2" /> Tạo công thức</>}
+              </Button>
             </div>
           ) : (
-            <div className="space-y-8 animate-in slide-in-from-bottom-10 fade-in duration-700">
-               <div className="prose prose-invert prose-sm max-w-none">
-                 <div className="markdown-body">
-                   <Markdown>{recipe}</Markdown>
-                 </div>
-               </div>
-               
-               <div className="pt-8 border-t border-white/5">
-                 <div className="p-6 bg-purple-500/5 rounded-3xl border border-purple-500/10 flex items-start gap-4">
-                    <CheckCircle2 className="w-6 h-6 text-purple-400 shrink-0 mt-0.5" />
-                    <div>
-                       <p className="text-sm font-black text-white uppercase tracking-wider mb-1">Precision Cooking</p>
-                       <p className="text-xs text-slate-400 font-medium">This recipe was generated using your real-time metabolism data. Adjust portions slightly if you feel overly satiated.</p>
-                    </div>
-                 </div>
-               </div>
+            /* Recipe display */
+            <div className="p-5 space-y-4 animate-in slide-in-from-bottom-4 fade-in duration-500">
+              
+              {/* Recipe name + time */}
+              <div className="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-4">
+                <h3 className="text-lg font-black text-white mb-2">{recipe.name}</h3>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 text-slate-400">
+                    <Clock className="w-3.5 h-3.5 text-purple-400" />
+                    <span className="text-[11px] font-bold">Prep {recipe.prepTime}</span>
+                  </div>
+                  <span className="text-slate-700">·</span>
+                  <div className="flex items-center gap-1.5 text-slate-400">
+                    <Flame className="w-3.5 h-3.5 text-orange-400" />
+                    <span className="text-[11px] font-bold">Cook {recipe.cookTime}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Macro pills */}
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { label: 'kcal', value: recipe.macros.kcal, icon: Flame, color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' },
+                  { label: 'protein', value: `${recipe.macros.protein}g`, icon: Beef, color: 'text-cyan-400', bg: 'bg-cyan-500/10 border-cyan-500/20' },
+                  { label: 'carbs', value: `${recipe.macros.carbs}g`, icon: Wheat, color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20' },
+                  { label: 'fat', value: `${recipe.macros.fat}g`, icon: Droplets, color: 'text-pink-400', bg: 'bg-pink-500/10 border-pink-500/20' },
+                ].map(m => (
+                  <div key={m.label} className={`${m.bg} border rounded-xl p-2.5 flex flex-col items-center gap-0.5`}>
+                    <m.icon className={`w-3.5 h-3.5 ${m.color}`} />
+                    <span className="text-white font-black text-xs">{m.value}</span>
+                    <span className="text-[8px] text-slate-600 uppercase tracking-widest">{m.label}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Ingredients */}
+              <div className="bg-black/40 border border-white/5 rounded-2xl p-4">
+                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3">Nguyên liệu</p>
+                <ul className="space-y-1.5">
+                  {recipe.ingredients.map((ing, i) => (
+                    <li key={i} className="flex items-start gap-2 text-[12px] text-slate-300">
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-400 mt-1.5 shrink-0" />
+                      {ing}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Steps */}
+              <div className="bg-black/40 border border-white/5 rounded-2xl p-4">
+                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3">Cách làm</p>
+                <ol className="space-y-2.5">
+                  {recipe.steps.map((step, i) => (
+                    <li key={i} className="flex items-start gap-3 text-[12px] text-slate-300 leading-relaxed">
+                      <span className="w-5 h-5 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-400 text-[9px] font-black flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                      {step}
+                    </li>
+                  ))}
+                </ol>
+              </div>
             </div>
           )}
         </div>
 
+        {/* Footer */}
         {recipe && (
-          <div className="p-8 border-t border-white/5 flex gap-4">
-            <Button onClick={() => setRecipe(null)} variant="outline" className="flex-1 rounded-2xl h-12 border-white/10 text-slate-400 font-bold uppercase text-[10px] tracking-widest">New Idea</Button>
-            <Button onClick={onClose} className="flex-1 rounded-2xl h-12 bg-white text-black font-black uppercase text-[10px] tracking-widest">Done</Button>
+          <div className="p-4 border-t border-white/5 flex gap-3 shrink-0">
+            <Button onClick={() => setRecipe(null)} variant="outline" className="flex-1 rounded-2xl h-11 border-white/10 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-white/5">
+              Ý tưởng khác
+            </Button>
+            <Button onClick={onClose} className="flex-1 rounded-2xl h-11 bg-purple-500 hover:bg-purple-400 text-white font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(112,0,255,0.3)]">
+              Xong
+            </Button>
           </div>
         )}
       </Card>

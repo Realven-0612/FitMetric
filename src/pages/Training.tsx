@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/select";
 import { useStore } from "../lib/store";
 import { generateAIContent } from "../lib/ai";
+import { saveSessionRecord } from "../services/firebaseService";
 
 export interface LoggedSet {
   weight: number;
@@ -213,6 +214,7 @@ export default function Training() {
     setWorkoutPlan: setPlan,
     exerciseWeights, 
     updateExerciseWeight,
+    setExerciseWeights,
     sessionLogs,
     logSet: storeLogSet,
     clearSessionLogs
@@ -223,6 +225,12 @@ export default function Training() {
   );
   const [isGenerating, setIsGenerating] = useState(false);
   const [open, setOpen] = useState(false);
+  
+  const [editingSessions, setEditingSessions] = useState(false);
+  const [sessionsInput, setSessionsInput] = useState('');
+  
+  const [showPBModal, setShowPBModal] = useState(false);
+  const [editingWeights, setEditingWeights] = useState<Record<string, number>>({});
 
   // Customization state
   const [focus, setFocus] = useState("");
@@ -340,6 +348,26 @@ export default function Training() {
       handleGenerate(false);
     }
   }, [profile, plan, isGenerating]);
+
+  const handleSaveSessions = () => {
+    const val = parseInt(sessionsInput);
+    if (!isNaN(val) && val >= 0) {
+      if (plan) {
+        const updatedPlan = { ...plan, completedSessions: val };
+        setPlan(updatedPlan);
+      }
+    }
+    setEditingSessions(false);
+  };
+
+  const handleSavePBWeights = () => {
+    // Thay toàn bộ object thay vì update từng cái → xóa được bài đã remove
+    const cleaned = Object.fromEntries(
+      Object.entries(editingWeights).filter(([_, w]) => w > 0)
+    );
+    setExerciseWeights(cleaned);
+    setShowPBModal(false);
+  };
 
   const handleWeightChange = (exName: string, delta: number) => {
     const current = exerciseWeights[exName] || 0;
@@ -482,7 +510,7 @@ export default function Training() {
         const validDays = [];
         for (let i = 0; i < 7; i++) {
           const d = result.days[i] || { focusName: "Ngày nghỉ", exercises: [] };
-          validDays.push({ ...d, dayName: ["T2", "T3", "T4", "T5", "T6", "T7", "CN"][i] });
+          validDays.push({ ...d, dayName: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i] });
         }
 
         const newPlan: WorkoutPlan = {
@@ -521,6 +549,13 @@ export default function Training() {
       toast.info("Không thể hoàn thành ngày nghỉ.");
       return;
     }
+
+    const totalVol = Object.values(sessionLogs).reduce((sum: number, sets: any[]) =>
+      sum + sets.reduce((s: number, set: any) => s + set.weight * set.reps, 0), 0
+    );
+    saveSessionRecord(sessionLogs, totalVol);
+
+    clearSessionLogs();
 
     const newPlan = {
       ...plan,
@@ -659,7 +694,7 @@ export default function Training() {
   };
 
   const defaultDays = Array.from({ length: 7 }).map(
-    (_, i) => ["T2", "T3", "T4", "T5", "T6", "T7", "CN"][i],
+    (_, i) => ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i],
   );
   const currentDayData = plan ? plan.days[selectedDay] : null;
   const isRestDay =
@@ -919,21 +954,37 @@ export default function Training() {
 
       {plan && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="relative flex flex-col items-center overflow-hidden rounded-2xl border-white/5 bg-[#0a0c10]/90 p-6 text-center shadow-lg backdrop-blur-xl">
-            <div className="relative z-10 flex flex-col items-center">
+          <Card
+            className="relative flex flex-col items-center overflow-hidden rounded-2xl border-white/5 bg-[#0a0c10]/90 p-6 text-center shadow-lg backdrop-blur-xl cursor-pointer group hover:border-cyan-500/20 transition-all"
+            onClick={() => { setSessionsInput(String(plan.completedSessions || 0)); setEditingSessions(true); }}
+          >
+            <div className="relative z-10 flex flex-col items-center w-full">
               <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
                 {t('workouts_completed')}
               </p>
-              <div className="flex items-baseline gap-2">
-                <p className="text-4xl font-black text-white">
-                  {plan.completedSessions || 0}
-                </p>
-                <span className="text-xs font-medium text-slate-400">
-                  / 14 {t('in_cycle')}
-                </span>
-              </div>
+              {editingSessions ? (
+                <div className="flex items-center gap-2 mt-1" onClick={e => e.stopPropagation()}>
+                  <input
+                    autoFocus
+                    type="number"
+                    value={sessionsInput}
+                    onChange={e => setSessionsInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSaveSessions(); if (e.key === 'Escape') setEditingSessions(false); }}
+                    className="w-20 text-center text-3xl font-black bg-transparent border-b-2 border-cyan-500 text-white outline-none"
+                  />
+                  <button onClick={handleSaveSessions} className="text-cyan-400 text-xs font-black uppercase">✓</button>
+                </div>
+              ) : (
+                <div className="flex items-baseline gap-2">
+                  <p className="text-4xl font-black text-white">{plan.completedSessions || 0}</p>
+                  <span className="text-xs font-medium text-slate-400">/ 14 {t('in_cycle')}</span>
+                </div>
+              )}
+              <span className="text-[9px] text-slate-700 group-hover:text-slate-500 mt-1 transition-colors uppercase tracking-widest">
+                {editingSessions ? 'Enter để lưu' : 'Nhấn để chỉnh'}
+              </span>
             </div>
-            <div className="relative z-10 mt-6 flex h-14 w-14 items-center justify-center rounded-full border border-cyan-500/20 bg-cyan-500/10 shadow-[0_0_20px_rgba(34,211,238,0.1)]">
+            <div className="relative z-10 mt-4 flex h-14 w-14 items-center justify-center rounded-full border border-cyan-500/20 bg-cyan-500/10 shadow-[0_0_20px_rgba(34,211,238,0.1)]">
               <CheckCircle2 className="h-6 w-6 text-cyan-400" />
             </div>
           </Card>
@@ -959,21 +1010,21 @@ export default function Training() {
             </div>
           </Card>
 
-          <Card className="relative flex flex-col items-center overflow-hidden rounded-2xl border-white/5 bg-[#0a0c10]/90 p-6 text-center shadow-lg backdrop-blur-xl">
+          <Card
+            className="relative flex flex-col items-center overflow-hidden rounded-2xl border-white/5 bg-[#0a0c10]/90 p-6 text-center shadow-lg backdrop-blur-xl cursor-pointer group hover:border-blue-500/20 transition-all"
+            onClick={() => { setEditingWeights({ ...exerciseWeights }); setShowPBModal(true); }}
+          >
             <div className="relative z-10 flex flex-col items-center">
               <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
                 {t('personal_bests')}
               </p>
               <div className="flex items-baseline gap-2">
-                <p className="text-4xl font-black text-white">
-                  {Object.keys(exerciseWeights).length}
-                </p>
-                <span className="text-xs font-medium text-slate-400">
-                  {t('exercises_tracked')}
-                </span>
+                <p className="text-4xl font-black text-white">{Object.keys(exerciseWeights).length}</p>
+                <span className="text-xs font-medium text-slate-400">{t('exercises_tracked')}</span>
               </div>
+              <span className="text-[9px] text-slate-700 group-hover:text-slate-500 mt-1 transition-colors uppercase tracking-widest">Nhấn để chỉnh</span>
             </div>
-            <div className="relative z-10 mt-6 flex h-14 w-14 items-center justify-center rounded-full border border-blue-500/20 bg-blue-500/10 shadow-[0_0_20px_rgba(59,130,246,0.1)]">
+            <div className="relative z-10 mt-4 flex h-14 w-14 items-center justify-center rounded-full border border-blue-500/20 bg-blue-500/10 shadow-[0_0_20px_rgba(59,130,246,0.1)]">
               <Trophy className="h-6 w-6 text-blue-400" />
             </div>
           </Card>
@@ -986,7 +1037,7 @@ export default function Training() {
           <div className="flex flex-col gap-6">
             {/* Day selector */}
             {/* Desktop: scroll ngang */}
-            <div className="hidden sm:flex gap-3 overflow-x-auto pb-4 pt-2 scrollbar-hide snap-x items-end">
+            <div className="hidden sm:flex justify-center gap-3 overflow-x-auto pb-4 pt-2 scrollbar-hide snap-x items-end">
               {plan.days.map((day, idx) => {
                 const isToday = idx === (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
                 const isActive = selectedDay === idx;
@@ -1000,7 +1051,11 @@ export default function Training() {
                     )}
                     <button
                       onClick={() => setSelectedDay(idx)}
-                      className={`w-[80px] h-[80px] ...`}
+                      className={`w-[80px] h-[80px] rounded-3xl flex items-center justify-center font-black transition-all border ${
+                        isActive
+                          ? "bg-cyan-500 text-black border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.25)]"
+                          : "bg-[#111111] text-slate-400 border-white/5 hover:bg-white/10 hover:text-white"
+                      }`}
                     >
                       <span className="text-xl">{t(dayKeys[idx])}</span>
                     </button>
@@ -1184,97 +1239,69 @@ export default function Training() {
                     {currentDayData?.exercises.map((ex, idx) => (
                       <div
                         key={idx}
-                        className="bg-[#111111] border border-white/5 hover:border-white/10 transition-all rounded-[1.5rem] overflow-hidden flex flex-col group shadow-sm"
+                        className="bg-[#111111] border border-white/5 hover:border-white/10 transition-all rounded-[1.5rem] overflow-hidden flex flex-col group shadow-sm relative"
                       >
-                        <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center gap-5 relative">
-                          <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-cyan-500/0 group-hover:bg-cyan-500 transition-colors"></div>
-
-                          <div className="w-14 h-14 rounded-2xl bg-black border border-white/10 flex items-center justify-center shadow-inner shrink-0 relative overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>
-                            <span className="text-slate-500 font-black text-xl group-hover:text-cyan-400 transition-colors">
-                              {idx + 1}
-                            </span>
-                          </div>
-
-                          <div className="flex-1">
-                            <h3 className="text-white font-black text-xl leading-tight mb-2">
-                              {ex.name}
-                            </h3>
-                            <div className="flex flex-wrap items-center gap-3">
-                              <span className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md">
-                                {ex.muscle}
-                              </span>
-                              {ex.load && (
-                                <span className="text-[12px] text-slate-400 font-medium flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-md">
-                                  <TrendingUp className="w-3 h-3 text-slate-500" />{" "}
-                                  {ex.load}
-                                </span>
-                              )}
+                        <button
+                          onClick={() => setActiveVideoIndex(activeVideoIndex === idx ? null : idx)}
+                          className={`absolute top-3 right-3 w-8 h-8 rounded-lg flex items-center justify-center transition-all border z-10 ${
+                            activeVideoIndex === idx 
+                              ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30" 
+                              : "bg-white/5 text-slate-500 border-white/10 hover:text-white hover:bg-white/10"
+                          }`}
+                        >
+                          {activeVideoIndex === idx ? <ChevronUp className="w-3.5 h-3.5" /> : <PlayCircle className="w-3.5 h-3.5" />}
+                        </button>
+                        <div className="p-4 md:p-5 relative">
+                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-cyan-500/0 group-hover:bg-cyan-500 transition-colors rounded-l-[1.5rem]"></div>
+                          {/* Header: số thứ tự + tên + tags */}
+                          <div className="flex items-start gap-3 mb-3 pr-10">
+                            <div className="w-10 h-10 rounded-xl bg-black border border-white/10 flex items-center justify-center shadow-inner shrink-0">
+                              <span className="text-slate-500 font-black text-sm group-hover:text-cyan-400 transition-colors">{idx + 1}</span>
                             </div>
-                          </div>
-
-                          <div className="w-full">
-                            <div className="grid grid-cols-3 gap-2 mt-3">
-                              <div className="bg-black/40 border border-white/5 rounded-xl p-2.5 flex flex-col gap-0.5">
-                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                                  {t('volume_label')}
-                                </span>
-                                <span className="text-white font-black text-xs leading-tight">{ex.sets}</span>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-white font-black text-base leading-tight mb-1.5">{ex.name}</h3>
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md">{ex.muscle}</span>
+                                {ex.load && (
+                                  <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded-md">
+                                    <TrendingUp className="w-2.5 h-2.5" />{ex.load}
+                                  </span>
+                                )}
                               </div>
-                              {ex.rest && (
-                                <div className="bg-black/40 border border-white/5 rounded-xl p-2.5 flex flex-col gap-0.5">
-                                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                                    {t('rest_label')}
-                                  </span>
-                                  <span className="text-slate-300 font-black text-xs leading-tight">{ex.rest}</span>
-                                </div>
-                              )}
-                              {ex.recommendedWeight && (
-                                <button
-                                  onClick={() => applyRecommendedWeight(ex)}
-                                  className="bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 rounded-xl p-2.5 flex flex-col gap-0.5 text-left transition-all"
-                                >
-                                  <span className="text-[9px] font-black text-cyan-500 uppercase tracking-widest">
-                                    {t('suggested')}
-                                  </span>
-                                  <span className="text-cyan-300 font-black text-xs leading-tight">
-                                    {ex.recommendedWeight}
-                                  </span>
-                                </button>
-                              )}
-                            </div>
-                            
-                            <div className="mt-3">
-                              <SetLogger 
-                                exercise={ex} 
-                                currentWeight={exerciseWeights[ex.name] || 0}
-                                logs={sessionLogs[ex.name] || []}
-                                onLog={(w, r) => {
-                                  const isHeavy = ex.name.toLowerCase().includes('squat') || ex.name.toLowerCase().includes('deadlift') || ex.name.toLowerCase().includes('bench');
-                                  logSet(ex.name, w, r, isHeavy ? 180 : 90);
-                                }}
-                                videoButton={
-                                  <Button
-                                    onClick={() =>
-                                      setActiveVideoIndex(
-                                        activeVideoIndex === idx ? null : idx,
-                                      )
-                                    }
-                                    variant="ghost"
-                                    size="icon"
-                                    className={`w-10 h-10 rounded-xl flex-shrink-0 transition-colors border ${activeVideoIndex === idx ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/30" : "bg-black/60 text-slate-400 border-white/10 hover:text-white hover:bg-white/10"}`}
-                                    title={t('demonstration')}
-                                  >
-                                    {activeVideoIndex === idx ? (
-                                      <ChevronUp className="w-5 h-5" />
-                                    ) : (
-                                      <PlayCircle className="w-5 h-5" />
-                                    )}
-                                  </Button>
-                                }
-                              />
                             </div>
                           </div>
+                          {/* Info grid — luôn 3 cột đều nhau */}
+                          <div className="grid grid-cols-3 gap-1.5 mb-3">
+                            {/* Khối lượng */}
+                            <div className="bg-black/60 border border-white/5 rounded-lg px-2 py-1.5 flex flex-col gap-0.5 min-w-0">
+                              <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{t('volume_label')}</span>
+                              <span className="text-white font-black text-[10px] leading-tight">{ex.sets}</span>
+                            </div>
+                            {/* Nghỉ */}
+                            <div className="bg-black/60 border border-white/5 rounded-lg px-2 py-1.5 flex flex-col gap-0.5 min-w-0">
+                              <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{t('rest_label')}</span>
+                              <span className="text-slate-300 font-black text-[10px] leading-tight">{ex.rest || '—'}</span>
+                            </div>
+                            {/* Gợi ý — bấm để apply */}
+                            <button
+                              onClick={() => applyRecommendedWeight(ex)}
+                              disabled={!ex.recommendedWeight}
+                              className="bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 disabled:opacity-30 disabled:cursor-default rounded-lg px-2 py-1.5 flex flex-col gap-0.5 text-left transition-all min-w-0"
+                            >
+                              <span className="text-[8px] font-black text-cyan-500 uppercase tracking-widest">{t('suggested')}</span>
+                              <span className="text-cyan-300 font-black text-[10px] leading-tight">{ex.recommendedWeight || '—'}</span>
+                            </button>
+                          </div>
+                          
+                          <SetLogger 
+                            exercise={ex} 
+                            currentWeight={exerciseWeights[ex.name] || 0}
+                            logs={sessionLogs[ex.name] || []}
+                            onLog={(w, r) => {
+                              const isHeavy = ex.name.toLowerCase().includes('squat') || ex.name.toLowerCase().includes('deadlift') || ex.name.toLowerCase().includes('bench');
+                              logSet(ex.name, w, r, isHeavy ? 180 : 90);
+                            }}
+                          />
                         </div>
 
                         {/* Video Embed Section */}
@@ -1404,16 +1431,61 @@ export default function Training() {
         </div>
       )}
       {plan && <RestTimerUI />}
+      
+      {/* Personal Bests Edit Modal */}
+      {showPBModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-[#111111] border border-white/10 rounded-3xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-white/5">
+              <div>
+                <h3 className="text-white font-black uppercase tracking-widest text-sm">Personal Bests</h3>
+                <p className="text-slate-500 text-[10px] mt-0.5">Chỉnh sửa kg tốt nhất từng bài</p>
+              </div>
+              <button onClick={() => setShowPBModal(false)} className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-all">✕</button>
+            </div>
+            {/* Exercise list */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {Object.keys(editingWeights).length === 0 ? (
+                <p className="text-center text-slate-500 text-sm py-8">Chưa có bài tập nào được ghi lại.</p>
+              ) : (
+                Object.entries(editingWeights).map(([name, weight]) => (
+                  <div key={name} className="flex items-center gap-3 bg-black/40 border border-white/5 rounded-xl px-4 py-3">
+                    <span className="flex-1 text-white text-sm font-medium truncate">{name}</span>
+                    <div className="flex items-center gap-1 bg-black/60 border border-white/10 rounded-lg overflow-hidden">
+                      <input
+                        type="number"
+                        value={weight}
+                        onChange={e => setEditingWeights(prev => ({ ...prev, [name]: parseFloat(e.target.value) || 0 }))}
+                        className="w-16 text-center text-sm font-black text-white bg-transparent outline-none py-1.5"
+                      />
+                      <span className="text-[9px] text-slate-600 pr-2 font-black">KG</span>
+                    </div>
+                    <button
+                      onClick={() => setEditingWeights(prev => { const n = { ...prev }; delete n[name]; return n; })}
+                      className="w-7 h-7 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center text-xs transition-all"
+                    >✕</button>
+                  </div>
+                ))
+              )}
+            </div>
+            {/* Footer */}
+            <div className="p-4 border-t border-white/5 flex gap-3">
+              <button onClick={() => setShowPBModal(false)} className="flex-1 h-11 rounded-xl border border-white/10 text-slate-400 text-xs font-black uppercase tracking-widest hover:bg-white/5 transition-all">Huỷ</button>
+              <button onClick={handleSavePBWeights} className="flex-1 h-11 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-black uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(34,211,238,0.2)]">Lưu</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function SetLogger({ exercise, currentWeight, logs, onLog, videoButton }: { 
+function SetLogger({ exercise, currentWeight, logs, onLog }: { 
   exercise: Exercise; 
   currentWeight: number; 
   logs: LoggedSet[]; 
   onLog: (weight: number, reps: number) => void;
-  videoButton?: React.ReactNode;
 }) {
   const { t } = useTranslation();
   const [weight, setWeight] = useState(currentWeight || 0);
@@ -1424,43 +1496,42 @@ function SetLogger({ exercise, currentWeight, logs, onLog, videoButton }: {
   }, [currentWeight]);
 
   return (
-    <div>
+    <div className="space-y-2">
+      {/* Hàng 1: KG + Reps */}
       <div className="flex items-center gap-2">
-        {/* Weight */}
-        <div className="flex items-center bg-black/60 border border-white/10 rounded-xl overflow-hidden h-10 flex-1">
-          <span className="text-[9px] font-black text-slate-600 uppercase pl-2.5 shrink-0">KG</span>
+        {/* KG input */}
+        <div className="flex items-center bg-black/60 border border-white/10 rounded-xl h-10 w-[90px] shrink-0 overflow-hidden">
+          <span className="text-[8px] font-black text-slate-600 uppercase pl-2 shrink-0">KG</span>
           <Input 
             type="number" 
             value={weight} 
             onChange={(e) => setWeight(parseFloat(e.target.value) || 0)}
-            className="flex-1 h-full bg-transparent border-none text-center text-sm font-black text-white focus-visible:ring-0 p-0"
+            className="flex-1 h-full bg-transparent border-none text-center text-sm font-black text-white focus-visible:ring-0 p-0 min-w-0"
           />
         </div>
         
-        {/* Reps */}
-        <div className="flex items-center bg-black/60 border border-white/10 rounded-xl h-10">
+        {/* Reps stepper */}
+        <div className="flex items-center bg-black/60 border border-white/10 rounded-xl h-10 shrink-0">
           <button 
             onClick={() => setReps(Math.max(1, reps - 1))}
-            className="w-9 h-full flex items-center justify-center text-slate-400 hover:text-white text-lg font-bold"
+            className="w-9 h-full flex items-center justify-center text-slate-400 hover:text-white font-bold text-base active:scale-90 transition-transform"
           >−</button>
-          <span className="w-8 text-center text-sm font-black text-white">{reps}</span>
+          <span className="w-7 text-center text-sm font-black text-white">{reps}</span>
           <button 
             onClick={() => setReps(reps + 1)}
-            className="w-9 h-full flex items-center justify-center text-slate-400 hover:text-white text-lg font-bold"
+            className="w-9 h-full flex items-center justify-center text-slate-400 hover:text-white font-bold text-base active:scale-90 transition-transform"
           >+</button>
         </div>
-        
-        {/* Log button */}
-        <Button 
-          onClick={() => onLog(weight, reps)}
-          className="h-10 px-4 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-[10px] uppercase tracking-widest rounded-xl shrink-0"
-        >
-          {t('log_set')}
-        </Button>
-
-        {/* Video Button from parent */}
-        {videoButton}
+        <div className="flex-1" />
       </div>
+      
+      {/* Hàng 2: Nút GHI HIỆP full width */}
+      <Button 
+        onClick={() => onLog(weight, reps)}
+        className="w-full h-10 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-[10px] uppercase tracking-widest rounded-xl shadow-[0_0_15px_rgba(34,211,238,0.15)] hover:shadow-[0_0_20px_rgba(34,211,238,0.35)] transition-all"
+      >
+        {t('log_set')}
+      </Button>
 
       {/* Set dots -> pills */}
       {logs.length > 0 && (

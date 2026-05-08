@@ -11,7 +11,8 @@ import {
   serverTimestamp,
   where
 } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, auth, storage } from '../lib/firebase';
 
 export enum OperationType {
   CREATE = 'create',
@@ -201,10 +202,17 @@ export async function fetchUserData(userId: string) {
       return entry.timestamp.startsWith(today);
     });
 
+    const weightsSnap = await getDoc(doc(db, `users/${userId}/stats/exerciseWeights`))
+      .catch(() => null);
+    const exerciseWeights = weightsSnap?.exists()
+      ? (() => { const d = weightsSnap.data(); delete d.updatedAt; return d; })()
+      : {};
+
     return {
       profile,
       workoutPlan,
       nutritionDiary: todaysNutrition,
+      exerciseWeights,
     };
   } catch (error: any) {
     if (error.message && error.message.includes('{"error"')) {
@@ -212,6 +220,84 @@ export async function fetchUserData(userId: string) {
     } else {
       handleFirestoreError(error, OperationType.GET, userPath);
     }
+    return null;
+  }
+}
+
+// Sync exerciseWeights (personal bests)
+export async function saveExerciseWeights(weights: Record<string, number>) {
+  const userId = auth.currentUser?.uid;
+  if (!userId) return;
+  const path = `users/${userId}/stats/exerciseWeights`;
+  try {
+    await setDoc(doc(db, path), {
+      ...weights,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+// Load exerciseWeights từ Firestore
+export async function fetchExerciseWeights(userId: string): Promise<Record<string, number>> {
+  if (!userId) return {};
+  const path = `users/${userId}/stats/exerciseWeights`;
+  try {
+    const snap = await getDoc(doc(db, path));
+    if (snap.exists()) {
+      const data = snap.data();
+      delete data.updatedAt; // bỏ field timestamp
+      return data as Record<string, number>;
+    }
+    return {};
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+    return {};
+  }
+}
+
+// Lưu session hoàn thành vào lịch sử
+export async function saveSessionRecord(sessionLogs: any, totalVolume: number) {
+  const userId = auth.currentUser?.uid;
+  if (!userId) return;
+  const path = `users/${userId}/sessionHistory`;
+  const today = new Date().toISOString().split('T')[0];
+  try {
+    await setDoc(doc(db, path, today), {
+      date: today,
+      logs: sessionLogs,
+      totalVolume,
+      completedAt: serverTimestamp()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+// Upload ảnh pose và trả về URL
+export async function uploadPosePhoto(base64Data: string): Promise<string | null> {
+  const userId = auth.currentUser?.uid;
+  if (!userId) return null;
+  const date = new Date().toISOString().split('T')[0];
+  const fileName = `pose_${Date.now()}.jpg`;
+  const storageRef = ref(storage, `users/${userId}/poses/${date}/${fileName}`);
+  try {
+    // Chuyển base64 → Blob
+    const res = await fetch(base64Data);
+    const blob = await res.blob();
+    await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
+    const url = await getDownloadURL(storageRef);
+    // Lưu URL vào Firestore
+    const path = `users/${userId}/poseHistory`;
+    await addDoc(collection(db, path), {
+      date,
+      photoUrl: url,
+      uploadedAt: serverTimestamp()
+    });
+    return url;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `storage/users/${userId}/poses`);
     return null;
   }
 }

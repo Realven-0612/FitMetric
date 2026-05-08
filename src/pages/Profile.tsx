@@ -415,7 +415,7 @@ export default function Profile() {
                     {/* Indicator pill */}
                     <div 
                        className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-4 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"
-                       style={{ left: `${Math.min(100, Math.max(0, ((parseFloat(bmi) || 10) - 10) / 30 * 100))}%` }}
+                       style={{ left: `${Math.min(100, Math.max(0, ((bmi || 10) - 10) / 30 * 100))}%` }}
                     ></div>
                  </div>
 
