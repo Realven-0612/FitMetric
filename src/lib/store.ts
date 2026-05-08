@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { syncProfile, saveWorkoutPlan, logFoodItem, logWeightRecord } from '../services/firebaseService';
 
 interface UserProfile {
+  name?: string;
   age?: number;
   weight?: number;
   height?: number;
@@ -32,9 +33,16 @@ interface NutritionEntry {
 }
 
 interface AppState {
+  // Persistence helpers
+  lastActiveDate: string;
+  lastResetDate: string;
+  checkDailyReset: () => void;
+  checkAndResetDaily: () => void;
+  hydrateStore: (data: any) => void;
+
   // Profile
   profile: UserProfile | null;
-  setProfile: (profile: UserProfile) => void;
+  setProfile: (profile: UserProfile | null) => void;
 
   // Training
   workoutPlan: any | null;
@@ -49,8 +57,14 @@ interface AppState {
   nutritionDiary: NutritionEntry[];
   addNutritionEntry: (entry: NutritionEntry) => void;
   removeNutritionEntry: (index: number) => void;
+  clearNutritionDiary: () => void;
   waterIntake: number;
   addWater: (amount: number) => void;
+  resetWater: () => void;
+
+  // Strava
+  stravaCalories: number;
+  setStravaCalories: (calories: number) => void;
 
   // Global UI
   language: 'en' | 'vi';
@@ -59,13 +73,60 @@ interface AppState {
 
 export const useStore = create<AppState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
+      lastActiveDate: new Date().toISOString().split('T')[0],
+      lastResetDate: new Date().toISOString().split('T')[0],
+      checkDailyReset: () => { // Keep for backwards compat
+        get().checkAndResetDaily();
+      },
+      checkAndResetDaily: () => {
+        const today = new Date().toISOString().split('T')[0];
+        const state = get();
+        if (state.lastResetDate !== today) {
+          set({
+            lastResetDate: today,
+            lastActiveDate: today,
+            nutritionDiary: [],
+            waterIntake: 0,
+            sessionLogs: {},
+            stravaCalories: 0
+          });
+        }
+      },
+      hydrateStore: (data: any) => {
+        const today = new Date().toISOString().split('T')[0];
+        set((state) => {
+          let totalWater = 0;
+          const diary: NutritionEntry[] = [];
+          
+          if (data.nutritionDiary) {
+            data.nutritionDiary.forEach((entry: any) => {
+              if (entry.name === 'WaterLoggedByApp') {
+                totalWater += (entry.kcal || 0); // Using kcal field to store water amount as an integer hack to bypass firestore rule limitations
+              } else {
+                diary.push(entry);
+              }
+            });
+          }
+
+          return {
+            profile: data.profile || state.profile,
+            workoutPlan: data.workoutPlan || state.workoutPlan,
+            nutritionDiary: diary,
+            waterIntake: totalWater,
+            lastActiveDate: today,
+          };
+        });
+      },
+
       profile: null,
       setProfile: (profile) => {
         set({ profile });
-        syncProfile(profile);
-        if (profile.weight) {
-          logWeightRecord(profile.weight);
+        if (profile) {
+          syncProfile(profile);
+          if (profile.weight) {
+            logWeightRecord(profile.weight);
+          }
         }
       },
 
@@ -100,8 +161,24 @@ export const useStore = create<AppState>()(
       removeNutritionEntry: (index) => set((state) => ({
         nutritionDiary: state.nutritionDiary.filter((_, i) => i !== index)
       })),
+      clearNutritionDiary: () => set({ nutritionDiary: [] }),
       waterIntake: 0,
-      addWater: (amount) => set((state) => ({ waterIntake: state.waterIntake + amount })),
+      addWater: (amount) => {
+        set((state) => ({ waterIntake: state.waterIntake + amount }));
+        // Log water to firestore via nutrition entry hack
+        logFoodItem({
+          name: 'WaterLoggedByApp',
+          kcal: amount, // Safe hack: store water amount in kcal field since firestore only allows number
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          timestamp: new Date().toISOString()
+        });
+      },
+      resetWater: () => set({ waterIntake: 0 }),
+      
+      stravaCalories: 0,
+      setStravaCalories: (calories) => set({ stravaCalories: calories }),
 
       language: 'en',
       setLanguage: (language) => set({ language }),

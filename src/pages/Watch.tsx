@@ -16,7 +16,7 @@ export default function Watch() {
     }
 
     const handleMessage = (event: MessageEvent) => {
-      if (!event.origin.includes("localhost") && !event.origin.endsWith(".run.app")) return;
+      if (!event.origin.includes("localhost") && !event.origin.endsWith(".run.app") && !event.origin.endsWith(".onrender.com") && !event.origin.endsWith(".render.com")) return;
 
       if (event.data?.type === "STRAVA_AUTH_SUCCESS") {
         localStorage.setItem("strava_token", JSON.stringify(event.data.payload));

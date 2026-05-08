@@ -18,6 +18,7 @@ import {
   TrendingUp,
   Loader2,
   Zap,
+  Play,
   PlayCircle,
   PlusCircle,
   Settings2,
@@ -30,6 +31,8 @@ import {
   ExternalLink,
   ArrowRight,
   Activity,
+  Unlink,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "../lib/i18n";

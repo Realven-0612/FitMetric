@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Flame, Trophy, Calendar, Target, Zap, TrendingUp, Settings2, Trash2 } from "lucide-react";
+import { Flame, Trophy, Calendar, Target, Zap, TrendingUp, Settings2, Trash2, Activity } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "../components/AuthProvider";
@@ -10,6 +10,8 @@ import { doc, deleteDoc, collection, getDocs } from "firebase/firestore";
 import { handleFirestoreError, OperationType } from "../services/firebaseService";
 import { useTranslation } from "../lib/i18n";
 import { useStore } from "../lib/store";
+import { useNutritionStats } from "../hooks/useNutritionStats";
+import { getDailyQuote } from "../lib/quotes";
 
 const defaultConsumptionData = [
   { name: "t2", value: 0 },
@@ -24,7 +26,8 @@ const defaultConsumptionData = [
 export default function Dashboard() {
   const { user } = useAuth();
   const { t } = useTranslation();
-  const { profile, workoutPlan, nutritionDiary } = useStore();
+  const { profile, workoutPlan, nutritionDiary, stravaCalories, setStravaCalories, language } = useStore();
+  const { targetKcal, consumedKcal } = useNutritionStats();
 
   const [weight, setWeight] = useState<number | string>("--");
   const [nextOperation, setNextOperation] = useState<string>("Rest");
@@ -33,48 +36,6 @@ export default function Dashboard() {
   const [consumptionData, setConsumptionData] = useState(defaultConsumptionData);
   const [weightHistoryData, setWeightHistoryData] = useState<any[]>([]);
   const [rawWeightHistory, setRawWeightHistory] = useState<{date: string, value: number, id?: string}[]>([]);
-  const [stravaCalories, setStravaCalories] = useState<number>(0);
-
-  // Computed TDEE
-  const tdee = useMemo(() => {
-    if (!profile) return 2000;
-    const w = profile.weight || 72;
-    const h = profile.height || 168;
-    const a = profile.age || 24;
-    const bf = profile.bodyFat;
-    const gender = profile.gender || 'male';
-    
-    let bmr = 0;
-    if (bf && bf > 0) {
-      // Katch-McArdle Formula
-      bmr = 370 + (21.6 * (w * (100 - bf) / 100));
-    } else {
-      // Mifflin-St Jeor Formula
-      bmr = (10 * w) + (6.25 * h) - (5 * a);
-      bmr = gender === 'male' ? bmr + 5 : bmr - 161;
-    }
-    
-    let act = 1.375;
-    if (profile.activityLevel === "Sedentary") act = 1.2;
-    else if (profile.activityLevel === "Lightly Active") act = 1.375;
-    else if (profile.activityLevel === "Moderately Active") act = 1.55;
-    else if (profile.activityLevel === "Very Active") act = 1.725;
-    
-    let target = bmr * act;
-    if (profile.primaryGoal === "Lose Fat") target -= 500;
-    else if (profile.primaryGoal === "Build Muscle") target += 300;
-    
-    // Add Strava Activity Calories
-    return Math.round(target + stravaCalories);
-  }, [profile, stravaCalories]);
-
-  // Consumed Kcal today
-  const consumedKcal = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    return nutritionDiary
-      .filter(entry => entry.timestamp.startsWith(today))
-      .reduce((acc, curr) => acc + (curr.kcal || 0), 0);
-  }, [nutritionDiary]);
 
   const handleDeleteWeightRecord = async (dateStr: string, id?: string) => {
     if (user && id) {
@@ -87,6 +48,7 @@ export default function Dashboard() {
     }
   };
 
+  // 1. Strava Activities sync
   useEffect(() => {
     const fetchStravaActivities = async () => {
       const stravaTokenStr = localStorage.getItem("strava_token");
@@ -102,7 +64,7 @@ export default function Dashboard() {
         
         if (response.ok) {
           const data = await response.json();
-          const totalCals = data.activities.reduce((acc: number, curr: any) => acc + (curr.calories || 0), 0);
+          const totalCals = (data.activities || []).reduce((acc: number, curr: any) => acc + (curr.calories || 0), 0);
           setStravaCalories(totalCals);
         }
       } catch (err) {
@@ -111,7 +73,10 @@ export default function Dashboard() {
     };
 
     fetchStravaActivities();
+  }, [setStravaCalories]);
 
+  // 2. Sync local component states from Profile & WorkoutPlan & NutritionDiary changes
+  useEffect(() => {
     if (profile) {
       setWeight(profile.weight || "--");
     }
@@ -138,8 +103,6 @@ export default function Dashboard() {
 
     // Chart Data and Streak
     if (nutritionDiary) {
-       const todayStr = new Date().toISOString().split('T')[0];
-       
        // Compute streak (mock implementation based on diary presence for now, or improve later)
        setStreak(nutritionDiary.length > 0 ? 1 : 0);
 
@@ -157,7 +120,10 @@ export default function Dashboard() {
        }
        setConsumptionData(chartData);
     }
-    
+  }, [profile, workoutPlan, nutritionDiary]);
+
+  // 3. Load weight history from Firestore
+  useEffect(() => {
     const loadWeightHistory = async () => {
       if (!user) return;
       try {
@@ -184,7 +150,9 @@ export default function Dashboard() {
     };
     
     loadWeightHistory();
-  }, [user, profile, workoutPlan, nutritionDiary]);
+  }, [user]);
+
+  const dailyQuote = getDailyQuote(language);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10">
@@ -209,7 +177,7 @@ export default function Dashboard() {
               </div>
 
               <blockquote className="text-lg text-slate-300 font-medium italic mt-2 mb-4">
-                "{t('discipline_freedom')}"
+                "{dailyQuote}"
               </blockquote>
 
               {/* Metrics Grid */}
@@ -223,7 +191,7 @@ export default function Dashboard() {
                       {consumedKcal}
                     </div>
                     <div className="text-xs text-slate-500 font-medium font-mono uppercase flex flex-col gap-1">
-                      <span>/ {tdee} {t('total_kcal')}</span>
+                      <span>/ {targetKcal} {t('total_kcal')}</span>
                       {stravaCalories > 0 && (
                         <div className="flex items-center gap-1.2 text-[#fc4c02] text-[9px] font-black animate-pulse">
                            <Activity className="w-2.5 h-2.5" />
@@ -284,7 +252,7 @@ export default function Dashboard() {
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">{t('todays_motivation')}</h3>
            </div>
            <p className="text-slate-400 italic font-medium leading-relaxed">
-             {t('motivation_text')}
+             "{dailyQuote}"
            </p>
         </Card>
       </div>

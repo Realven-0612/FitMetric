@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
-export async function generateAIContent(prompt: string, schema?: any, modelName: string = "gemini-3.1-flash-lite-preview") {
+export async function generateAIContent(prompt: string, schema?: any, modelName: string = "gemini-2.0-flash") {
   try {
     const response = await ai.models.generateContent({
       model: modelName,
@@ -23,7 +23,7 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
   }
 }
 
-export async function analyzeAIImage(prompt: string, imageBase64: string, mimeType: string, schema?: any, modelName: string = "gemini-3.1-flash-lite-preview") {
+export async function analyzeAIImage(prompt: string, imageBase64: string, mimeType: string, schema?: any, modelName: string = "gemini-2.0-flash") {
   try {
     const response = await ai.models.generateContent({
       model: modelName,

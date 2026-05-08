@@ -10,8 +10,16 @@ import Watch from "./pages/Watch";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "./components/AuthProvider";
 import { TranslationProvider } from "./lib/i18n";
+import { useStore } from "./lib/store";
+import { useEffect } from "react";
 
 export default function App() {
+  const checkAndResetDaily = useStore(state => state.checkAndResetDaily);
+
+  useEffect(() => {
+    checkAndResetDaily();
+  }, [checkAndResetDaily]);
+
   return (
     <TranslationProvider>
       <AuthProvider>

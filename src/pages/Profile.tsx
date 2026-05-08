@@ -29,7 +29,7 @@ export default function Profile() {
     age: "24",
     level: "Beginner (0-1 y)",
     primaryGoal: "Lose Fat",
-    gender: "Male",
+    gender: "male",
     activityLevel: "Sedentary"
   });
 
@@ -41,6 +41,8 @@ export default function Profile() {
         weight: storeProfile.weight?.toString() || prev.weight,
         height: storeProfile.height?.toString() || prev.height,
         age: storeProfile.age?.toString() || prev.age,
+        bodyFat: storeProfile.bodyFat?.toString() || prev.bodyFat,
+        gender: (storeProfile.gender as string) || prev.gender,
       }));
     }
   }, [storeProfile]);
@@ -83,6 +85,8 @@ export default function Profile() {
       weight: Number(profile.weight),
       height: Number(profile.height),
       age: Number(profile.age),
+      bodyFat: Number(profile.bodyFat) || 0,
+      gender: profile.gender as "male" | "female",
     };
     setStoreProfile(updatedProfile);
     setIsEditing(false);
@@ -232,9 +236,9 @@ export default function Profile() {
                      <div className="space-y-2 group">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-cyan-400 transition-colors">Gender</label>
                         <select name="gender" value={profile.gender} onChange={handleChange} className="flex h-14 w-full items-center justify-between rounded-2xl border border-white/10 hover:border-white/20 bg-[#0a0a0c] px-4 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 shadow-inner transition-all appearance-none cursor-pointer">
-                          <option value="Male">Male</option>
-                          <option value="Female">Female</option>
-                          <option value="Other">Other</option>
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="other">Other</option>
                         </select>
                      </div>
                      <div className="space-y-2 group">
@@ -403,14 +407,16 @@ export default function Profile() {
                     <span className="text-white bg-white/10 px-2 py-1 rounded-md">18.5 - 25.0</span>
                  </div>
                  {/* Custom progress bar to show BMI range */}
-                 <div className="h-2 w-full bg-black/60 rounded-full overflow-hidden flex mb-10 shadow-inner">
-                    <div className="h-full bg-orange-500 w-[20%]"></div>
-                    <div className="h-full bg-emerald-500 w-[40%] relative">
-                       {/* Indicator pill */}
-                       <div className="absolute top-1/2 left-[85%] -translate-x-1/2 -translate-y-1/2 w-2 h-4 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"></div>
-                    </div>
+                 <div className="h-2 w-full bg-black/60 rounded-full flex mb-10 shadow-inner relative">
+                    <div className="h-full bg-orange-500 w-[20%] rounded-l-full"></div>
+                    <div className="h-full bg-emerald-500 w-[40%]"></div>
                     <div className="h-full bg-yellow-500 w-[20%]"></div>
-                    <div className="h-full bg-red-500 w-[20%]"></div>
+                    <div className="h-full bg-red-500 w-[20%] rounded-r-full"></div>
+                    {/* Indicator pill */}
+                    <div 
+                       className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-4 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"
+                       style={{ left: `${Math.min(100, Math.max(0, ((parseFloat(bmi) || 10) - 10) / 30 * 100))}%` }}
+                    ></div>
                  </div>
 
                  <div className="bg-gradient-to-br from-cyan-950/30 to-cyan-900/10 border border-cyan-500/20 rounded-2xl p-5 shadow-[0_4px_20px_rgba(6,182,212,0.05)]">
