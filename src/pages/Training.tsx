@@ -1015,46 +1015,50 @@ export default function Training() {
                   </div>
 
                   {!isRestDay && (
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-col gap-3 w-full">
                       {hrConnected ? (
-                        <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 px-4 rounded-xl h-12">
-                          <Activity className="w-5 h-5 text-red-500 animate-pulse" />
-                          <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-red-400 uppercase tracking-widest leading-none">{t('heart_rate')}</span>
-                            <span className="text-xl font-black text-white leading-none mt-1">{heartRate || '--'} <small className="text-[8px] opacity-50">BPM</small></span>
+                        <div className="flex w-full items-center justify-between gap-3 bg-red-500/10 border border-red-500/20 px-6 rounded-2xl h-14 hover:shadow-[0_0_20px_rgba(239,68,68,0.2)] transition-all">
+                          <div className="flex items-center gap-3">
+                            <Activity className="w-5 h-5 text-red-500 animate-pulse shrink-0" />
+                            <div className="flex flex-col">
+                              <span className="text-[10px] font-black text-red-400 uppercase tracking-widest leading-none truncate">{t('heart_rate')}</span>
+                              <span className="text-xl font-black text-white leading-none mt-1 truncate">{heartRate || '--'} <small className="text-[8px] opacity-50">BPM</small></span>
+                            </div>
                           </div>
                           <Button 
                             variant="ghost" 
                             size="icon" 
                             onClick={toggleHeartRate}
-                            className="w-8 h-8 rounded-lg hover:bg-red-500/10 text-red-400/50 hover:text-red-400"
+                            className="w-10 h-10 rounded-xl hover:bg-red-500/20 text-red-400/70 hover:text-red-400 shrink-0"
                           >
-                            <Unlink className="w-3 h-3" />
+                            <Unlink className="w-4 h-4" />
                           </Button>
                         </div>
                       ) : (
                         <Button
                           onClick={toggleHeartRate}
                           variant="outline"
-                          className="border-red-500/30 bg-red-500/5 text-red-400 hover:bg-red-500 hover:text-white font-black uppercase tracking-widest text-[10px] h-12 px-5 rounded-xl transition-all"
+                          className="w-full border-red-500/30 bg-red-500/5 text-red-400 hover:bg-red-500 hover:text-white font-black uppercase tracking-widest text-xs h-14 px-8 rounded-2xl transition-all hover:shadow-[0_0_20px_rgba(239,68,68,0.4)]"
                         >
-                          <Activity className="w-4 h-4 mr-2" /> {t('connect_hr')}
+                          <Activity className="w-5 h-5 mr-3 shrink-0" />
+                          <span>{t('connect_hr')}</span>
                         </Button>
                       )}
                       
                       <Button
                         onClick={applyAllRecommendedWeights}
                         variant="outline"
-                        className="border-cyan-500/30 bg-cyan-500/5 text-cyan-400 hover:bg-cyan-500 hover:text-black font-black uppercase tracking-widest text-[10px] h-12 px-5 rounded-xl transition-all"
+                        className="w-full border-cyan-500/30 bg-cyan-500/5 text-cyan-400 hover:bg-cyan-500 hover:text-black font-black uppercase tracking-widest text-xs h-14 px-8 rounded-2xl transition-all hover:shadow-[0_0_20px_rgba(34,211,238,0.4)]"
                       >
-                        <Trophy className="w-4 h-4 mr-2" /> {t('apply_all')}
+                        <Trophy className="w-5 h-5 mr-3 shrink-0" />
+                        <span>{t('apply_all')}</span>
                       </Button>
                       <Button
                         onClick={markSessionComplete}
-                        className="bg-cyan-500 text-black hover:bg-cyan-400 font-black uppercase tracking-widest text-[10px] h-12 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(34,211,238,0.2)] group"
+                        className="w-full bg-cyan-500 text-black hover:bg-cyan-400 font-black uppercase tracking-widest text-xs h-14 px-8 rounded-2xl transition-all shadow-[0_0_20px_rgba(34,211,238,0.2)] hover:shadow-[0_0_30px_rgba(34,211,238,0.6)] group"
                       >
-                        <CheckCircle2 className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />{" "}
-                        {t('complete_session')}
+                        <CheckCircle2 className="w-5 h-5 mr-3 shrink-0 group-hover:scale-110 transition-transform" />
+                        <span>{t('complete_session')}</span>
                       </Button>
                     </div>
                   )}
