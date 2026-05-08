@@ -261,13 +261,21 @@ export default function Training() {
     if (!currentDayData?.exercises) return;
     let appliedCount = 0;
     currentDayData.exercises.forEach(ex => {
-      if (ex.recommendedWeight && !/body\s*weight/i.test(ex.recommendedWeight)) {
-        const match = ex.recommendedWeight.match(/(\d+(\.\d+)?)/);
-        if (match) {
-          const weight = parseFloat(match[1]);
-          updateExerciseWeight(ex.name, weight);
+      if (!ex.recommendedWeight) return;
+      
+      if (/body\s*weight/i.test(ex.recommendedWeight)) {
+        if (profile?.weight) {
+          updateExerciseWeight(ex.name, profile.weight);
           appliedCount++;
         }
+        return;
+      }
+      
+      const match = ex.recommendedWeight.match(/(\d+(\.\d+)?)/);
+      if (match) {
+        const weight = parseFloat(match[1]);
+        updateExerciseWeight(ex.name, weight);
+        appliedCount++;
       }
     });
     if (appliedCount > 0) {
@@ -342,6 +350,18 @@ export default function Training() {
 
   const applyRecommendedWeight = (ex: any) => {
     if (!ex.recommendedWeight) return;
+    if (/body\s*weight/i.test(ex.recommendedWeight)) {
+      const bw = profile?.weight;
+      if (bw) {
+        updateExerciseWeight(ex.name, bw);
+        toast.success(`${ex.name}: ${bw}kg (bodyweight)`, {
+          icon: <Sparkles className="w-4 h-4 text-cyan-400" />
+        });
+      } else {
+        toast.info("Chưa có cân nặng trong Profile!");
+      }
+      return;
+    }
     const match = ex.recommendedWeight.match(/(\d+(\.\d+)?)/);
     if (match) {
       const weight = parseFloat(match[1]);
@@ -408,7 +428,7 @@ export default function Training() {
       4. progressionGuide must provide a detailed progressive overload strategy for the entire cycle. Format as strictly bullet points with newlines (\n). Example: "- Week 1: Base assessment\n- Week 2: Increase intensity\n- Week 3: Peak volume\n- Week 4: Strategic deload"
       5. Provide an accurate youtubeQuery string (e.g. "Barbell Bench Press tutorial form") for each exercise.
       6. Provide a list of dynamic warm-up exercises in the 'warmup' array and a list of static cool-down stretches in the 'cooldown' array based on the day's focus.
-      7. Provide a 'recommendedWeight' (e.g. "20kg", "Bodyweight", "15kg per dumbbell") for each exercise. 
+      7. Provide a 'recommendedWeight' (e.g. "20kg", "Bodyweight", "15kg per dumbbell") for each exercise. Always provide a single specific number, not a range.
          IMPORTANT: If an exercise exists in "Current Personal Best Weights", recommend a weight that is 2.5% to 5% higher (Progressive Overload). 
          If it's a new exercise, estimate based on the user's weight (e.g. Bench Press often starts around 40-50% bodyweight for beginners, Squat 60-70%).`;
 
@@ -972,22 +992,15 @@ export default function Training() {
                 const isActive = selectedDay === idx;
                 const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
                 return (
-                  <div key={idx} className="snap-start shrink-0 flex flex-col items-center gap-2">
-                    {isToday ? (
-                      <div className="bg-cyan-500 text-black text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.5)] leading-tight text-center">
-                        <span className="whitespace-pre-line">
-                      {t('todays_operation')}</span>
+                  <div key={idx} className="snap-start shrink-0 flex flex-col items-center relative pt-6">
+                    {isToday && (
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-cyan-500 text-black text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.5)] leading-tight text-center whitespace-nowrap">
+                        {t('todays_operation')}
                       </div>
-                    ) : (
-                      <div className="h-[18px]"></div>
                     )}
                     <button
                       onClick={() => setSelectedDay(idx)}
-                      className={`w-[80px] h-[80px] rounded-2xl flex flex-col items-center justify-center gap-1 font-black transition-all border ${
-                        isActive
-                          ? "bg-cyan-500 text-black border-cyan-400 shadow-[0_0_30px_rgba(34,211,238,0.25)]"
-                          : "bg-[#111111]/80 text-slate-400 border-white/5 hover:bg-white/10 hover:text-white hover:border-white/20"
-                      }`}
+                      className={`w-[80px] h-[80px] ...`}
                     >
                       <span className="text-xl">{t(dayKeys[idx])}</span>
                     </button>
@@ -1200,52 +1213,38 @@ export default function Training() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 md:flex md:items-center gap-4 md:gap-6 bg-black/40 md:bg-transparent rounded-xl p-4 md:p-0 border md:border-none border-white/5 mt-2 md:mt-0">
-                            <div className="flex flex-col">
-                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">
-                                {t('volume_label')}
-                              </span>
-                              <span className="text-white font-black text-sm">
-                                {ex.sets}
-                              </span>
-                            </div>
-                            {ex.rest && (
-                              <div className="flex flex-col">
-                                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">
-                                  {t('rest_label')}
+                          <div className="w-full">
+                            <div className="grid grid-cols-3 gap-2 mt-3">
+                              <div className="bg-black/40 border border-white/5 rounded-xl p-2.5 flex flex-col gap-0.5">
+                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                  {t('volume_label')}
                                 </span>
-                                <span className="text-slate-300 font-black text-sm">
-                                  {ex.rest}
-                                </span>
+                                <span className="text-white font-black text-xs leading-tight">{ex.sets}</span>
                               </div>
-                            )}
-                            {ex.recommendedWeight && !/body\s*weight/i.test(ex.recommendedWeight) && (
-                              <button 
-                                onClick={() => applyRecommendedWeight(ex)}
-                                className="flex flex-col text-left group/suggest hover:bg-cyan-500/5 p-1 rounded-lg transition-colors cursor-pointer"
-                              >
-                                <span className="text-[10px] text-cyan-500 font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                                  {t('suggested')} <CheckCircle2 className="w-2.5 h-2.5 opacity-0 group-hover/suggest:opacity-100 transition-opacity" />
-                                </span>
-                                <span className="text-cyan-300 font-black text-sm flex items-center gap-1 underline decoration-cyan-500/30 underline-offset-4">
-                                  {ex.recommendedWeight}
-                                </span>
-                              </button>
-                            )}
-                            <div className="flex flex-col col-span-2 md:col-span-1 mt-2 md:mt-0">
-                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5 flex items-center justify-between gap-2">
-                                {t('weight_kg_alt')}
-                                {ex.recommendedWeight && !/body\s*weight/i.test(ex.recommendedWeight) && (
-                                  <button 
-                                    onClick={() => applyRecommendedWeight(ex)}
-                                    className="text-[9px] text-cyan-500/80 font-black animate-pulse hover:text-cyan-400 hover:scale-105 transition-all cursor-pointer"
-                                    title={t('use_recommended')}
-                                  >
-                                    REC: {ex.recommendedWeight}
-                                  </button>
-                                )}
-                              </span>
-                              
+                              {ex.rest && (
+                                <div className="bg-black/40 border border-white/5 rounded-xl p-2.5 flex flex-col gap-0.5">
+                                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                    {t('rest_label')}
+                                  </span>
+                                  <span className="text-slate-300 font-black text-xs leading-tight">{ex.rest}</span>
+                                </div>
+                              )}
+                              {ex.recommendedWeight && (
+                                <button
+                                  onClick={() => applyRecommendedWeight(ex)}
+                                  className="bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 rounded-xl p-2.5 flex flex-col gap-0.5 text-left transition-all"
+                                >
+                                  <span className="text-[9px] font-black text-cyan-500 uppercase tracking-widest">
+                                    {t('suggested')}
+                                  </span>
+                                  <span className="text-cyan-300 font-black text-xs leading-tight">
+                                    {ex.recommendedWeight}
+                                  </span>
+                                </button>
+                              )}
+                            </div>
+                            
+                            <div className="mt-3">
                               <SetLogger 
                                 exercise={ex} 
                                 currentWeight={exerciseWeights[ex.name] || 0}
@@ -1254,24 +1253,27 @@ export default function Training() {
                                   const isHeavy = ex.name.toLowerCase().includes('squat') || ex.name.toLowerCase().includes('deadlift') || ex.name.toLowerCase().includes('bench');
                                   logSet(ex.name, w, r, isHeavy ? 180 : 90);
                                 }}
+                                videoButton={
+                                  <Button
+                                    onClick={() =>
+                                      setActiveVideoIndex(
+                                        activeVideoIndex === idx ? null : idx,
+                                      )
+                                    }
+                                    variant="ghost"
+                                    size="icon"
+                                    className={`w-10 h-10 rounded-xl flex-shrink-0 transition-colors border ${activeVideoIndex === idx ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/30" : "bg-black/60 text-slate-400 border-white/10 hover:text-white hover:bg-white/10"}`}
+                                    title={t('demonstration')}
+                                  >
+                                    {activeVideoIndex === idx ? (
+                                      <ChevronUp className="w-5 h-5" />
+                                    ) : (
+                                      <PlayCircle className="w-5 h-5" />
+                                    )}
+                                  </Button>
+                                }
                               />
                             </div>
-                            <Button
-                              onClick={() =>
-                                setActiveVideoIndex(
-                                  activeVideoIndex === idx ? null : idx,
-                                )
-                              }
-                              variant="ghost"
-                              size="icon"
-                              className={`mt-2 md:mt-0 w-8 h-8 rounded-full transition-colors flex-shrink-0 border ${activeVideoIndex === idx ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/30 hover:text-cyan-300" : "text-slate-400 border-white/5 hover:text-white hover:bg-white/10"}`}
-                            >
-                              {activeVideoIndex === idx ? (
-                                <ChevronUp className="w-4 h-4" />
-                              ) : (
-                                <PlayCircle className="w-4 h-4" />
-                              )}
-                            </Button>
                           </div>
                         </div>
 
@@ -1406,11 +1408,12 @@ export default function Training() {
   );
 }
 
-function SetLogger({ exercise, currentWeight, logs, onLog }: { 
+function SetLogger({ exercise, currentWeight, logs, onLog, videoButton }: { 
   exercise: Exercise; 
   currentWeight: number; 
   logs: LoggedSet[]; 
-  onLog: (weight: number, reps: number) => void 
+  onLog: (weight: number, reps: number) => void;
+  videoButton?: React.ReactNode;
 }) {
   const { t } = useTranslation();
   const [weight, setWeight] = useState(currentWeight || 0);
@@ -1421,51 +1424,62 @@ function SetLogger({ exercise, currentWeight, logs, onLog }: {
   }, [currentWeight]);
 
   return (
-    <div className="space-y-4">
+    <div>
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1 bg-black/50 border border-white/10 rounded-lg p-0.5 shadow-inner">
+        {/* Weight */}
+        <div className="flex items-center bg-black/60 border border-white/10 rounded-xl overflow-hidden h-10 flex-1">
+          <span className="text-[9px] font-black text-slate-600 uppercase pl-2.5 shrink-0">KG</span>
           <Input 
             type="number" 
             value={weight} 
             onChange={(e) => setWeight(parseFloat(e.target.value) || 0)}
-            className="w-16 h-8 bg-transparent border-none text-center text-sm font-black focus-visible:ring-0 text-white p-0"
+            className="flex-1 h-full bg-transparent border-none text-center text-sm font-black text-white focus-visible:ring-0 p-0"
           />
-          <span className="text-[8px] font-black text-slate-600 uppercase pr-1 italic">kg</span>
         </div>
-        <div className="flex items-center gap-1 bg-black/50 border border-white/10 rounded-lg p-0.5 shadow-inner">
+        
+        {/* Reps */}
+        <div className="flex items-center bg-black/60 border border-white/10 rounded-xl h-10">
           <button 
             onClick={() => setReps(Math.max(1, reps - 1))}
-            className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-white"
-          >-</button>
+            className="w-9 h-full flex items-center justify-center text-slate-400 hover:text-white text-lg font-bold"
+          >−</button>
           <span className="w-8 text-center text-sm font-black text-white">{reps}</span>
           <button 
             onClick={() => setReps(reps + 1)}
-            className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-white"
+            className="w-9 h-full flex items-center justify-center text-slate-400 hover:text-white text-lg font-bold"
           >+</button>
         </div>
+        
+        {/* Log button */}
         <Button 
           onClick={() => onLog(weight, reps)}
-          size="sm"
-          className="bg-cyan-500 hover:bg-cyan-400 text-black font-black text-[10px] h-8 px-3 rounded-lg"
+          className="h-10 px-4 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-[10px] uppercase tracking-widest rounded-xl shrink-0"
         >
           {t('log_set')}
         </Button>
+
+        {/* Video Button from parent */}
+        {videoButton}
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {logs.map((set, i) => (
-          <div key={i} className="flex items-center gap-1 bg-white/5 border border-white/5 rounded px-2 py-1 group animate-in zoom-in-50 duration-300">
-            <span className="text-[9px] font-black text-slate-500">{i + 1}</span>
-            <span className="text-[10px] font-black text-white">{set.weight}<span className="text-slate-600 italic">kg</span></span>
-            <span className="text-[10px] font-black text-cyan-400">×{set.reps}</span>
-          </div>
-        ))}
-        {Array.from({ length: Math.max(0, parseInt(exercise.sets) - logs.length) }).map((_, i) => (
-          <div key={`empty-${i}`} className="w-6 h-6 border border-white/5 border-dashed rounded flex items-center justify-center">
-            <span className="text-[8px] font-black text-slate-700">{logs.length + i + 1}</span>
-          </div>
-        ))}
-      </div>
+      {/* Set dots -> pills */}
+      {logs.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {logs.map((set, i) => (
+            <div key={i} className="flex items-center gap-1 bg-cyan-500/10 border border-cyan-500/20 rounded-lg px-2 py-1 text-[10px] font-black animate-in zoom-in-50 duration-300">
+              <span className="text-cyan-500/50">#{i + 1}</span>
+              <span className="text-white">{set.weight}<span className="text-slate-500 text-[8px]">kg</span></span>
+              <span className="text-slate-500">×</span>
+              <span className="text-cyan-400">{set.reps}</span>
+            </div>
+          ))}
+          {Array.from({ length: Math.max(0, parseInt(exercise.sets) - logs.length) }).map((_, i) => (
+            <div key={`empty-${i}`} className="w-7 h-7 border border-dashed border-white/10 rounded-lg flex items-center justify-center">
+              <span className="text-[8px] text-slate-700">{logs.length + i + 1}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
