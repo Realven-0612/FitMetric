@@ -67,6 +67,7 @@ interface AppState {
   updateExerciseWeight: (name: string, weight: number) => void;
   setExerciseWeights: (weights: Record<string, number>) => void;
   logSet: (exName: string, set: any) => void;
+  removeLogSet: (exName: string, index: number) => void;
   clearSessionLogs: () => void;
 
   // Nutrition
@@ -178,6 +179,17 @@ export const useStore = create<AppState>()(
           sessionLogs: {
             ...state.sessionLogs,
             [exName]: [...currentLogs, setEntry]
+          }
+        };
+      }),
+      removeLogSet: (exName, index) => set((state) => {
+        const currentLogs = state.sessionLogs[exName] || [];
+        const newLogs = [...currentLogs];
+        newLogs.splice(index, 1);
+        return {
+          sessionLogs: {
+            ...state.sessionLogs,
+            [exName]: newLogs
           }
         };
       }),

@@ -219,6 +219,7 @@ export default function Training() {
     setExerciseWeights,
     sessionLogs,
     logSet: storeLogSet,
+    removeLogSet,
     clearSessionLogs
   } = useStore();
 
@@ -1430,6 +1431,7 @@ export default function Training() {
                               const isHeavy = ex.name.toLowerCase().includes('squat') || ex.name.toLowerCase().includes('deadlift') || ex.name.toLowerCase().includes('bench');
                               logSet(ex.name, w, r, isHeavy ? 180 : 90);
                             }}
+                            onDelete={(idx) => removeLogSet(ex.name, idx)}
                           />
                         </div>
 
@@ -1610,11 +1612,12 @@ export default function Training() {
   );
 }
 
-function SetLogger({ exercise, currentWeight, logs, onLog }: { 
+function SetLogger({ exercise, currentWeight, logs, onLog, onDelete }: { 
   exercise: Exercise; 
   currentWeight: number; 
   logs: LoggedSet[]; 
   onLog: (weight: number, reps: number) => void;
+  onDelete?: (index: number) => void;
 }) {
   const { t } = useTranslation();
   const [weight, setWeight] = useState(currentWeight || 0);
@@ -1671,6 +1674,14 @@ function SetLogger({ exercise, currentWeight, logs, onLog }: {
               <span className="text-white">{set.weight}<span className="text-slate-500 text-[8px]">kg</span></span>
               <span className="text-slate-500">×</span>
               <span className="text-cyan-400">{set.reps}</span>
+              {onDelete && (
+                <button 
+                  onClick={() => onDelete(i)} 
+                  className="ml-1 text-slate-500 hover:text-red-400 transition-colors"
+                >
+                  <Trash2 className="w-2.5 h-2.5" />
+                </button>
+              )}
             </div>
           ))}
           {Array.from({ length: Math.max(0, parseInt(exercise.sets) - logs.length) }).map((_, i) => (
