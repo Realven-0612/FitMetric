@@ -43,7 +43,20 @@ export default function App() {
               </Routes>
             </AppLayout>
           )}
-          <Toaster />
+          <Toaster
+            theme="dark"
+            position="top-center"
+            toastOptions={{
+              style: {
+                background: '#1e2330',
+                border: '1px solid rgba(255,255,255,0.15)',
+                color: '#f1f5f9',
+                fontFamily: "'Be Vietnam Pro', sans-serif",
+                fontSize: '13px',
+                borderRadius: '12px',
+              },
+            }}
+          />
         </BrowserRouter>
       </AuthProvider>
     </TranslationProvider>
