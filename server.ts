@@ -6,7 +6,7 @@ import axios from "axios";
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
 
   app.use(cors());
   app.use(express.json());
@@ -109,6 +109,9 @@ async function startServer() {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
+      if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ error: 'API route not found' });
+      }
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
