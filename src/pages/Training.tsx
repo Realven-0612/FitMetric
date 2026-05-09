@@ -509,7 +509,8 @@ export default function Training() {
       6. Provide a list of dynamic warm-up exercises in the 'warmup' array and a list of static cool-down stretches in the 'cooldown' array based on the day's focus. Write them in ${language === 'vi' ? 'Vietnamese' : 'English'}.
       7. Provide a 'recommendedWeight' (e.g. "20kg", "Bodyweight", "15kg per dumbbell") for each exercise. Always provide a single specific number, not a range.
          IMPORTANT: If an exercise exists in "Current Personal Best Weights", recommend a weight that is 2.5% to 5% higher (Progressive Overload). 
-         If it's a new exercise, estimate based on the user's weight (e.g. Bench Press often starts around 40-50% bodyweight for beginners, Squat 60-70%).`;
+         If it's a new exercise, estimate based on the user's weight (e.g. Bench Press often starts around 40-50% bodyweight for beginners, Squat 60-70%).
+      8. If Output Language is Vietnamese, MUST translate "to failure" as "đến ngưỡng thất bại" (do NOT use "đến khi không thực hiện được nữa").`;
 
       const schema = {
         type: "object",
@@ -1405,7 +1406,7 @@ export default function Training() {
                             {/* Khối lượng */}
                             <div className="bg-black/60 border border-white/5 rounded-lg px-2 py-1.5 flex flex-col gap-0.5 min-w-0">
                               <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{t('volume_label')}</span>
-                              <span className="text-white font-black text-[10px] leading-tight">{ex.sets}</span>
+                              <span className="text-white font-black text-[10px] leading-tight break-words">{ex.sets?.replace(/đến khi không thực hiện được nữa/gi, 'đến ngưỡng thất bại')}</span>
                             </div>
                             {/* Nghỉ */}
                             <div className="bg-black/60 border border-white/5 rounded-lg px-2 py-1.5 flex flex-col gap-0.5 min-w-0">
