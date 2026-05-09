@@ -13,6 +13,7 @@ import { useTranslation } from "../lib/i18n";
 import { useStore } from "../lib/store";
 import { handleFirestoreError, OperationType } from "../services/firebaseService";
 import BMIBar from "../components/BMIBar";
+import { enableNotifications, startReminders, clearReminders } from '../lib/notifications';
 
 export default function Profile() {
   const { user, loading: authLoading, signInWithGoogle, signOut } = useAuth();
@@ -107,19 +108,12 @@ export default function Profile() {
   };
 
   const handleEnablePush = async () => {
-    if (!('Notification' in window)) {
-      toast.error('This browser does not support desktop notifications.');
-      return;
-    }
-    try {
-      const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
-        toast.success('Push notifications enabled!');
-      } else {
-        toast.error('Push notification permission denied.');
-      }
-    } catch (error) {
-      toast.error('Failed to request notification permission.');
+    const success = await enableNotifications();
+    if (success) {
+      toast.success('🔔 Đã bật thông báo! Bạn sẽ được nhắc nhở uống nước và tập luyện.');
+      startReminders({ waterIntake: 0 });
+    } else {
+      toast.error('Không thể bật thông báo. Vui lòng kiểm tra cài đặt trình duyệt.');
     }
   };
 

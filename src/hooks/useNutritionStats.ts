@@ -25,8 +25,17 @@ export function useNutritionStats() {
     targetPro = stats.targetPro;
     targetCarbs = stats.targetCarbs;
     targetFat = stats.targetFat;
-    // Basic water guideline: 30-40ml per kg of bodyweight
-    waterTarget = Math.round((profile.weight * 35) / 1000 * 10) / 10;
+    // Better water guideline calculation
+    let baseWater = (profile.weight * 35) / 1000; // 35ml per kg baseline
+    const activityBonus: Record<string, number> = {
+      'Sedentary': 0,
+      'Lightly Active': 0.3,
+      'Moderately Active': 0.5,
+      'Very Active': 0.8,
+    };
+    baseWater += activityBonus[profile.activityLevel || ''] ?? 0;
+    if (stravaCalories > 0) baseWater += Math.round((stravaCalories / 500) * 0.5 * 10) / 10;
+    waterTarget = Math.round(baseWater * 10) / 10;
   }
 
   // Add Strava active calories to the total daily energy budget
