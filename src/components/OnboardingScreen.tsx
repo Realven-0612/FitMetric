@@ -99,9 +99,11 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
           {step === 0 && (
             <div className="flex-1 flex flex-col items-center justify-center text-center space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="space-y-6 flex flex-col items-center">
-                <div className="w-24 h-24 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-3xl flex items-center justify-center shadow-[0_0_40px_rgba(6,182,212,0.4)] animate-pulse">
-                  <Activity className="w-12 h-12 text-white" />
-                </div>
+                <img 
+                  src="/logo.png" 
+                  alt="FitMetric" 
+                  className="w-24 h-24 object-contain drop-shadow-[0_0_30px_rgba(6,182,212,0.4)] animate-pulse"
+                />
                 <div>
                   <h1 className="text-5xl font-black tracking-tight mb-3">Fit<span className="text-cyan-500">Metric</span></h1>
                   <p className="text-slate-400 text-lg">Your fitness, quantified.</p>

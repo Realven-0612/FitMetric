@@ -28,18 +28,21 @@ export default function App() {
     <TranslationProvider>
       <AuthProvider>
         <BrowserRouter>
-          {showOnboarding && <OnboardingScreen onComplete={() => setShowOnboarding(false)} />}
-          <AppLayout>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/training" element={<Training />} />
-              <Route path="/library" element={<Library />} />
-              <Route path="/scanner" element={<Scanner />} />
-              <Route path="/nutrition" element={<Nutrition />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/watch" element={<Watch />} />
-            </Routes>
-          </AppLayout>
+          {showOnboarding ? (
+            <OnboardingScreen onComplete={() => setShowOnboarding(false)} />
+          ) : (
+            <AppLayout>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/training" element={<Training />} />
+                <Route path="/library" element={<Library />} />
+                <Route path="/scanner" element={<Scanner />} />
+                <Route path="/nutrition" element={<Nutrition />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/watch" element={<Watch />} />
+              </Routes>
+            </AppLayout>
+          )}
           <Toaster />
         </BrowserRouter>
       </AuthProvider>
