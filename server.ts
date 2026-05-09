@@ -13,6 +13,7 @@ async function startServer() {
 
   const STRAVA_CLIENT_ID = process.env.STRAVA_CLIENT_ID;
   const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET;
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
   const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
   const REDIRECT_URI = `${APP_URL}/api/strava/callback`;
 
@@ -90,6 +91,26 @@ async function startServer() {
     } catch (error: any) {
       console.error("Strava Fetch Error:", error.response?.data || error.message);
       res.status(500).json({ error: "Failed to fetch activities" });
+    }
+  });
+
+  // AI Proxy Route
+  app.post("/api/ai", async (req, res) => {
+    if (!GEMINI_API_KEY) {
+      return res.status(500).json({ error: "GEMINI_API_KEY not configured on server" });
+    }
+
+    try {
+      const { model, contents, generationConfig } = req.body;
+      const response = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.0-flash'}:generateContent?key=${GEMINI_API_KEY}`,
+        { contents, generationConfig },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+      res.json(response.data);
+    } catch (error: any) {
+      console.error("AI Proxy Error:", error.response?.data || error.message);
+      res.status(500).json({ error: "AI request failed", details: error.response?.data });
     }
   });
 
