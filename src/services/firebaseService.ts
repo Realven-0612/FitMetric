@@ -122,7 +122,6 @@ export async function logWeightRecord(weight: number) {
       userId,
       date: today,
       value: weight,
-      updatedAt: serverTimestamp()
     }, { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
