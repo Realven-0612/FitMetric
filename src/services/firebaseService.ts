@@ -50,9 +50,15 @@ export async function syncProfile(profileData: any) {
   const userId = auth.currentUser?.uid;
   if (!userId) return;
   const path = `users/${userId}`;
+  
+  // Clean undefined values
+  const cleanedData = Object.fromEntries(
+    Object.entries(profileData).filter(([_, v]) => v !== undefined)
+  );
+
   try {
     await setDoc(doc(db, path), {
-      ...profileData,
+      ...cleanedData,
       userId,
       updatedAt: serverTimestamp()
     }, { merge: true });
@@ -121,7 +127,7 @@ export async function logWeightRecord(weight: number) {
     await setDoc(doc(db, path), {
       userId,
       date: today,
-      value: weight,
+      value: Number(weight),
     }, { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);

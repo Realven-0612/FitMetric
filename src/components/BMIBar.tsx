@@ -2,9 +2,10 @@
 interface BMIBarProps {
   weight: number; // kg
   height: number; // cm
+  hideScore?: boolean;
 }
 
-export default function BMIBar({ weight, height }: BMIBarProps) {
+export default function BMIBar({ weight, height, hideScore = false }: BMIBarProps) {
   if (!weight || !height) return null;
 
   const bmi = weight / Math.pow(height / 100, 2);
@@ -23,19 +24,21 @@ export default function BMIBar({ weight, height }: BMIBarProps) {
   return (
     <div className="bg-white/3 border border-white/8 rounded-2xl p-5 space-y-3">
       {/* Score row */}
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-          BMI Score
-        </span>
-        <div className="flex items-center gap-2">
-          <span className="text-2xl font-black text-white">
-            {bmi.toFixed(1)}
+      {!hideScore && (
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+            BMI Score
           </span>
-          <span className={`text-xs font-bold px-2 py-1 rounded-lg bg-white/5 border border-white/10 ${labelColor}`}>
-            {label}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-black text-white">
+              {bmi.toFixed(1)}
+            </span>
+            <span className={`text-xs font-bold px-2 py-1 rounded-lg bg-white/5 border border-white/10 ${labelColor}`}>
+              {label}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Color bar - proportional widths */}
       <div className="relative h-3 w-full flex rounded-full overflow-hidden">

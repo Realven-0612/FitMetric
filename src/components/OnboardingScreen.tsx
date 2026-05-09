@@ -97,12 +97,12 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
         <div className="flex-1 flex flex-col">
           {/* Step 0: Welcome */}
           {step === 0 && (
-            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="space-y-6 flex flex-col items-center">
                 <img 
-                  src="/logo.png" 
+                  src="/assets/app_icon.png" 
                   alt="FitMetric" 
-                  className="w-24 h-24 object-contain drop-shadow-[0_0_30px_rgba(6,182,212,0.4)] animate-pulse"
+                  className="w-24 h-24 object-cover rounded-3xl drop-shadow-[0_0_30px_rgba(6,182,212,0.4)] animate-pulse"
                 />
                 <div>
                   <h1 className="text-5xl font-black tracking-tight mb-3">Fit<span className="text-cyan-500">Metric</span></h1>
@@ -110,15 +110,15 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                 </div>
               </div>
               
-              <div className="flex flex-col gap-2 mb-8 items-center w-full max-w-[280px]">
+              <div className="flex flex-col gap-2 mb-8 w-fit mx-auto">
                 {[
                   { icon: Activity, label: "Track Every Workout" },
                   { icon: Ruler,    label: "Analyze Body Metrics" },
                   { icon: Target,   label: "Achieve Your Goals" },
                 ].map(({ icon: Icon, label }) => (
-                  <div key={label} className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/4 border border-white/8 w-full">
+                  <div key={label} className="flex items-center gap-3 px-5 py-2 rounded-2xl bg-white/5 border border-white/10 w-full">
                     <Icon className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-                    <span className="text-sm font-medium text-slate-300">{label}</span>
+                    <span className="text-sm font-medium text-slate-200">{label}</span>
                   </div>
                 ))}
               </div>
@@ -294,7 +294,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                 </div>
 
                 {/* Activity Level */}
-                <div className="space-y-3">
+                <div className="space-y-3 pb-24">
                   <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest pl-1">Activity Level</label>
                   <div className="flex flex-col gap-2">
                     {ACTIVITY_LEVELS.map(al => {
@@ -326,10 +326,10 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
         {/* Footer */}
         <div className="absolute bottom-0 left-0 right-0 pt-6 mt-4">
           {step === 0 ? (
-            <div className="space-y-4 text-center">
+            <div className="flex justify-center mb-16">
               <button 
                 onClick={nextStep}
-                className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-black text-lg py-4 rounded-2xl shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all flex items-center justify-center gap-2 group mb-16"
+                className="px-10 py-3.5 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-base rounded-2xl shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all flex items-center justify-center gap-2 group hover:scale-105"
               >
                 <span>Get Started</span>
                 <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />

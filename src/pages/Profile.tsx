@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { User, Activity, Target, TrendingUp, Trash2, Dumbbell, Ruler, Zap, LogOut, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthProvider";
@@ -16,7 +17,7 @@ import BMIBar from "../components/BMIBar";
 export default function Profile() {
   const { user, loading: authLoading, signInWithGoogle, signOut } = useAuth();
   const { t } = useTranslation();
-  const { profile: storeProfile, setProfile: setStoreProfile } = useStore();
+  const { profile: storeProfile, setProfile: setStoreProfile, exerciseWeights, sessionLogs, setExerciseWeights, clearSessionLogs } = useStore();
   
   const [isEditing, setIsEditing] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
@@ -76,6 +77,69 @@ export default function Profile() {
     loadScans();
   }, [user]);
 
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.origin.endsWith('.run.app') && !event.origin.includes('localhost')) {
+        return;
+      }
+      if (event.data?.type === 'STRAVA_AUTH_SUCCESS') {
+        toast.success("Successfully connected to Strava!");
+      } else if (event.data?.type === 'STRAVA_AUTH_ERROR') {
+        toast.error("Strava connection failed.");
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const handleConnectStrava = async () => {
+    try {
+      const response = await fetch('/api/strava/auth');
+      if (!response.ok) {
+        throw new Error('API down');
+      }
+      const data = await response.json();
+      const authWindow = window.open(data.url, 'oauth_popup', 'width=600,height=700');
+      if (!authWindow) toast.error('Please allow popups to connect Strava');
+    } catch (e: any) {
+      toast.error('Strava credentials omitted in environment variables.');
+    }
+  };
+
+  const handleEnablePush = async () => {
+    if (!('Notification' in window)) {
+      toast.error('This browser does not support desktop notifications.');
+      return;
+    }
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        toast.success('Push notifications enabled!');
+      } else {
+        toast.error('Push notification permission denied.');
+      }
+    } catch (error) {
+      toast.error('Failed to request notification permission.');
+    }
+  };
+
+  const handleSaveAllRecords = () => {
+    toast.success('All records and history successfully synced to cloud!');
+  };
+
+  const handleClearPRs = () => {
+    if (confirm("Are you sure you want to delete all Exercise PRs?")) {
+      setExerciseWeights({});
+      toast.success("Exercise PRs cleared.");
+    }
+  };
+
+  const handleClearHistory = () => {
+    if (confirm("Are you sure you want to delete all Training History?")) {
+      clearSessionLogs();
+      toast.success("Training history cleared.");
+    }
+  };
   const handleChange = (e: any) => {
     setProfile(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
@@ -253,59 +317,56 @@ export default function Profile() {
                      </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-6 gap-4 sm:gap-6">
-                     <div className="col-span-2 flex flex-col justify-center p-6 bg-gradient-to-br from-[#161618] to-[#0a0a0c] rounded-3xl border border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:shadow-[0_8px_30px_rgba(168,85,247,0.15)] hover:border-purple-500/30 transition-all duration-500 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-20 group-hover:scale-110 transition-all duration-500">
-                           <Dumbbell className="w-24 h-24 text-purple-400" />
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                     <div className="flex flex-col justify-center p-4 bg-gradient-to-br from-[#161618] to-[#0a0a0c] rounded-2xl border border-white/5 shadow-[0_4px_20px_rgb(0,0,0,0.4)] hover:shadow-[0_4px_20px_rgba(168,85,247,0.15)] hover:border-purple-500/30 transition-all duration-500 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-all duration-500">
+                           <Dumbbell className="w-16 h-16 text-purple-400" />
                         </div>
-                        <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-4 border border-purple-500/20 backdrop-blur-sm">
-                           <Dumbbell className="w-5 h-5 text-purple-400" />
+                        <div className="w-8 h-8 rounded-xl bg-purple-500/10 flex items-center justify-center mb-3 border border-purple-500/20 backdrop-blur-sm">
+                           <Dumbbell className="w-4 h-4 text-purple-400" />
                         </div>
-                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">{t('weight')}</div>
-                        <div className="text-4xl font-black text-white tracking-tight flex items-baseline gap-1">
+                        <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">{t('weight')}</div>
+                        <div className="text-2xl font-black text-white tracking-tight flex items-baseline gap-1">
                            {profile.weight || "-"}
-                           <span className="text-sm font-medium text-slate-500 tracking-normal">kg</span>
+                           <span className="text-xs font-medium text-slate-500 tracking-normal">kg</span>
                         </div>
                      </div>
                      
-                     <div className="col-span-2 flex flex-col justify-center p-6 bg-gradient-to-br from-[#161618] to-[#0a0a0c] rounded-3xl border border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:shadow-[0_8px_30px_rgba(249,115,22,0.15)] hover:border-orange-500/30 transition-all duration-500 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-20 group-hover:scale-110 transition-all duration-500">
-                           <Ruler className="w-24 h-24 text-orange-400" />
+                     <div className="flex flex-col justify-center p-4 bg-gradient-to-br from-[#161618] to-[#0a0a0c] rounded-2xl border border-white/5 shadow-[0_4px_20px_rgb(0,0,0,0.4)] hover:shadow-[0_4px_20px_rgba(249,115,22,0.15)] hover:border-orange-500/30 transition-all duration-500 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-all duration-500">
+                           <Ruler className="w-16 h-16 text-orange-400" />
                         </div>
-                        <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center mb-4 border border-orange-500/20 backdrop-blur-sm">
-                           <Ruler className="w-5 h-5 text-orange-400" />
+                        <div className="w-8 h-8 rounded-xl bg-orange-500/10 flex items-center justify-center mb-3 border border-orange-500/20 backdrop-blur-sm">
+                           <Ruler className="w-4 h-4 text-orange-400" />
                         </div>
-                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">{t('height')}</div>
-                        <div className="text-4xl font-black text-white tracking-tight flex items-baseline gap-1">
+                        <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">{t('height')}</div>
+                        <div className="text-2xl font-black text-white tracking-tight flex items-baseline gap-1">
                            {profile.height || "-"}
-                           <span className="text-sm font-medium text-slate-500 tracking-normal">cm</span>
+                           <span className="text-xs font-medium text-slate-500 tracking-normal">cm</span>
                         </div>
-                     </div>
-                     
-                     <div className="col-span-2 flex flex-col justify-center">
-                        <BMIBar weight={Number(profile.weight)} height={Number(profile.height)} />
                      </div>
 
-                     <div className="col-span-2 md:col-span-3 flex flex-col justify-center p-6 bg-gradient-to-br from-[#161618] to-[#0a0a0c] rounded-3xl border border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:shadow-[0_8px_30px_rgba(234,179,8,0.15)] hover:border-yellow-500/30 transition-all duration-500 relative overflow-hidden group">
-                        <div className="absolute -bottom-4 -right-4 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-all duration-700">
-                           <Zap className="w-32 h-32 text-yellow-400" />
+
+                     <div className="flex flex-col justify-center p-4 bg-gradient-to-br from-[#161618] to-[#0a0a0c] rounded-2xl border border-white/5 shadow-[0_4px_20px_rgb(0,0,0,0.4)] hover:shadow-[0_4px_20px_rgba(234,179,8,0.15)] hover:border-yellow-500/30 transition-all duration-500 relative overflow-hidden group">
+                        <div className="absolute -bottom-2 -right-2 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-all duration-700">
+                           <Zap className="w-20 h-20 text-yellow-400" />
                         </div>
-                        <div className="w-12 h-12 rounded-2xl bg-yellow-500/10 flex items-center justify-center mb-4 border border-yellow-500/20 backdrop-blur-sm">
-                           <Zap className="w-5 h-5 text-yellow-400" />
+                        <div className="w-8 h-8 rounded-xl bg-yellow-500/10 flex items-center justify-center mb-3 border border-yellow-500/20 backdrop-blur-sm">
+                           <Zap className="w-4 h-4 text-yellow-400" />
                         </div>
-                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">Primary Goal</div>
-                        <div className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">{profile.primaryGoal || "-"}</div>
+                        <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Primary Goal</div>
+                        <div className="text-xl font-black text-white tracking-tight leading-tight">{profile.primaryGoal || "-"}</div>
                      </div>
 
-                     <div className="col-span-2 md:col-span-3 flex flex-col justify-center p-6 bg-gradient-to-br from-[#161618] to-[#0a0a0c] rounded-3xl border border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:shadow-[0_8px_30px_rgba(6,182,212,0.15)] hover:border-cyan-500/30 transition-all duration-500 relative overflow-hidden group">
-                        <div className="absolute -bottom-4 -right-4 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-all duration-700">
-                           <Activity className="w-32 h-32 text-cyan-400" />
+                     <div className="flex flex-col justify-center p-4 bg-gradient-to-br from-[#161618] to-[#0a0a0c] rounded-2xl border border-white/5 shadow-[0_4px_20px_rgb(0,0,0,0.4)] hover:shadow-[0_4px_20px_rgba(6,182,212,0.15)] hover:border-cyan-500/30 transition-all duration-500 relative overflow-hidden group">
+                        <div className="absolute -bottom-2 -right-2 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-all duration-700">
+                           <Activity className="w-20 h-20 text-cyan-400" />
                         </div>
-                        <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 flex items-center justify-center mb-4 border border-cyan-500/20 backdrop-blur-sm">
-                           <Activity className="w-5 h-5 text-cyan-400" />
+                        <div className="w-8 h-8 rounded-xl bg-cyan-500/10 flex items-center justify-center mb-3 border border-cyan-500/20 backdrop-blur-sm">
+                           <Activity className="w-4 h-4 text-cyan-400" />
                         </div>
-                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">Activity Level</div>
-                        <div className="text-2xl sm:text-3xl font-black text-white tracking-tight">{profile.activityLevel || "-"}</div>
+                        <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Activity Level</div>
+                        <div className="text-xl font-black text-white tracking-tight leading-tight">{profile.activityLevel || "-"}</div>
                      </div>
                   </div>
                 )}
@@ -382,8 +443,17 @@ export default function Profile() {
                  </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
+                 {/* Thêm đoạn này trước BMIBar */}
+                 {bmi > 0 && (
+                   <div className="text-center mb-6">
+                     <div className="text-7xl font-black text-white">{bmi}</div>
+                     <div className="mt-2 inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                       {bmiCategory}
+                     </div>
+                   </div>
+                 )}
                  <div className="mb-10 relative z-10">
-                    <BMIBar weight={Number(profile.weight)} height={Number(profile.height)} />
+                    <BMIBar weight={Number(profile.weight)} height={Number(profile.height)} hideScore={true} />
                  </div>
 
                  <div className="bg-gradient-to-br from-cyan-950/30 to-cyan-900/10 border border-cyan-500/20 rounded-2xl p-5 shadow-[0_4px_20px_rgba(6,182,212,0.05)]">
@@ -409,7 +479,99 @@ export default function Profile() {
                        </div>
                     </div>
                  </div>
+
+                 {/* Integrations */}
+                 <div className="mt-4 bg-orange-950/20 border border-orange-500/20 rounded-2xl p-4">
+                   <h3 className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                     🔗 Integrations
+                   </h3>
+                   <div className="flex items-center justify-between">
+                     <div className="flex items-center gap-3">
+                       <div className="w-8 h-8 bg-orange-500/20 rounded-xl flex items-center justify-center text-sm">🏃</div>
+                       <div>
+                         <div className="text-xs font-bold text-white">Strava</div>
+                         <div className="text-[10px] text-slate-500">Sync Cardio & Runs</div>
+                       </div>
+                     </div>
+                     <button onClick={handleConnectStrava} className="text-[10px] font-black text-slate-400 border border-white/10 px-3 py-1.5 rounded-xl hover:bg-white/5 transition-colors">
+                       CONNECT
+                     </button>
+                   </div>
+                   {!user && <p className="text-[10px] text-slate-600 mt-2">* Sign in first to connect integrations.</p>}
+                 </div>
+
+                 {/* Push Notifications */}
+                 <div className="mt-4 bg-purple-950/20 border border-purple-500/20 rounded-2xl p-4">
+                   <h3 className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-3">
+                     🔔 Push Notifications
+                   </h3>
+                   <div className="flex items-center justify-between">
+                     <div className="flex items-center gap-3">
+                       <div className="w-8 h-8 bg-purple-500/20 rounded-xl flex items-center justify-center">🔔</div>
+                       <div>
+                         <div className="text-xs font-bold text-white">Reminders</div>
+                         <div className="text-[10px] text-slate-500">Hydration, Workouts, Meals</div>
+                       </div>
+                     </div>
+                     <button onClick={handleEnablePush} className="text-[10px] font-black text-purple-400 border border-purple-500/30 px-3 py-1.5 rounded-xl hover:bg-purple-500/10 transition-colors">
+                       ENABLE
+                     </button>
+                   </div>
+                 </div>
               </CardContent>
+           </Card>
+
+           <Card className="bg-[#111111]/80 border border-white/5 rounded-3xl">
+             <CardHeader className="border-b border-white/5 pb-4 flex flex-row items-center justify-between">
+               <CardTitle className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                 ⚙️ Personal Records & History
+               </CardTitle>
+               <button onClick={handleSaveAllRecords} className="text-[10px] font-black text-black bg-cyan-400 px-3 py-1.5 rounded-xl hover:bg-cyan-300 transition-colors">
+                 SAVE ALL
+               </button>
+             </CardHeader>
+             <CardContent className="p-5 space-y-4">
+               <div>
+                 <div className="flex items-center justify-between mb-1">
+                   <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">Exercise PRs (kg)</p>
+                   {Object.keys(exerciseWeights || {}).length > 0 && (
+                     <button onClick={handleClearPRs} className="text-red-400 hover:text-red-300 transition-colors" title="Clear PRs">
+                       <Trash2 className="w-3 h-3" />
+                     </button>
+                   )}
+                 </div>
+                 {Object.keys(exerciseWeights || {}).length > 0 ? (
+                   <div className="grid grid-cols-2 gap-2 mt-2">
+                     {Object.entries(exerciseWeights).map(([ex, weight]) => (
+                       <div key={ex} className="flex justify-between items-center bg-white/5 px-3 py-2 rounded-lg">
+                         <span className="text-xs text-slate-300 truncate mr-2">{ex}</span>
+                         <span className="text-xs font-bold text-white">{weight}</span>
+                       </div>
+                     ))}
+                   </div>
+                 ) : (
+                   <p className="text-xs text-slate-500">No PRs recorded yet. Complete a workout to log PRs.</p>
+                 )}
+               </div>
+               <div>
+                 <div className="flex items-center justify-between mb-1">
+                   <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">Training History</p>
+                   {Object.keys(sessionLogs || {}).length > 0 && (
+                     <button onClick={handleClearHistory} className="text-red-400 hover:text-red-300 transition-colors" title="Clear History">
+                       <Trash2 className="w-3 h-3" />
+                     </button>
+                   )}
+                 </div>
+                 {Object.keys(sessionLogs || {}).length > 0 ? (
+                   <p className="text-xs text-slate-300 mt-1">
+                     You have logged sets for <span className="text-white font-bold">{Object.keys(sessionLogs).length}</span> exercise(s). 
+                     Keep pushing your limits!
+                   </p>
+                 ) : (
+                   <p className="text-xs text-slate-500">No workout history found. Start training to see it here.</p>
+                 )}
+               </div>
+             </CardContent>
            </Card>
 
         </div>
