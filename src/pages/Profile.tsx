@@ -11,6 +11,7 @@ import { doc, collection, getDocs, deleteDoc, serverTimestamp } from "firebase/f
 import { useTranslation } from "../lib/i18n";
 import { useStore } from "../lib/store";
 import { handleFirestoreError, OperationType } from "../services/firebaseService";
+import BMIBar from "../components/BMIBar";
 
 export default function Profile() {
   const { user, loading: authLoading, signInWithGoogle, signOut } = useAuth();
@@ -22,11 +23,11 @@ export default function Profile() {
   const [scanHistory, setScanHistory] = useState<any[]>([]);
   const [profile, setProfile] = useState({
     name: "",
-    weight: "68",
-    height: "168",
+    weight: "",
+    height: "",
     bodyFat: "",
-    preferredStyle: "Calisthenics",
-    age: "24",
+    preferredStyle: "Gym",
+    age: "",
     level: "Beginner (0-1 y)",
     primaryGoal: "Lose Fat",
     gender: "male",
@@ -281,20 +282,8 @@ export default function Profile() {
                         </div>
                      </div>
                      
-                     <div className="col-span-2 flex flex-col justify-center p-6 bg-gradient-to-br from-[#161618] to-[#0a0a0c] rounded-3xl border border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:shadow-[0_8px_30px_rgba(16,185,129,0.15)] hover:border-emerald-500/30 transition-all duration-500 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-20 group-hover:scale-110 transition-all duration-500">
-                           <TrendingUp className="w-24 h-24 text-emerald-400" />
-                        </div>
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-4 border border-emerald-500/20 backdrop-blur-sm">
-                           <TrendingUp className="w-5 h-5 text-emerald-400" />
-                        </div>
-                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">BMI Score</div>
-                        <div className="text-4xl font-black text-white tracking-tight">{bmi || "-"}</div>
-                        <div className="mt-3">
-                           <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 inline-flex px-3 py-1.5 rounded-lg border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
-                              {bmiCategory || "-"}
-                           </div>
-                        </div>
+                     <div className="col-span-2 flex flex-col justify-center">
+                        <BMIBar weight={Number(profile.weight)} height={Number(profile.height)} />
                      </div>
 
                      <div className="col-span-2 md:col-span-3 flex flex-col justify-center p-6 bg-gradient-to-br from-[#161618] to-[#0a0a0c] rounded-3xl border border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:shadow-[0_8px_30px_rgba(234,179,8,0.15)] hover:border-yellow-500/30 transition-all duration-500 relative overflow-hidden group">
@@ -393,30 +382,8 @@ export default function Profile() {
                  </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                 <div className="flex flex-col items-center justify-center mb-8 py-4">
-                     <div className="text-7xl font-black text-white tracking-tight">{bmi || "-"}</div>
-                     <div className="mt-4">
-                        <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 inline-flex px-3 py-1.5 rounded-lg border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
-                           {bmiCategory || "-"}
-                        </div>
-                     </div>
-                 </div>
-                 
-                 <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">
-                    <span>Healthy Range</span>
-                    <span className="text-white bg-white/10 px-2 py-1 rounded-md">18.5 - 25.0</span>
-                 </div>
-                 {/* Custom progress bar to show BMI range */}
-                 <div className="h-2 w-full bg-black/60 rounded-full flex mb-10 shadow-inner relative">
-                    <div className="h-full bg-orange-500 w-[20%] rounded-l-full"></div>
-                    <div className="h-full bg-emerald-500 w-[40%]"></div>
-                    <div className="h-full bg-yellow-500 w-[20%]"></div>
-                    <div className="h-full bg-red-500 w-[20%] rounded-r-full"></div>
-                    {/* Indicator pill */}
-                    <div 
-                       className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-4 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"
-                       style={{ left: `${Math.min(100, Math.max(0, ((bmi || 10) - 10) / 30 * 100))}%` }}
-                    ></div>
+                 <div className="mb-10 relative z-10">
+                    <BMIBar weight={Number(profile.weight)} height={Number(profile.height)} />
                  </div>
 
                  <div className="bg-gradient-to-br from-cyan-950/30 to-cyan-900/10 border border-cyan-500/20 rounded-2xl p-5 shadow-[0_4px_20px_rgba(6,182,212,0.05)]">

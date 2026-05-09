@@ -25,6 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const hydrateStore = useStore(state => state.hydrateStore);
+  const resetStore = useStore(state => state.resetStore);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
@@ -34,6 +35,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // If user logs in, ensure their document exists or setup defaults
       if (firebaseUser) {
         try {
+          // Reset store về 0 trước khi load data user mới
+          useStore.getState().resetStore();
           const userDocRef = doc(db, "users", firebaseUser.uid);
           const docSnap = await getDoc(userDocRef);
           
@@ -42,6 +45,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                userId: firebaseUser.uid,
                name: firebaseUser.displayName || "",
                createdAt: serverTimestamp()
+            });
+            useStore.getState().setProfile({
+               name: firebaseUser.displayName || "",
             });
           } else {
              // Sync firestore user profile doc to zustand
@@ -87,9 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     try {
       await firebaseSignOut(auth);
-      useStore.getState().clearNutritionDiary();
-      useStore.getState().resetWater();
-      useStore.getState().setProfile(null);
+      useStore.getState().resetStore();
     } catch (error) {
       console.error("Error signing out:", error);
     }

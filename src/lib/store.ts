@@ -33,6 +33,19 @@ interface NutritionEntry {
   timestamp: string;
 }
 
+// Giá trị mặc định - dùng để reset khi đăng xuất / user mới đăng nhập
+export const defaultState = {
+  profile: null as UserProfile | null,
+  workoutPlan: null as any,
+  exerciseWeights: {} as Record<string, number>,
+  sessionLogs: {} as TrainingLogs,
+  nutritionDiary: [] as NutritionEntry[],
+  waterIntake: 0,
+  stravaCalories: 0,
+  lastResetDate: new Date().toISOString().split('T')[0],
+  lastActiveDate: new Date().toISOString().split('T')[0],
+};
+
 interface AppState {
   // Persistence helpers
   lastActiveDate: string;
@@ -40,6 +53,7 @@ interface AppState {
   checkDailyReset: () => void;
   checkAndResetDaily: () => void;
   hydrateStore: (data: any) => void;
+  resetStore: () => void;
 
   // Profile
   profile: UserProfile | null;
@@ -120,6 +134,14 @@ export const useStore = create<AppState>()(
             exerciseWeights: data.exerciseWeights || state.exerciseWeights,
             lastActiveDate: today,
           };
+        });
+      },
+
+      resetStore: () => {
+        set({
+          ...defaultState,
+          lastResetDate: new Date().toISOString().split('T')[0],
+          lastActiveDate: new Date().toISOString().split('T')[0],
         });
       },
 
