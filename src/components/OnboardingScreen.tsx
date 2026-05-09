@@ -1,32 +1,34 @@
 import { useState } from "react";
 import { useStore } from "../lib/store";
+import { useTranslation } from "../lib/i18n";
 import BMIBar from "./BMIBar";
 import { ChevronRight, ChevronLeft, Dumbbell, Flame, Zap, Target, Activity, Ruler, User, Check, Scale, Percent } from "lucide-react";
 
 const STEPS = ["welcome", "basics", "body", "goal"];
 
 const GOALS = [
-  { value: "Lose Fat",      label: "Lose Fat",      icon: Flame,    color: "orange" },
-  { value: "Build Muscle",  label: "Build Muscle",  icon: Dumbbell, color: "purple" },
-  { value: "Strength",      label: "Strength",      icon: Zap,      color: "yellow" },
-  { value: "Endurance",     label: "Endurance",     icon: Activity, color: "cyan"   },
+  { value: "Lose Fat",      label: "goal_lose_fat",      icon: Flame,    color: "orange" },
+  { value: "Build Muscle",  label: "goal_build_muscle",  icon: Dumbbell, color: "purple" },
+  { value: "Strength",      label: "goal_strength",      icon: Zap,      color: "yellow" },
+  { value: "Endurance",     label: "goal_endurance",     icon: Activity, color: "cyan"   },
 ];
 
 const STYLES = [
-  { value: "Gym",           label: "Gym",           emoji: "🏋️" },
-  { value: "Calisthenics",  label: "Calisthenics",  emoji: "🤸" },
-  { value: "Home",          label: "Home Workout",  emoji: "🏠" },
+  { value: "Gym",           label: "style_gym",           emoji: "🏋️" },
+  { value: "Calisthenics",  label: "style_calisthenics",  emoji: "🤸" },
+  { value: "Home",          label: "style_home",          emoji: "🏠" },
 ];
 
 const ACTIVITY_LEVELS = [
-  { value: "Sedentary",         label: "Sedentary",         desc: "Office work" },
-  { value: "Lightly Active",    label: "Lightly Active",    desc: "1-3 days/week" },
-  { value: "Moderately Active", label: "Moderately Active", desc: "3-5 days/week" },
-  { value: "Very Active",       label: "Very Active",       desc: "6-7 days/week" },
+  { value: "Sedentary",         label: "activity_sedentary",         desc: "activity_sedentary_desc" },
+  { value: "Lightly Active",    label: "activity_light",    desc: "activity_light_desc" },
+  { value: "Moderately Active", label: "activity_moderate", desc: "activity_moderate_desc" },
+  { value: "Very Active",       label: "activity_very",       desc: "activity_very_desc" },
 ];
 
 export default function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
   const { setProfile } = useStore();
+  const { t } = useTranslation();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({
     name: "", age: "", gender: "male",
@@ -54,7 +56,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
       weight: form.weight ? Number(form.weight) : undefined,
       height: form.height ? Number(form.height) : undefined,
       bodyFat: form.bodyFat ? Number(form.bodyFat) : undefined,
-      gender: form.gender as "male" | "female" | "other",
+      gender: form.gender as "male" | "female",
       primaryGoal: form.primaryGoal,
       preferredStyle: form.preferredStyle,
       activityLevel: form.activityLevel,
@@ -106,15 +108,15 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                 />
                 <div>
                   <h1 className="text-5xl font-black tracking-tight mb-3">Fit<span className="text-cyan-500">Metric</span></h1>
-                  <p className="text-slate-400 text-lg">Your fitness, quantified.</p>
+                  <p className="text-slate-400 text-lg">{t('fitness_quantified')}</p>
                 </div>
               </div>
               
               <div className="flex flex-col gap-2 mb-8 w-fit mx-auto">
                 {[
-                  { icon: Activity, label: "Track Every Workout" },
-                  { icon: Ruler,    label: "Analyze Body Metrics" },
-                  { icon: Target,   label: "Achieve Your Goals" },
+                  { icon: Activity, label: t('track_workout') },
+                  { icon: Ruler,    label: t('analyze_metrics') },
+                  { icon: Target,   label: t('achieve_goals') },
                 ].map(({ icon: Icon, label }) => (
                   <div key={label} className="flex items-center gap-3 px-5 py-2 rounded-2xl bg-white/5 border border-white/10 w-full">
                     <Icon className="w-4 h-4 text-cyan-400 flex-shrink-0" />
@@ -129,7 +131,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
           {step === 1 && (
             <div className="flex flex-col space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="space-y-2">
-                <h2 className="text-3xl font-black">Let's get started</h2>
+                <h2 className="text-3xl font-black">{t('lets_get_started')}</h2>
                 <p className="text-slate-400 font-medium tracking-wide">Tell us a bit about yourself.</p>
               </div>
 
@@ -169,7 +171,6 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                     >
                       <option value="male" className="bg-[#161618]">Male</option>
                       <option value="female" className="bg-[#161618]">Female</option>
-                      <option value="other" className="bg-[#161618]">Other</option>
                     </select>
                   </div>
                 </div>
@@ -263,7 +264,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                                : "bg-white/5 border-white/5 hover:bg-white/10"}`}
                          >
                            <Icon className={`w-6 h-6 ${isActive ? `text-${g.color}-400` : "text-slate-400"}`} />
-                           <span className={`font-bold ${isActive ? "text-white" : "text-slate-300"}`}>{g.label}</span>
+                           <span className={`font-bold ${isActive ? "text-white" : "text-slate-300"}`}>{t(g.label as any)}</span>
                          </button>
                        );
                     })}
@@ -286,7 +287,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                                : "bg-white/5 border-white/5 hover:bg-white/10"}`}
                          >
                            <span className="text-xl mb-1">{s.emoji}</span>
-                           <span className={`text-xs font-bold leading-tight ${isActive ? "text-cyan-400" : "text-slate-400"}`}>{s.label}</span>
+                           <span className={`text-xs font-bold leading-tight ${isActive ? "text-cyan-400" : "text-slate-400"}`}>{t(s.label as any)}</span>
                          </button>
                        )
                     })}
@@ -309,8 +310,8 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                               : "bg-white/5 border-white/5 hover:bg-white/10"}`}
                         >
                           <div className="text-left">
-                            <div className={`font-bold ${isActive ? "text-emerald-400" : "text-slate-200"}`}>{al.label}</div>
-                            <div className="text-xs text-slate-500 font-medium mt-0.5">{al.desc}</div>
+                            <div className={`font-bold ${isActive ? "text-emerald-400" : "text-slate-200"}`}>{t(al.label as any)}</div>
+                            <div className="text-xs text-slate-500 font-medium mt-0.5">{t(al.desc as any)}</div>
                           </div>
                           {isActive && <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />}
                         </button>
@@ -331,7 +332,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                 onClick={nextStep}
                 className="px-10 py-3.5 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-base rounded-2xl shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all flex items-center justify-center gap-2 group hover:scale-105"
               >
-                <span>Get Started</span>
+                <span>{t('get_started')}</span>
                 <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
@@ -352,7 +353,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                     ? "bg-cyan-500 hover:bg-cyan-400 text-black shadow-[0_0_20px_rgba(6,182,212,0.3)]" 
                     : "bg-white/5 text-slate-600 border border-white/10 cursor-not-allowed"}`}
               >
-                <span>{step === STEPS.length - 1 ? "Finish" : "Next"}</span>
+                <span>{step === STEPS.length - 1 ? t('finish') : t('next')}</span>
                 {step !== STEPS.length - 1 && <ChevronRight className="w-6 h-6" />}
               </button>
             </div>

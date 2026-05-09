@@ -102,6 +102,26 @@ service cloud.firestore {
         allow create: if isSignedIn() && request.auth.uid == userId && isValidNutritionEntry(incoming());
         allow delete: if isSignedIn() && request.auth.uid == userId;
       }
+
+      match /sessionHistory/{sessionId} {
+        function isValidSession(data) {
+          return (!('date' in data) || data.date is string) &&
+                 (!('totalVolume' in data) || data.totalVolume is number);
+        }
+        allow read, list, delete: if isSignedIn() && request.auth.uid == userId;
+        allow create, update: if isSignedIn() && request.auth.uid == userId && isValidSession(incoming());
+      }
+    }
+
+    match /video_library/{exerciseName} {
+      function isValidVideoLibraryEntry(data) {
+        return data.keys().hasAll(['youtubeId', 'createdAt', 'authorId']) &&
+               data.youtubeId is string && data.youtubeId.size() <= 20 &&
+               data.authorId == request.auth.uid;
+      }
+      allow read, list: if isSignedIn();
+      allow create: if isSignedIn() && isValidVideoLibraryEntry(incoming()) && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && isValidVideoLibraryEntry(incoming()) && incoming().authorId == existing().authorId;
     }
   }
 }

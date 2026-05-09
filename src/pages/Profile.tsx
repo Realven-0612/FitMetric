@@ -128,16 +128,16 @@ export default function Profile() {
   };
 
   const handleClearPRs = () => {
-    if (confirm("Are you sure you want to delete all Exercise PRs?")) {
+    if (confirm(t('confirm_delete_prs'))) {
       setExerciseWeights({});
-      toast.success("Exercise PRs cleared.");
+      toast.success(t('cleared_prs'));
     }
   };
 
   const handleClearHistory = () => {
-    if (confirm("Are you sure you want to delete all Training History?")) {
+    if (confirm(t('confirm_delete_history'))) {
       clearSessionLogs();
-      toast.success("Training history cleared.");
+      toast.success(t('cleared_history'));
     }
   };
   const handleChange = (e: any) => {
@@ -182,10 +182,10 @@ export default function Profile() {
   let bmiCategory = "";
   if (weightNum && heightNum) {
     bmi = Number((weightNum / (heightNum * heightNum)).toFixed(1));
-    if (bmi < 18.5) bmiCategory = "Underweight";
-    else if (bmi < 25) bmiCategory = "Normal";
-    else if (bmi < 30) bmiCategory = "Overweight";
-    else bmiCategory = "Obese";
+    if (bmi < 18.5) bmiCategory = t('bmi_underweight');
+    else if (bmi < 25) bmiCategory = t('bmi_normal');
+    else if (bmi < 30) bmiCategory = t('bmi_overweight');
+    else bmiCategory = t('bmi_obese');
   }
 
   // Ideal specs approximation
@@ -213,12 +213,12 @@ export default function Profile() {
                  </div>
                )}
             </div>
-            <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1">Biometrics & Fitness Identity</p>
+            <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1">{t('biometrics_identity')}</p>
          </div>
          <div className="flex gap-3 items-center w-full md:w-auto">
             {!user ? (
                <Button onClick={signInWithGoogle} variant="outline" className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300 font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-6 w-full md:w-auto">
-                  <User className="mr-2 w-4 h-4" /> Sign In with Google
+                  <User className="mr-2 w-4 h-4" /> {t('sign_in_google')}
                </Button>
             ) : (
                <Button onClick={signOut} variant="outline" className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-4 w-full md:w-auto">
@@ -254,65 +254,65 @@ export default function Profile() {
                 {isEditing ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8 py-4">
                      <div className="space-y-2 group">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-cyan-400 transition-colors">Name</label>
-                        <Input name="name" value={profile.name} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-cyan-500/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 rounded-2xl text-white placeholder:text-slate-700 shadow-inner transition-all px-4" placeholder="Your Name" />
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-cyan-400 transition-colors">{t('name_label')}</label>
+                        <Input name="name" value={profile.name || ''} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-cyan-500/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 rounded-2xl text-white placeholder:text-slate-700 shadow-inner transition-all px-4" placeholder="Your Name" />
                      </div>
                      <div className="space-y-2 group">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-purple-400 transition-colors">Weight <span className="text-slate-600 lowercase">(kg)</span></label>
-                        <Input type="number" name="weight" value={profile.weight} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-purple-500/50 focus-visible:ring-1 focus-visible:ring-purple-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-purple-400 transition-colors">{t('weight_label')} <span className="text-slate-600 lowercase">(kg)</span></label>
+                        <Input type="number" name="weight" value={profile.weight || ''} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-purple-500/50 focus-visible:ring-1 focus-visible:ring-purple-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
                      </div>
                      <div className="space-y-2 group">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-orange-400 transition-colors">Height <span className="text-slate-600 lowercase">(cm)</span></label>
-                        <Input type="number" name="height" value={profile.height} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-orange-500/50 focus-visible:ring-1 focus-visible:ring-orange-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-orange-400 transition-colors">{t('height_label')} <span className="text-slate-600 lowercase">(cm)</span></label>
+                        <Input type="number" name="height" value={profile.height || ''} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-orange-500/50 focus-visible:ring-1 focus-visible:ring-orange-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
                      </div>
                      <div className="space-y-2 group">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-red-400 transition-colors">Body Fat <span className="text-slate-600 lowercase">(%)</span></label>
-                        <Input type="number" name="bodyFat" value={profile.bodyFat} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-red-500/50 focus-visible:ring-1 focus-visible:ring-red-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-red-400 transition-colors">{t('body_fat_label')} <span className="text-slate-600 lowercase">(%)</span></label>
+                        <Input type="number" name="bodyFat" value={profile.bodyFat || ''} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-red-500/50 focus-visible:ring-1 focus-visible:ring-red-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
                      </div>
                      <div className="space-y-2 group">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-cyan-400 transition-colors">Preferred Style</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-cyan-400 transition-colors">{t('preferred_style_label')}</label>
                         <select name="preferredStyle" value={profile.preferredStyle} onChange={handleChange} className="flex h-14 w-full items-center justify-between rounded-2xl border border-white/10 hover:border-white/20 bg-[#0a0a0c] px-4 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 shadow-inner transition-all appearance-none cursor-pointer">
-                          <option value="Calisthenics">Calisthenics</option>
-                          <option value="Gym">Gym</option>
-                          <option value="Home">Home Workout</option>
+                          <option value="Calisthenics">{t('style_calisthenics')}</option>
+                          <option value="Gym">{t('style_gym')}</option>
+                          <option value="Home">{t('style_home')}</option>
                         </select>
                      </div>
                      <div className="space-y-2 group">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-cyan-400 transition-colors">Age</label>
-                        <Input type="number" name="age" value={profile.age} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-cyan-500/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-cyan-400 transition-colors">{t('age_label')}</label>
+                        <Input type="number" name="age" value={profile.age || ''} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-cyan-500/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
                      </div>
                      <div className="space-y-2 group">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-emerald-400 transition-colors">Level</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-emerald-400 transition-colors">{t('level_label')}</label>
                         <select name="level" value={profile.level} onChange={handleChange} className="flex h-14 w-full items-center justify-between rounded-2xl border border-white/10 hover:border-white/20 bg-[#0a0a0c] px-4 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 shadow-inner transition-all appearance-none cursor-pointer">
-                          <option value="Beginner (0-1 y)">Beginner (0-1 y)</option>
-                          <option value="Intermediate (1-3 y)">Intermediate (1-3 y)</option>
-                          <option value="Advanced (3+ y)">Advanced (3+ y)</option>
+                          <option value="Beginner (0-1 y)">{t('level_beginner')}</option>
+                          <option value="Intermediate (1-3 y)">{t('level_intermediate')}</option>
+                          <option value="Advanced (3+ y)">{t('level_advanced')}</option>
                         </select>
                      </div>
                      <div className="space-y-2 group">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-yellow-400 transition-colors">Primary Goal</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-yellow-400 transition-colors">{t('primary_goal_label')}</label>
                         <select name="primaryGoal" value={profile.primaryGoal} onChange={handleChange} className="flex h-14 w-full items-center justify-between rounded-2xl border border-white/10 hover:border-white/20 bg-[#0a0a0c] px-4 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-yellow-500/50 focus:border-yellow-500/50 shadow-inner transition-all appearance-none cursor-pointer">
-                          <option value="Lose Fat">Lose Fat</option>
-                          <option value="Build Muscle">Build Muscle</option>
-                          <option value="Strength">Strength</option>
-                          <option value="Endurance">Endurance</option>
+                          <option value="Lose Fat">{t('goal_lose_fat')}</option>
+                          <option value="Build Muscle">{t('goal_build_muscle')}</option>
+                          <option value="Strength">{t('goal_strength')}</option>
+                          <option value="Endurance">{t('goal_endurance')}</option>
                         </select>
                      </div>
                      <div className="space-y-2 group">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-cyan-400 transition-colors">Gender</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-cyan-400 transition-colors">{t('gender_label')}</label>
                         <select name="gender" value={profile.gender} onChange={handleChange} className="flex h-14 w-full items-center justify-between rounded-2xl border border-white/10 hover:border-white/20 bg-[#0a0a0c] px-4 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 shadow-inner transition-all appearance-none cursor-pointer">
-                          <option value="male">Male</option>
-                          <option value="female">Female</option>
-                          <option value="other">Other</option>
+                          <option value="male">{t('male')}</option>
+                          <option value="female">{t('female')}</option>
+                          <option value="other">{t('other')}</option>
                         </select>
                      </div>
                      <div className="space-y-2 group">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-cyan-400 transition-colors">Activity Level</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-cyan-400 transition-colors">{t('activity_level_label')}</label>
                         <select name="activityLevel" value={profile.activityLevel} onChange={handleChange} className="flex h-14 w-full items-center justify-between rounded-2xl border border-white/10 hover:border-white/20 bg-[#0a0a0c] px-4 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 shadow-inner transition-all appearance-none cursor-pointer">
-                          <option value="Sedentary">Sedentary</option>
-                          <option value="Lightly Active">Lightly Active</option>
-                          <option value="Moderately Active">Moderately Active</option>
-                          <option value="Very Active">Very Active</option>
+                          <option value="Sedentary">{t('activity_sedentary')}</option>
+                          <option value="Lightly Active">{t('activity_light')}</option>
+                          <option value="Moderately Active">{t('activity_moderate')}</option>
+                          <option value="Very Active">{t('activity_very')}</option>
                         </select>
                      </div>
                   </div>
@@ -354,7 +354,7 @@ export default function Profile() {
                         <div className="w-8 h-8 rounded-xl bg-yellow-500/10 flex items-center justify-center mb-3 border border-yellow-500/20 backdrop-blur-sm">
                            <Zap className="w-4 h-4 text-yellow-400" />
                         </div>
-                        <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Primary Goal</div>
+                        <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">{t('primary_objective')}</div>
                         <div className="text-xl font-black text-white tracking-tight leading-tight">{profile.primaryGoal || "-"}</div>
                      </div>
 
@@ -365,7 +365,7 @@ export default function Profile() {
                         <div className="w-8 h-8 rounded-xl bg-cyan-500/10 flex items-center justify-center mb-3 border border-cyan-500/20 backdrop-blur-sm">
                            <Activity className="w-4 h-4 text-cyan-400" />
                         </div>
-                        <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Activity Level</div>
+                        <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">{t('activity_multiplier')}</div>
                         <div className="text-xl font-black text-white tracking-tight leading-tight">{profile.activityLevel || "-"}</div>
                      </div>
                   </div>
@@ -378,14 +378,14 @@ export default function Profile() {
              <CardHeader className="border-b border-white/5 pb-4">
                <CardTitle className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                  <TrendingUp className="w-4 h-4 text-emerald-400" />
-                 Scanner History Log
+                 {t('scanner_history_log')}
                </CardTitle>
              </CardHeader>
              <CardContent className="p-6">
                 {scanHistory.length === 0 ? (
                    <div className="flex flex-col items-center justify-center py-12">
                      <TrendingUp className="w-8 h-8 text-slate-700 mb-4" />
-                     <p className="text-sm font-medium text-slate-500">No scans logged yet. Use the Scanner to analyze your physique.</p>
+                     <p className="text-sm font-medium text-slate-500">{t('no_scans_logged')}</p>
                    </div>
                 ) : (
                     <div className="space-y-4">
@@ -405,15 +405,15 @@ export default function Profile() {
                             <div className="flex items-center gap-6">
                                <div className="flex gap-4 sm:gap-6 bg-black/40 px-4 py-3 rounded-2xl border border-white/5 shadow-inner">
                                   <div>
-                                     <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">Body Fat</div>
+                                     <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">{t('body_fat_label')}</div>
                                      <div className="text-xl font-black text-cyan-400">{scan.bodyFatEstimate}%</div>
                                   </div>
                                   <div>
-                                     <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">Aesthetics</div>
+                                     <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">{t('aesthetics_label')}</div>
                                      <div className="text-xl font-black text-purple-400">{scan.score}/100</div>
                                   </div>
                                   <div>
-                                     <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">Muscle</div>
+                                     <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">{t('muscle_label')}</div>
                                      <div className="text-xl font-black text-emerald-400">{scan.muscleMass}</div>
                                   </div>
                                </div>
@@ -458,23 +458,23 @@ export default function Profile() {
 
                  <div className="bg-gradient-to-br from-cyan-950/30 to-cyan-900/10 border border-cyan-500/20 rounded-2xl p-5 shadow-[0_4px_20px_rgba(6,182,212,0.05)]">
                     <h3 className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-5 flex items-center gap-2">
-                       <Target className="w-3 h-3" /> Ideal Body Specs
+                       <Target className="w-3 h-3" /> {t('ideal_body_specs')}
                     </h3>
                     <div className="space-y-4">
                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-slate-400 font-medium tracking-wide">ideal weight:</span>
+                          <span className="text-slate-400 font-medium tracking-wide">{t('ideal_weight')}:</span>
                           <span className="font-bold text-cyan-400">{idealWeightMin} - {idealWeightMax} kg</span>
                        </div>
                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-slate-400 font-medium tracking-wide">waist limit:</span>
+                          <span className="text-slate-400 font-medium tracking-wide">{t('waist_limit')}:</span>
                           <span className="font-bold text-cyan-400">&lt; 78cm</span>
                        </div>
                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-slate-400 font-medium tracking-wide">chest target:</span>
+                          <span className="text-slate-400 font-medium tracking-wide">{t('chest_target')}:</span>
                           <span className="font-bold text-cyan-400">~97cm</span>
                        </div>
                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-slate-400 font-medium tracking-wide">arm target:</span>
+                          <span className="text-slate-400 font-medium tracking-wide">{t('arm_target')}:</span>
                           <span className="font-bold text-cyan-400">~35.3cm</span>
                        </div>
                     </div>
@@ -483,7 +483,7 @@ export default function Profile() {
                  {/* Integrations */}
                  <div className="mt-4 bg-orange-950/20 border border-orange-500/20 rounded-2xl p-4">
                    <h3 className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                     🔗 Integrations
+                     🔗 {t('integrations')}
                    </h3>
                    <div className="flex items-center justify-between">
                      <div className="flex items-center gap-3">
@@ -494,7 +494,7 @@ export default function Profile() {
                        </div>
                      </div>
                      <button onClick={handleConnectStrava} className="text-[10px] font-black text-slate-400 border border-white/10 px-3 py-1.5 rounded-xl hover:bg-white/5 transition-colors">
-                       CONNECT
+                       {t('connect')}
                      </button>
                    </div>
                    {!user && <p className="text-[10px] text-slate-600 mt-2">* Sign in first to connect integrations.</p>}
@@ -503,7 +503,7 @@ export default function Profile() {
                  {/* Push Notifications */}
                  <div className="mt-4 bg-purple-950/20 border border-purple-500/20 rounded-2xl p-4">
                    <h3 className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-3">
-                     🔔 Push Notifications
+                     🔔 {t('push_notifications')}
                    </h3>
                    <div className="flex items-center justify-between">
                      <div className="flex items-center gap-3">
@@ -514,7 +514,7 @@ export default function Profile() {
                        </div>
                      </div>
                      <button onClick={handleEnablePush} className="text-[10px] font-black text-purple-400 border border-purple-500/30 px-3 py-1.5 rounded-xl hover:bg-purple-500/10 transition-colors">
-                       ENABLE
+                       {t('enable')}
                      </button>
                    </div>
                  </div>
@@ -524,16 +524,16 @@ export default function Profile() {
            <Card className="bg-[#111111]/80 border border-white/5 rounded-3xl">
              <CardHeader className="border-b border-white/5 pb-4 flex flex-row items-center justify-between">
                <CardTitle className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                 ⚙️ Personal Records & History
+                 ⚙️ {t('personal_records_history')}
                </CardTitle>
                <button onClick={handleSaveAllRecords} className="text-[10px] font-black text-black bg-cyan-400 px-3 py-1.5 rounded-xl hover:bg-cyan-300 transition-colors">
-                 SAVE ALL
+                 {t('save_all')}
                </button>
              </CardHeader>
              <CardContent className="p-5 space-y-4">
                <div>
                  <div className="flex items-center justify-between mb-1">
-                   <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">Exercise PRs (kg)</p>
+                   <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">{t('exercise_prs_kg')}</p>
                    {Object.keys(exerciseWeights || {}).length > 0 && (
                      <button onClick={handleClearPRs} className="text-red-400 hover:text-red-300 transition-colors" title="Clear PRs">
                        <Trash2 className="w-3 h-3" />
@@ -550,12 +550,12 @@ export default function Profile() {
                      ))}
                    </div>
                  ) : (
-                   <p className="text-xs text-slate-500">No PRs recorded yet. Complete a workout to log PRs.</p>
+                   <p className="text-xs text-slate-500">{t('no_prs_recorded')}</p>
                  )}
                </div>
                <div>
                  <div className="flex items-center justify-between mb-1">
-                   <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">Training History</p>
+                   <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">{t('training_history')}</p>
                    {Object.keys(sessionLogs || {}).length > 0 && (
                      <button onClick={handleClearHistory} className="text-red-400 hover:text-red-300 transition-colors" title="Clear History">
                        <Trash2 className="w-3 h-3" />
@@ -568,7 +568,7 @@ export default function Profile() {
                      Keep pushing your limits!
                    </p>
                  ) : (
-                   <p className="text-xs text-slate-500">No workout history found. Start training to see it here.</p>
+                   <p className="text-xs text-slate-500">{t('no_workout_history')}</p>
                  )}
                </div>
              </CardContent>

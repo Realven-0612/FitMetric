@@ -33,6 +33,8 @@ import {
   Activity,
   Unlink,
   RotateCcw,
+  Video,
+  Trash2
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "../lib/i18n";
@@ -46,7 +48,7 @@ import {
 } from "@/components/ui/select";
 import { useStore } from "../lib/store";
 import { generateAIContent } from "../lib/ai";
-import { saveSessionRecord } from "../services/firebaseService";
+import { saveSessionRecord, getSessionHistory, deleteSessionRecord, getCustomVideoLibrary, addCustomVideo } from "../services/firebaseService";
 
 export interface LoggedSet {
   weight: number;
@@ -207,7 +209,7 @@ const VIDEO_LIBRARY: Record<string, string> = {
 };
 
 export default function Training() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { 
     profile, 
     workoutPlan: plan, 
@@ -223,12 +225,56 @@ export default function Training() {
   const [selectedDay, setSelectedDay] = useState(() =>
     new Date().getDay() === 0 ? 6 : new Date().getDay() - 1,
   );
+  
+  const [customVideoLibrary, setCustomVideoLibrary] = useState<Record<string, string>>({});
+  const [missingVideoId, setMissingVideoId] = useState('');
+  const [addingVideoEx, setAddingVideoEx] = useState<string | null>(null);
+
+  useEffect(() => {
+    getCustomVideoLibrary().then(setCustomVideoLibrary);
+  }, []);
+
+  const handleAddCustomVideo = async (exerciseName: string) => {
+    if (!missingVideoId) return;
+    try {
+      await addCustomVideo(exerciseName, missingVideoId);
+      setCustomVideoLibrary(prev => ({ ...prev, [exerciseName]: missingVideoId }));
+      setAddingVideoEx(null);
+      setMissingVideoId('');
+      toast.success("Đã thêm video vào cơ sở dữ liệu!");
+    } catch {
+      toast.error("Lỗi khi thêm video.");
+    }
+  };
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [open, setOpen] = useState(false);
   
   const [editingSessions, setEditingSessions] = useState(false);
   const [sessionsInput, setSessionsInput] = useState('');
   
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [sessionHistoryList, setSessionHistoryList] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  const handleOpenHistory = async () => {
+    setShowHistoryModal(true);
+    setIsLoadingHistory(true);
+    const history = await getSessionHistory();
+    setSessionHistoryList(history);
+    setIsLoadingHistory(false);
+  };
+
+  const handleDeleteHistory = async (id: string) => {
+    if (confirm('Delete this session?')) {
+      await deleteSessionRecord(id);
+      setSessionHistoryList(prev => prev.filter(s => s.id !== id));
+      if (plan && plan.completedSessions > 0) {
+        setPlan({ ...plan, completedSessions: plan.completedSessions - 1 });
+      }
+    }
+  };
+
   const [showPBModal, setShowPBModal] = useState(false);
   const [editingWeights, setEditingWeights] = useState<Record<string, number>>({});
 
@@ -442,20 +488,24 @@ export default function Training() {
         ? `We are auto-leveling up the plan! Make it 5-10% harder than a standard plan.`
         : `Focus Request: ${overrideFocus || focus}`;
 
+      const allowedExercises = Object.keys({ ...VIDEO_LIBRARY, ...customVideoLibrary }).join(', ');
+
       const prompt = `As an elite strength and conditioning coach, generate a highly optimized weekly workout plan.
       ${promptContext}
       - Equipment: ${equipment}
       - Frequency: ${frequency} days per week
       - Focus/Custom: ${customRules}
       - Current Personal Best Weights: ${JSON.stringify(exerciseWeights)}
+      - Output Language: ${language === 'vi' ? 'Vietnamese' : 'English'}
+      - Allowed Exercises List: ${allowedExercises}
       
       Rules:
       1. Use science-based splits (e.g., Full Body for 3 days, Upper/Lower for 4 days, PPL for 6 days).
-      2. Select exercises from a reputable library. Be specific about the names (e.g., "Barbell Bench Press").
-      3. Output EXACTLY 7 days, Monday to Sunday. If a day is for rest, set focusName to "Rest Day" and leave exercises empty.
-      4. progressionGuide must provide a detailed progressive overload strategy for the entire cycle. Format as strictly bullet points with newlines (\n). Example: "- Week 1: Base assessment\n- Week 2: Increase intensity\n- Week 3: Peak volume\n- Week 4: Strategic deload"
-      5. Provide an accurate youtubeQuery string (e.g. "Barbell Bench Press tutorial form") for each exercise.
-      6. Provide a list of dynamic warm-up exercises in the 'warmup' array and a list of static cool-down stretches in the 'cooldown' array based on the day's focus.
+      2. You MUST ONLY select exercises from the "Allowed Exercises List". Do not invent new exercises. Be exact with names.
+      3. Output EXACTLY 7 days, Monday to Sunday. If a day is for rest, set focusName to ${language === 'vi' ? '"Ngày nghỉ"' : '"Rest Day"'} and leave exercises empty.
+      4. progressionGuide must provide a detailed progressive overload strategy for the entire cycle. Format as strictly bullet points with newlines (\n). Must be written in ${language === 'vi' ? 'Vietnamese' : 'English'}. Include 'Week 1', 'Week 2' etc. translated accordingly.
+      5. Provide an accurate youtubeQuery string (e.g. "Barbell Bench Press tutorial form") for each exercise. Always keep this string in English.
+      6. Provide a list of dynamic warm-up exercises in the 'warmup' array and a list of static cool-down stretches in the 'cooldown' array based on the day's focus. Write them in ${language === 'vi' ? 'Vietnamese' : 'English'}.
       7. Provide a 'recommendedWeight' (e.g. "20kg", "Bodyweight", "15kg per dumbbell") for each exercise. Always provide a single specific number, not a range.
          IMPORTANT: If an exercise exists in "Current Personal Best Weights", recommend a weight that is 2.5% to 5% higher (Progressive Overload). 
          If it's a new exercise, estimate based on the user's weight (e.g. Bench Press often starts around 40-50% bodyweight for beginners, Squat 60-70%).`;
@@ -508,9 +558,12 @@ export default function Training() {
 
       if (result) {
         const validDays = [];
+        const daysVi = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+        const daysEn = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        const dayNames = language === 'vi' ? daysVi : daysEn;
         for (let i = 0; i < 7; i++) {
-          const d = result.days[i] || { focusName: "Ngày nghỉ", exercises: [] };
-          validDays.push({ ...d, dayName: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i] });
+          const d = result.days[i] || { focusName: language === 'vi' ? "Ngày nghỉ" : "Rest Day", exercises: [] };
+          validDays.push({ ...d, dayName: dayNames[i] });
         }
 
         const newPlan: WorkoutPlan = {
@@ -571,17 +624,18 @@ export default function Training() {
     }
   };
 
-  const getEmbeddedVideo = (exerciseName: string, query?: string) => {
+  const getEmbeddedVideo = (exerciseName: string) => {
     const lowerName = exerciseName.toLowerCase().trim();
-    let matchedId = VIDEO_LIBRARY[lowerName] || null;
+    const mergedLibrary = { ...VIDEO_LIBRARY, ...customVideoLibrary };
+    let matchedId = mergedLibrary[lowerName] || null;
 
     if (!matchedId) {
-      const sortedKeys = Object.keys(VIDEO_LIBRARY).sort(
+      const sortedKeys = Object.keys(mergedLibrary).sort(
         (a, b) => b.length - a.length,
       );
       for (const key of sortedKeys) {
         if (lowerName.includes(key)) {
-          matchedId = VIDEO_LIBRARY[key];
+          matchedId = mergedLibrary[key];
           break;
         }
       }
@@ -602,20 +656,45 @@ export default function Training() {
       );
     }
 
-    // Fallback: search embed
-    const searchTerm = encodeURIComponent(
-      query || `${exerciseName} exercise form tutorial`,
-    );
+    // Fallback: missing video UI
     return (
-      <iframe
-        width="100%"
-        height="100%"
-        className="rounded-xl absolute inset-0 w-full h-full"
-        src={`https://www.youtube.com/embed?listType=search&list=${searchTerm}`}
-        title={exerciseName}
-        frameBorder="0"
-        allowFullScreen
-      ></iframe>
+      <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center p-6 text-center bg-black/60 rounded-xl">
+        <Video className="w-10 h-10 text-slate-500 mb-3" />
+        <p className="text-slate-300 text-sm mb-4">
+          Video chưa có sẵn cho bài tập <span className="font-bold text-cyan-400">{exerciseName}</span>.
+        </p>
+        
+        {addingVideoEx === lowerName ? (
+          <div className="flex flex-col sm:flex-row gap-2 w-full max-w-sm">
+            <Input 
+              placeholder="Nhập ID Youtube (VD: _FkbD0FhgVE)" 
+              className="bg-black/50 border-white/10 h-9"
+              value={missingVideoId}
+              onChange={e => setMissingVideoId(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => handleAddCustomVideo(lowerName)} className="bg-cyan-500 hover:bg-cyan-400 text-black h-9">
+                Lưu
+              </Button>
+              <Button size="sm" variant="ghost" className="h-9 hover:bg-white/10" onClick={() => {
+                setAddingVideoEx(null);
+                setMissingVideoId('');
+              }}>
+                Hủy
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10"
+            onClick={() => setAddingVideoEx(lowerName)}
+          >
+            <PlusCircle className="w-4 h-4 mr-2" /> Bổ sung vào Database
+          </Button>
+        )}
+      </div>
     );
   };
 
@@ -704,6 +783,70 @@ export default function Training() {
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 max-w-7xl mx-auto px-4 md:px-8 space-y-8">
+      {/* History Modal */}
+      <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
+        <DialogContent className="bg-[#0a0c10] border-white/5 text-white max-w-2xl w-[95vw] shadow-2xl overflow-y-auto max-h-[85vh]">
+          <DialogHeader>
+            <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 pr-4">
+              <div>
+                <h2 className="text-xl font-black uppercase tracking-widest text-cyan-400">Lịch sử tập luyện</h2>
+                <p className="text-xs text-slate-400">Các buổi tập đã hoàn thành trong quá khứ.</p>
+              </div>
+              <div className="flex flex-col items-start md:items-end bg-cyan-500/5 p-3 rounded-xl border border-cyan-500/10">
+                <p className="text-[9px] text-cyan-400/80 uppercase font-bold tracking-widest mb-1">Chỉnh sửa số buổi hiện tại ({plan?.completedSessions || 0})</p>
+                <div className="flex items-center gap-2">
+                  <Input 
+                     type="number" 
+                     min="0"
+                     className="w-16 h-8 text-center bg-transparent border-cyan-500/30 text-white focus:border-cyan-400" 
+                     value={plan?.completedSessions || 0}
+                     onChange={(e) => {
+                       const val = parseInt(e.target.value);
+                       if (!isNaN(val) && val >= 0 && plan) setPlan({ ...plan, completedSessions: val });
+                     }}
+                   />
+                   <span className="text-xs text-slate-500">/ 14</span>
+                </div>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="space-y-4">
+            {isLoadingHistory ? (
+              <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin text-cyan-500" /></div>
+            ) : sessionHistoryList.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-8">Chưa có lịch sử tập luyện.</p>
+            ) : (
+              sessionHistoryList.map(session => (
+                <div key={session.id} className="relative p-4 rounded-xl border border-white/5 bg-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 group hover:border-white/10 transition-colors">
+                  <div className="w-full md:flex-1">
+                    <p className="font-bold text-white mb-1">{session.date}</p>
+                    <p className="text-xs text-slate-400">
+                      Tổng khối lượng: <span className="font-bold text-cyan-400">{session.totalVolume || 0}</span> kg
+                    </p>
+                    {/* Show a mini summary of exercises */}
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {Object.keys(session.logs || {}).map(ex => (
+                        <span key={ex} className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 truncate max-w-[120px]">
+                          {ex}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => handleDeleteHistory(session.id)}
+                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 shrink-0 self-end md:self-auto"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-4">
         <div>
@@ -956,32 +1099,18 @@ export default function Training() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card
             className="relative flex flex-col items-center overflow-hidden rounded-2xl border-white/5 bg-[#0a0c10]/90 p-6 text-center shadow-lg backdrop-blur-xl cursor-pointer group hover:border-cyan-500/20 transition-all"
-            onClick={() => { setSessionsInput(String(plan.completedSessions || 0)); setEditingSessions(true); }}
+            onClick={() => handleOpenHistory()}
           >
             <div className="relative z-10 flex flex-col items-center w-full">
               <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
                 {t('workouts_completed')}
               </p>
-              {editingSessions ? (
-                <div className="flex items-center gap-2 mt-1" onClick={e => e.stopPropagation()}>
-                  <input
-                    autoFocus
-                    type="number"
-                    value={sessionsInput}
-                    onChange={e => setSessionsInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleSaveSessions(); if (e.key === 'Escape') setEditingSessions(false); }}
-                    className="w-20 text-center text-3xl font-black bg-transparent border-b-2 border-cyan-500 text-white outline-none"
-                  />
-                  <button onClick={handleSaveSessions} className="text-cyan-400 text-xs font-black uppercase">✓</button>
-                </div>
-              ) : (
-                <div className="flex items-baseline gap-2">
-                  <p className="text-4xl font-black text-white">{plan.completedSessions || 0}</p>
-                  <span className="text-xs font-medium text-slate-400">/ 14 {t('in_cycle')}</span>
-                </div>
-              )}
+              <div className="flex items-baseline gap-2">
+                <p className="text-4xl font-black text-white">{plan.completedSessions || 0}</p>
+                <span className="text-xs font-medium text-slate-400">/ 14 {t('in_cycle')}</span>
+              </div>
               <span className="text-[9px] text-slate-700 group-hover:text-slate-500 mt-1 transition-colors uppercase tracking-widest">
-                {editingSessions ? 'Enter để lưu' : 'Nhấn để chỉnh'}
+                Nhấn để xem / chỉnh sửa
               </span>
             </div>
             <div className="relative z-10 mt-4 flex h-14 w-14 items-center justify-center rounded-full border border-cyan-500/20 bg-cyan-500/10 shadow-[0_0_20px_rgba(34,211,238,0.1)]">
@@ -1135,7 +1264,7 @@ export default function Training() {
 
               <div className="p-6 md:p-10 relative z-10 w-full">
                 <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6 mb-8 w-full">
-                  <div className="flex-1 min-w-0 pr-0 lg:pr-8">
+                  <div className="w-full lg:flex-1 min-w-0 pr-0 lg:pr-8">
                     <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-slate-300 font-bold uppercase tracking-wider text-[10px] px-3 py-1.5 rounded-full mb-4">
                       <Calendar className="w-3 h-3" /> {t(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'][selectedDay] as any)}{" "}
                       {t('operation')}
@@ -1151,7 +1280,7 @@ export default function Training() {
                   </div>
 
                   {!isRestDay && (
-                    <div className="flex flex-col gap-3 w-full">
+                    <div className="flex flex-col gap-3 w-full lg:w-auto lg:min-w-[320px] shrink-0">
                       {hrConnected ? (
                         <div className="flex w-full items-center justify-between gap-3 bg-red-500/10 border border-red-500/20 px-6 rounded-2xl h-14 hover:shadow-[0_0_20px_rgba(239,68,68,0.2)] transition-all">
                           <div className="flex items-center gap-3">
@@ -1314,7 +1443,7 @@ export default function Training() {
                               </span>
                             </div>
                             <div className="relative w-full max-w-2xl mx-auto rounded-xl overflow-hidden bg-black aspect-video border border-white/10 shadow-lg">
-                              {getEmbeddedVideo(ex.name, ex.youtubeQuery)}
+                              {getEmbeddedVideo(ex.name)}
                             </div>
                           </div>
                         )}

@@ -83,8 +83,6 @@ interface AppState {
   setStravaCalories: (calories: number) => void;
 
   // Global UI
-  language: 'en' | 'vi';
-  setLanguage: (lang: 'en' | 'vi') => void;
 }
 
 export const useStore = create<AppState>()(
@@ -224,9 +222,6 @@ export const useStore = create<AppState>()(
       
       stravaCalories: 0,
       setStravaCalories: (calories) => set({ stravaCalories: calories }),
-
-      language: 'en',
-      setLanguage: (language) => set({ language }),
     }),
     {
       name: 'fitmetric-storage',

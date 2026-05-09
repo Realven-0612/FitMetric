@@ -7,8 +7,7 @@ import { useTranslation } from "../lib/i18n";
 import { useStore } from "../lib/store";
 
 export default function Watch() {
-  const { t } = useTranslation();
-  const { language } = useStore();
+  const { t, language } = useTranslation();
   const [stravaConnected, setStravaConnected] = useState(false);
 
   useEffect(() => {

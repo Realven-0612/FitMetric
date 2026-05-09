@@ -17,7 +17,7 @@ import { calcNutritionStats } from "../lib/nutritionUtils";
 import { getDailyQuote } from "../lib/quotes";
 
 export default function Nutrition() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { 
     profile, 
     nutritionDiary: diary, 
@@ -26,8 +26,7 @@ export default function Nutrition() {
     clearNutritionDiary,
     waterIntake: waterLiter,
     addWater,
-    setProfile,
-    language
+    setProfile
   } = useStore();
 
   const dailyQuote = getDailyQuote(language);
@@ -541,15 +540,15 @@ export default function Nutrition() {
 
                    <div className="space-y-3">
                       <div className="bg-black/40 border border-white/5 rounded-2xl p-5 flex justify-between items-center group hover:bg-black/60 transition-colors">
-                         <span className="font-bold text-slate-400 text-sm">Protein <span className="text-[10px] text-slate-600 ml-2">2.0g/kg</span></span>
+                         <span className="font-bold text-slate-400 text-sm">{t('protein_label')} <span className="text-[10px] text-slate-600 ml-2">{t('protein_target')}</span></span>
                          <span className="text-2xl font-black text-cyan-400 group-hover:scale-105 transition-transform">{calcResults.targetPro}g</span>
                       </div>
                       <div className="bg-black/40 border border-white/5 rounded-2xl p-5 flex justify-between items-center group hover:bg-black/60 transition-colors">
-                         <span className="font-bold text-slate-400 text-sm">Fat <span className="text-[10px] text-slate-600 ml-2">1.0g/kg</span></span>
+                         <span className="font-bold text-slate-400 text-sm">{t('fat_label')} <span className="text-[10px] text-slate-600 ml-2">1.0g/kg</span></span>
                          <span className="text-2xl font-black text-orange-400 group-hover:scale-105 transition-transform">{calcResults.targetFat}g</span>
                       </div>
                       <div className="bg-black/40 border border-white/5 rounded-2xl p-5 flex justify-between items-center group hover:bg-black/60 transition-colors">
-                         <span className="font-bold text-slate-400 text-sm">Carbs <span className="text-[10px] text-slate-600 ml-2">Rest</span></span>
+                         <span className="font-bold text-slate-400 text-sm">{t('carbs_label')} <span className="text-[10px] text-slate-600 ml-2">{t('rest')}</span></span>
                          <span className="text-2xl font-black text-indigo-400 group-hover:scale-105 transition-transform">{calcResults.targetCarbs}g</span>
                       </div>
                    </div>

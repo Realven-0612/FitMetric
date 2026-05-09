@@ -280,6 +280,32 @@ export async function saveSessionRecord(sessionLogs: any, totalVolume: number) {
   }
 }
 
+export async function getSessionHistory() {
+  const userId = auth.currentUser?.uid;
+  if (!userId) return [];
+  const path = `users/${userId}/sessionHistory`;
+  try {
+    const s = await getDocs(collection(db, path));
+    const docs: any[] = [];
+    s.forEach(d => docs.push({ id: d.id, ...d.data() }));
+    return docs.sort((a, b) => b.id.localeCompare(a.id));
+  } catch(e) {
+    handleFirestoreError(e, OperationType.LIST, path);
+    return [];
+  }
+}
+
+export async function deleteSessionRecord(sessionId: string) {
+  const userId = auth.currentUser?.uid;
+  if (!userId) return;
+  const path = `users/${userId}/sessionHistory`;
+  try {
+    await deleteDoc(doc(db, path, sessionId));
+  } catch (e) {
+    handleFirestoreError(e, OperationType.DELETE, path);
+  }
+}
+
 // Upload ảnh pose và trả về URL
 export async function uploadPosePhoto(base64Data: string): Promise<string | null> {
   const userId = auth.currentUser?.uid;
@@ -306,5 +332,34 @@ export async function uploadPosePhoto(base64Data: string): Promise<string | null
     return null;
   }
 }
+
+export const getCustomVideoLibrary = async () => {
+  if (!auth.currentUser) return {};
+  try {
+    const q = collection(db, 'video_library');
+    const querySnapshot = await getDocs(q);
+    const result: Record<string, string> = {};
+    querySnapshot.forEach((document) => {
+      const data = document.data();
+      if (data.youtubeId) {
+        result[document.id] = data.youtubeId;
+      }
+    });
+    return result;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'video_library');
+    return {};
+  }
+};
+
+export const addCustomVideo = async (exerciseName: string, youtubeId: string) => {
+  if (!auth.currentUser) throw new Error("Not authenticated");
+  try {
+    const customRef = doc(db, 'video_library', exerciseName);
+    await setDoc(customRef, { youtubeId, createdAt: serverTimestamp(), authorId: auth.currentUser.uid });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `video_library/${exerciseName}`);
+  }
+};
 
 export { handleFirestoreError };

@@ -25,8 +25,8 @@ const defaultConsumptionData = [
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { t } = useTranslation();
-  const { profile, workoutPlan, nutritionDiary, stravaCalories, setStravaCalories, language, sessionLogs, waterIntake } = useStore();
+  const { t, language } = useTranslation();
+  const { profile, workoutPlan, nutritionDiary, stravaCalories, setStravaCalories, sessionLogs, waterIntake } = useStore();
   const { targetKcal, consumedKcal, targetPro, consumedPro, waterTarget } = useNutritionStats();
 
   const [weight, setWeight] = useState<number | string>("--");
@@ -267,30 +267,30 @@ export default function Dashboard() {
            {showProteinAlert && (
              <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-3 flex-1">
                 <div className="flex items-center gap-2 text-orange-400 text-xs font-bold uppercase tracking-wider mb-1">
-                   <Target className="w-3.5 h-3.5" /> PROTEIN DEFICIT
+                   <Target className="w-3.5 h-3.5" /> {t('alert_protein_deficit')}
                 </div>
                 <p className="text-sm text-slate-300">
-                   You are falling behind on protein today. Try to get a high-protein meal in!
+                   {t('alert_protein_desc')}
                 </p>
              </div>
            )}
            {showWaterAlert && (
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 flex-1">
                  <div className="flex items-center gap-2 text-blue-400 text-xs font-bold uppercase tracking-wider mb-1">
-                    <Target className="w-3.5 h-3.5" /> DEHYDRATION RISK
+                    <Target className="w-3.5 h-3.5" /> {t('alert_dehydration')}
                  </div>
                  <p className="text-sm text-slate-300">
-                    You haven't been drinking enough water. Stay hydrated!
+                    {t('alert_dehydration_desc')}
                  </p>
               </div>
            )}
            {showWorkoutAlert && (
              <div className="bg-[#a855f7]/10 border border-[#a855f7]/20 rounded-xl p-3 flex-1">
                 <div className="flex items-center gap-2 text-[#a855f7] text-xs font-bold uppercase tracking-wider mb-1">
-                   <Zap className="w-3.5 h-3.5" /> TRAINING PENDING
+                   <Zap className="w-3.5 h-3.5" /> {t('alert_training_pending')}
                 </div>
                 <p className="text-sm text-slate-300">
-                   You have a <span className="font-bold text-white">{nextOperation}</span> session scheduled. Time to get after it!
+                   {t('alert_training_desc_1')} <span className="font-bold text-white">{nextOperation}</span> {t('alert_training_desc_2')}
                 </p>
              </div>
            )}
@@ -321,7 +321,7 @@ export default function Dashboard() {
                   </DialogHeader>
                   <div className="mt-4 max-h-[60vh] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                     {rawWeightHistory.length === 0 ? (
-                      <p className="text-sm text-slate-500 text-center py-4">No entries found.</p>
+                      <p className="text-sm text-slate-500 text-center py-4">{t('no_entries_found')}</p>
                     ) : (
                       rawWeightHistory.map((item, idx) => (
                         <div key={idx} className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-2xl border border-white/5">
@@ -349,7 +349,7 @@ export default function Dashboard() {
            {weightHistoryData.length < 2 ? (
                <div className="flex-1 flex flex-col items-center justify-center text-slate-500 space-y-4">
                   <TrendingUp className="w-8 h-8 opacity-20" />
-                  <p className="text-sm font-medium">Log 2+ weight entries to see progression map.</p>
+                  <p className="text-sm font-medium">{t('weight_progression_empty')}</p>
                </div>
            ) : (
                <div className="flex-1 w-full h-[200px] min-h-[200px]">
