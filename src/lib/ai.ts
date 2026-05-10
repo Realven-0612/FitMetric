@@ -2,10 +2,14 @@ import axios from "axios";
 
 export async function generateAIContent(prompt: string, schema?: any, modelName: string = "llama-3.3-70b-versatile") {
   console.log(">>> [AI] Đang gọi hàm generateAIContent với model:", modelName);
+  
+  // Groq/OpenAI yêu cầu prompt phải chứa hướng dẫn trả về JSON khi dùng response_format: { type: "json_object" }
+  const finalPrompt = schema ? `${prompt}\n\nIMPORTANT: You must return a valid JSON object matching the requested schema.` : prompt;
+
   try {
     const response = await axios.post("/api/ai", {
       model: modelName,
-      messages: [{ role: "user", content: prompt }],
+      messages: [{ role: "user", content: finalPrompt }],
       response_format: schema ? { type: "json_object" } : undefined
     });
 
@@ -23,6 +27,9 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
 
 export async function analyzeAIImage(prompt: string, imageBase64: string, mimeType: string, schema?: any, modelName: string = "llama-3.2-11b-vision-preview") {
   console.log(">>> [AI] Đang gọi hàm analyzeAIImage với model:", modelName);
+  
+  const finalPrompt = schema ? `${prompt}\n\nIMPORTANT: You must return a valid JSON object matching the requested schema.` : prompt;
+
   try {
     const response = await axios.post("/api/ai", {
       model: modelName,
@@ -30,7 +37,7 @@ export async function analyzeAIImage(prompt: string, imageBase64: string, mimeTy
         {
           role: "user",
           content: [
-            { type: "text", text: prompt },
+            { type: "text", text: finalPrompt },
             {
               type: "image_url",
               image_url: {
