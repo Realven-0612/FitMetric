@@ -81,7 +81,7 @@ service cloud.firestore {
 
       match /plans/{planId} {
         function isValidPlan(data) {
-          return (!('progressionGuide' in data) || data.progressionGuide is string) &&
+          return (!('progressionGuide' in data) || data.progressionGuide is string || data.progressionGuide is list) &&
                  (!('days' in data) || data.days is list) &&
                  (!('completedSessions' in data) || data.completedSessions is number) &&
                  (!('currentCycle' in data) || data.currentCycle is number);
