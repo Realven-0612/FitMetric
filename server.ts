@@ -103,7 +103,7 @@ async function startServer() {
     try {
       const { model, contents, generationConfig } = req.body;
       const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-1.5-flash-latest'}:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.5-flash'}:generateContent?key=${GEMINI_API_KEY}`,
         { contents, generationConfig },
         { headers: { 'Content-Type': 'application/json' } }
       );
