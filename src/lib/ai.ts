@@ -1,6 +1,6 @@
 import axios from "axios";
 
-export async function generateAIContent(prompt: string, schema?: any, modelName: string = "gemini-1.5-flash") {
+export async function generateAIContent(prompt: string, schema?: any, modelName: string = "gemini-1.5-flash-latest") {
   try {
     const response = await axios.post("/api/ai", {
       model: modelName,
@@ -21,7 +21,7 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
   }
 }
 
-export async function analyzeAIImage(prompt: string, imageBase64: string, mimeType: string, schema?: any, modelName: string = "gemini-1.5-flash") {
+export async function analyzeAIImage(prompt: string, imageBase64: string, mimeType: string, schema?: any, modelName: string = "gemini-1.5-flash-latest") {
   try {
     const response = await axios.post("/api/ai", {
       model: modelName,
