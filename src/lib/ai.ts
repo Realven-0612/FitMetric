@@ -6,7 +6,7 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
   const messages = schema ? [
     { 
       role: "system", 
-      content: "You are a helpful assistant. You must respond ONLY with a valid JSON object. Do NOT use markdown lists or bullet points (like '*') inside JSON arrays. All list items must be proper quoted strings." 
+      content: "You are a helpful assistant. You must respond ONLY with a valid JSON object or array. Do NOT use markdown lists or bullet points (like '*') inside JSON arrays. All list items must be proper quoted strings." 
     },
     { role: "user", content: prompt }
   ] : [
@@ -26,21 +26,48 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
     
     if (schema) {
       try {
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          text = jsonMatch[0];
+        // Tìm vị trí của dấu { hoặc [ đầu tiên và dấu } hoặc ] cuối cùng
+        const firstBrace = text.indexOf('{');
+        const firstBracket = text.indexOf('[');
+        let start = -1;
+        let end = -1;
+
+        if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+          start = firstBrace;
+          end = text.lastIndexOf('}');
+        } else if (firstBracket !== -1) {
+          start = firstBracket;
+          end = text.lastIndexOf(']');
         }
+
+        if (start !== -1 && end !== -1 && end > start) {
+          text = text.substring(start, end + 1);
+        }
+
         return JSON.parse(text);
       } catch (parseError) {
         console.error(">>> [AI] Lỗi parse JSON. Nội dung gốc:", text);
         
-        // Thử fix nhanh trường hợp AI dùng dấu * trong mảng
         try {
           let fixedText = text.replace(/\n\s*\*\s*(.+)/g, '\n"$1",');
-          fixedText = fixedText.replace(/,\s*\]/, ']'); // Xóa dấu phẩy thừa cuối mảng
-          const jsonMatch = fixedText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
+          fixedText = fixedText.replace(/,\s*\]/, ']');
+          
+          const firstBrace = fixedText.indexOf('{');
+          const firstBracket = fixedText.indexOf('[');
+          let start = -1;
+          let end = -1;
+
+          if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+            start = firstBrace;
+            end = fixedText.lastIndexOf('}');
+          } else if (firstBracket !== -1) {
+            start = firstBracket;
+            end = fixedText.lastIndexOf(']');
+          }
+
+          if (start !== -1 && end !== -1 && end > start) {
+            fixedText = fixedText.substring(start, end + 1);
+            return JSON.parse(fixedText);
           }
         } catch (e) {
           console.error(">>> [AI] Thử fix JSON thất bại.");
@@ -63,7 +90,7 @@ export async function analyzeAIImage(prompt: string, imageBase64: string, mimeTy
   const messages = schema ? [
     { 
       role: "system", 
-      content: "You are a helpful assistant. You must respond ONLY with a valid JSON object. Do NOT use markdown lists or bullet points (like '*') inside JSON arrays. All list items must be proper quoted strings." 
+      content: "You are a helpful assistant. You must respond ONLY with a valid JSON object or array. Do NOT use markdown lists or bullet points (like '*') inside JSON arrays. All list items must be proper quoted strings." 
     },
     {
       role: "user",
@@ -105,10 +132,23 @@ export async function analyzeAIImage(prompt: string, imageBase64: string, mimeTy
 
     if (schema) {
       try {
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          text = jsonMatch[0];
+        const firstBrace = text.indexOf('{');
+        const firstBracket = text.indexOf('[');
+        let start = -1;
+        let end = -1;
+
+        if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+          start = firstBrace;
+          end = text.lastIndexOf('}');
+        } else if (firstBracket !== -1) {
+          start = firstBracket;
+          end = text.lastIndexOf(']');
         }
+
+        if (start !== -1 && end !== -1 && end > start) {
+          text = text.substring(start, end + 1);
+        }
+
         return JSON.parse(text);
       } catch (parseError) {
         console.error(">>> [AI] Lỗi parse JSON Vision. Nội dung gốc:", text);
@@ -116,9 +156,23 @@ export async function analyzeAIImage(prompt: string, imageBase64: string, mimeTy
         try {
           let fixedText = text.replace(/\n\s*\*\s*(.+)/g, '\n"$1",');
           fixedText = fixedText.replace(/,\s*\]/, ']');
-          const jsonMatch = fixedText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
+          
+          const firstBrace = fixedText.indexOf('{');
+          const firstBracket = fixedText.indexOf('[');
+          let start = -1;
+          let end = -1;
+
+          if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+            start = firstBrace;
+            end = fixedText.lastIndexOf('}');
+          } else if (firstBracket !== -1) {
+            start = firstBracket;
+            end = fixedText.lastIndexOf(']');
+          }
+
+          if (start !== -1 && end !== -1 && end > start) {
+            fixedText = fixedText.substring(start, end + 1);
+            return JSON.parse(fixedText);
           }
         } catch (e) {
           console.error(">>> [AI] Thử fix JSON thất bại.");
