@@ -3,13 +3,18 @@ import axios from "axios";
 export async function generateAIContent(prompt: string, schema?: any, modelName: string = "llama-3.3-70b-versatile") {
   console.log(">>> [AI] Đang gọi hàm generateAIContent với model:", modelName);
   
-  // Groq/OpenAI yêu cầu prompt phải chứa hướng dẫn trả về JSON khi dùng response_format: { type: "json_object" }
-  const finalPrompt = schema ? `${prompt}\n\nIMPORTANT: You must return a valid JSON object matching the requested schema.` : prompt;
+  // Tạo danh sách tin nhắn, nếu cần JSON thì thêm system message chứa từ "json"
+  const messages = schema ? [
+    { role: "system", content: "You are a helpful assistant. You must respond with a valid json object matching the requested schema." },
+    { role: "user", content: prompt }
+  ] : [
+    { role: "user", content: prompt }
+  ];
 
   try {
     const response = await axios.post("/api/ai", {
       model: modelName,
-      messages: [{ role: "user", content: finalPrompt }],
+      messages,
       response_format: schema ? { type: "json_object" } : undefined
     });
 
@@ -28,25 +33,39 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
 export async function analyzeAIImage(prompt: string, imageBase64: string, mimeType: string, schema?: any, modelName: string = "llama-3.2-11b-vision-preview") {
   console.log(">>> [AI] Đang gọi hàm analyzeAIImage với model:", modelName);
   
-  const finalPrompt = schema ? `${prompt}\n\nIMPORTANT: You must return a valid JSON object matching the requested schema.` : prompt;
+  const messages = schema ? [
+    { role: "system", content: "You are a helpful assistant. You must respond with a valid json object matching the requested schema." },
+    {
+      role: "user",
+      content: [
+        { type: "text", text: prompt },
+        {
+          type: "image_url",
+          image_url: {
+            url: `data:${mimeType};base64,${imageBase64.split(",")[1] || imageBase64}`
+          }
+        }
+      ]
+    }
+  ] : [
+    {
+      role: "user",
+      content: [
+        { type: "text", text: prompt },
+        {
+          type: "image_url",
+          image_url: {
+            url: `data:${mimeType};base64,${imageBase64.split(",")[1] || imageBase64}`
+          }
+        }
+      ]
+    }
+  ];
 
   try {
     const response = await axios.post("/api/ai", {
       model: modelName,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: finalPrompt },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:${mimeType};base64,${imageBase64.split(",")[1] || imageBase64}`
-              }
-            }
-          ]
-        }
-      ],
+      messages,
       response_format: schema ? { type: "json_object" } : undefined
     });
 
