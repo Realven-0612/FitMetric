@@ -6,7 +6,7 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
   const messages = schema ? [
     { 
       role: "system", 
-      content: "You are a helpful assistant. You must respond ONLY with a valid JSON object or array. Do NOT use markdown lists or bullet points (like '*') inside JSON arrays. All list items must be proper quoted strings." 
+      content: "You are a helpful assistant. You must respond ONLY with a valid JSON object. Do NOT use markdown, code blocks, or bullet points. All list items must be proper quoted strings in JSON arrays." 
     },
     { role: "user", content: prompt }
   ] : [
@@ -14,10 +14,18 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
   ];
 
   try {
-    const response = await axios.post("/api/ai", {
+    const payload: any = {
       model: modelName,
       messages,
-    });
+      temperature: schema ? 0.3 : 0.7,
+    };
+
+    // Enable strict JSON mode when schema is expected
+    if (schema) {
+      payload.response_format = { type: "json_object" };
+    }
+
+    const response = await axios.post("/api/ai", payload);
 
     console.log(">>> [AI] Phản hồi từ server:", response.data);
 

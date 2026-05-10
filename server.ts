@@ -102,13 +102,14 @@ async function startServer() {
     }
 
     try {
-      const { model, messages, response_format } = req.body;
+      const { model, messages, response_format, temperature } = req.body;
       const response = await axios.post(
         "https://api.groq.com/openai/v1/chat/completions",
         { 
-          model: model || 'llama-3.3-70b-versatile', 
+          model: model || 'meta-llama/llama-4-scout-17b-16e-instruct', 
           messages, 
-          response_format 
+          response_format,
+          temperature
         },
         { 
           headers: { 
