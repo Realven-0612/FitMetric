@@ -1551,11 +1551,14 @@ export default function Training() {
                   <div className="text-xs text-slate-300 font-medium leading-relaxed space-y-2">
                     {(Array.isArray(plan.progressionGuide)
                       ? plan.progressionGuide
-                      : (plan.progressionGuide.includes("\n")
+                      : (typeof plan.progressionGuide === 'string' && plan.progressionGuide.includes("\n")
                         ? plan.progressionGuide.split("\n")
-                        : plan.progressionGuide.split(/(?<=\.)\s+/))
+                        : typeof plan.progressionGuide === 'string'
+                          ? plan.progressionGuide.split(/(?<=\.)\s+/)
+                          : [String(plan.progressionGuide)])
                     ).map((line, i) => {
-                      const t = line
+                      const lineStr = typeof line === 'string' ? line : JSON.stringify(line);
+                      const t = lineStr
                         .replace(/^- /, "")
                         .replace(/^\* /, "")
                         .trim();
