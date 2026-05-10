@@ -1,19 +1,17 @@
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+import axios from "axios";
 
 export async function generateAIContent(prompt: string, schema?: any, modelName: string = "gemini-2.0-flash") {
   try {
-    const response = await ai.models.generateContent({
+    const response = await axios.post("/api/ai", {
       model: modelName,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: schema ? {
+      generationConfig: schema ? {
         responseMimeType: "application/json",
         responseSchema: schema
       } : undefined
     });
 
-    const text = response.text;
+    const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) throw new Error("No text returned from AI");
     
     return schema ? JSON.parse(text) : text;
@@ -25,7 +23,7 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
 
 export async function analyzeAIImage(prompt: string, imageBase64: string, mimeType: string, schema?: any, modelName: string = "gemini-2.0-flash") {
   try {
-    const response = await ai.models.generateContent({
+    const response = await axios.post("/api/ai", {
       model: modelName,
       contents: [{
         role: "user",
@@ -34,13 +32,13 @@ export async function analyzeAIImage(prompt: string, imageBase64: string, mimeTy
           { inlineData: { data: imageBase64.split(",")[1] || imageBase64, mimeType } }
         ]
       }],
-      config: schema ? {
+      generationConfig: schema ? {
         responseMimeType: "application/json",
         responseSchema: schema
       } : undefined
     });
 
-    const text = response.text;
+    const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) throw new Error("No text returned from AI");
 
     return schema ? JSON.parse(text) : text;
