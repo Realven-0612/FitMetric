@@ -1528,9 +1528,11 @@ export default function Training() {
                     <TrendingUp className="w-3 h-3" /> {t('overload_protocol')}
                   </h4>
                   <div className="text-xs text-slate-300 font-medium leading-relaxed space-y-2">
-                    {(plan.progressionGuide.includes("\n")
-                      ? plan.progressionGuide.split("\n")
-                      : plan.progressionGuide.split(/(?<=\.)\s+/)
+                    {(Array.isArray(plan.progressionGuide)
+                      ? plan.progressionGuide
+                      : (plan.progressionGuide.includes("\n")
+                        ? plan.progressionGuide.split("\n")
+                        : plan.progressionGuide.split(/(?<=\.)\s+/))
                     ).map((line, i) => {
                       const t = line
                         .replace(/^- /, "")
