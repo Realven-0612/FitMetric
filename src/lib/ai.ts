@@ -1,6 +1,7 @@
 import axios from "axios";
 
 export async function generateAIContent(prompt: string, schema?: any, modelName: string = "llama-3.3-70b-versatile") {
+  console.log(">>> [AI] Đang gọi hàm generateAIContent với model:", modelName);
   try {
     const response = await axios.post("/api/ai", {
       model: modelName,
@@ -8,17 +9,20 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
       response_format: schema ? { type: "json_object" } : undefined
     });
 
+    console.log(">>> [AI] Phản hồi từ server:", response.data);
+
     const text = response.data.choices?.[0]?.message?.content;
     if (!text) throw new Error("No text returned from AI");
     
     return schema ? JSON.parse(text) : text;
-  } catch (error) {
-    console.error("AI Generation Error:", error);
+  } catch (error: any) {
+    console.error(">>> [AI] Lỗi khi gọi API:", error.response?.data || error.message);
     throw error;
   }
 }
 
 export async function analyzeAIImage(prompt: string, imageBase64: string, mimeType: string, schema?: any, modelName: string = "llama-3.2-11b-vision-preview") {
+  console.log(">>> [AI] Đang gọi hàm analyzeAIImage với model:", modelName);
   try {
     const response = await axios.post("/api/ai", {
       model: modelName,
@@ -39,12 +43,14 @@ export async function analyzeAIImage(prompt: string, imageBase64: string, mimeTy
       response_format: schema ? { type: "json_object" } : undefined
     });
 
+    console.log(">>> [AI] Phản hồi từ server:", response.data);
+
     const text = response.data.choices?.[0]?.message?.content;
     if (!text) throw new Error("No text returned from AI");
 
     return schema ? JSON.parse(text) : text;
-  } catch (error) {
-    console.error("AI Vision Error:", error);
+  } catch (error: any) {
+    console.error(">>> [AI] Lỗi Vision:", error.response?.data || error.message);
     throw error;
   }
 }
