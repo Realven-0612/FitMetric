@@ -12,6 +12,7 @@ import { useTranslation } from "../lib/i18n";
 import { useStore } from "../lib/store";
 import { useNutritionStats } from "../hooks/useNutritionStats";
 import { getDailyQuote } from "../lib/quotes";
+import { API_BASE } from "../lib/api";
 
 const defaultConsumptionData = [
   { name: "t2", value: 0 },
@@ -56,7 +57,7 @@ export default function Dashboard() {
 
       try {
         const tokenData = JSON.parse(stravaTokenStr);
-        const response = await fetch("/api/strava/activities", {
+        const response = await fetch(`${API_BASE}/api/strava/activities`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ accessToken: tokenData.access_token })

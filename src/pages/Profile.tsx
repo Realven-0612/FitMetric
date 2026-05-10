@@ -14,6 +14,7 @@ import { useStore } from "../lib/store";
 import { handleFirestoreError, OperationType } from "../services/firebaseService";
 import BMIBar from "../components/BMIBar";
 import { enableNotifications, startReminders, clearReminders } from '../lib/notifications';
+import { API_BASE } from "../lib/api";
 
 export default function Profile() {
   const { user, loading: authLoading, signInWithGoogle, signOut } = useAuth();
@@ -95,7 +96,7 @@ export default function Profile() {
 
   const handleConnectStrava = async () => {
     try {
-      const response = await fetch('/api/strava/auth');
+      const response = await fetch(`${API_BASE}/api/strava/auth`);
       if (!response.ok) {
         throw new Error('API down');
       }

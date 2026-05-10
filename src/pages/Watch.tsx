@@ -5,6 +5,7 @@ import { Activity, Link2, Unlink, Watch as WatchIcon, BookOpen, Smartphone, Acti
 import { toast } from "sonner";
 import { useTranslation } from "../lib/i18n";
 import { useStore } from "../lib/store";
+import { API_BASE } from "../lib/api";
 
 export default function Watch() {
   const { t, language } = useTranslation();
@@ -36,7 +37,7 @@ export default function Watch() {
 
   const connectStrava = async () => {
     try {
-      const response = await fetch("/api/strava/auth");
+      const response = await fetch(`${API_BASE}/api/strava/auth`);
       const data = await response.json();
       
       if (data.url) {
