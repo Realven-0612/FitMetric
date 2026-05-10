@@ -565,7 +565,26 @@ export default function Training() {
         const daysVi = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
         const daysEn = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
         const dayNames = language === 'vi' ? daysVi : daysEn;
-        const daysArray = Array.isArray(result) ? result : (result.days || result.workoutPlan || []);
+        const DAY_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+        
+        let daysArray: any[];
+        if (Array.isArray(result)) {
+          // AI returned an array directly
+          daysArray = result;
+        } else if (result.days && Array.isArray(result.days)) {
+          // AI returned { days: [...] }
+          daysArray = result.days;
+        } else if (result.workoutPlan && Array.isArray(result.workoutPlan)) {
+          // AI returned { workoutPlan: [...] }
+          daysArray = result.workoutPlan;
+        } else {
+          // AI returned { "Monday": {...}, "Tuesday": {...}, ... }
+          daysArray = DAY_KEYS.map(key => {
+            const val = result[key] || result[key.charAt(0).toUpperCase() + key.slice(1)];
+            return val || { focusName: language === 'vi' ? "Ngày nghỉ" : "Rest Day", exercises: [] };
+          });
+        }
+
         for (let i = 0; i < 7; i++) {
           const d = daysArray[i] || { focusName: language === 'vi' ? "Ngày nghỉ" : "Rest Day", exercises: [] };
           validDays.push({ ...d, dayName: dayNames[i] });
