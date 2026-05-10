@@ -1,6 +1,6 @@
 import axios from "axios";
 
-export async function generateAIContent(prompt: string, schema?: any, modelName: string = "llama-3.3-70b-versatile") {
+export async function generateAIContent(prompt: string, schema?: any, modelName: string = "meta-llama/llama-4-scout-17b-16e-instruct") {
   console.log(">>> [AI] Đang gọi hàm generateAIContent với model:", modelName);
   
   const messages = schema ? [

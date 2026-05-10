@@ -185,7 +185,7 @@ ACTION:REQUEST_WORKOUT:{"focus": "chest"}
     }
 
     const response = await axios.post("/api/ai", {
-      model: imageBase64 ? "llama-3.2-11b-vision-preview" : "llama-3.3-70b-versatile",
+      model: imageBase64 ? "llama-3.2-11b-vision-preview" : "meta-llama/llama-4-scout-17b-16e-instruct",
       messages,
     });
 
