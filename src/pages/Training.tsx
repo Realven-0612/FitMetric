@@ -504,7 +504,8 @@ export default function Training() {
       1. Use science-based splits (e.g., Full Body for 3 days, Upper/Lower for 4 days, PPL for 6 days).
       2. You MUST ONLY select exercises from the "Allowed Exercises List". Do not invent new exercises. Be exact with names.
       3. Output EXACTLY 7 days, Monday to Sunday. If a day is for rest, set focusName to ${language === 'vi' ? '"Ngày nghỉ"' : '"Rest Day"'} and leave exercises empty.
-      4. progressionGuide must provide a detailed progressive overload strategy for the entire cycle. Format as strictly bullet points with newlines (\n). Must be written in ${language === 'vi' ? 'Vietnamese' : 'English'}. Include 'Week 1', 'Week 2' etc. translated accordingly.
+      4. progressionGuide must be a single plain string (no arrays, no bullet markdown) with each week separated by a newline character. Must be written in ${language === 'vi' ? 'Vietnamese' : 'English'}. Include 'Week 1', 'Week 2' etc.
+      CRITICAL: Your ENTIRE response must be ONLY a valid JSON object. Start your response with '{' and end with '}'. No extra text, no markdown, no code blocks.
       5. Provide an accurate youtubeQuery string (e.g. "Barbell Bench Press tutorial form") for each exercise. Always keep this string in English.
       6. Provide a list of dynamic warm-up exercises in the 'warmup' array and a list of static cool-down stretches in the 'cooldown' array based on the day's focus. Write them in ${language === 'vi' ? 'Vietnamese' : 'English'}.
       7. Provide a 'recommendedWeight' (e.g. "20kg", "Bodyweight", "15kg per dumbbell") for each exercise. Always provide a single specific number, not a range.
@@ -557,6 +558,7 @@ export default function Training() {
       };
 
       const result = await generateAIContent(prompt, schema);
+      console.log(">>> [Training] Kết quả AI (raw result):", JSON.stringify(result, null, 2));
 
       if (result) {
         const validDays = [];
