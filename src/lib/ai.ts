@@ -4,7 +4,10 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
   console.log(">>> [AI] Đang gọi hàm generateAIContent với model:", modelName);
   
   const messages = schema ? [
-    { role: "system", content: "You are a helpful assistant. You must respond ONLY with a valid JSON object. Do not include any explanations or markdown formatting outside the JSON." },
+    { 
+      role: "system", 
+      content: "You are a helpful assistant. You must respond ONLY with a valid JSON object. Do NOT use markdown lists or bullet points (like '*') inside JSON arrays. All list items must be proper quoted strings." 
+    },
     { role: "user", content: prompt }
   ] : [
     { role: "user", content: prompt }
@@ -14,7 +17,6 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
     const response = await axios.post("/api/ai", {
       model: modelName,
       messages,
-      // Bỏ response_format: { type: "json_object" } để tránh lỗi của Groq
     });
 
     console.log(">>> [AI] Phản hồi từ server:", response.data);
@@ -24,7 +26,6 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
     
     if (schema) {
       try {
-        // Cố gắng tìm phần JSON trong văn bản (nếu AI có lỡ trả về markdown ```json ... ```)
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           text = jsonMatch[0];
@@ -32,6 +33,19 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
         return JSON.parse(text);
       } catch (parseError) {
         console.error(">>> [AI] Lỗi parse JSON. Nội dung gốc:", text);
+        
+        // Thử fix nhanh trường hợp AI dùng dấu * trong mảng
+        try {
+          let fixedText = text.replace(/\n\s*\*\s*(.+)/g, '\n"$1",');
+          fixedText = fixedText.replace(/,\s*\]/, ']'); // Xóa dấu phẩy thừa cuối mảng
+          const jsonMatch = fixedText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+          }
+        } catch (e) {
+          console.error(">>> [AI] Thử fix JSON thất bại.");
+        }
+        
         throw new Error("AI returned invalid JSON structure");
       }
     }
@@ -47,7 +61,10 @@ export async function analyzeAIImage(prompt: string, imageBase64: string, mimeTy
   console.log(">>> [AI] Đang gọi hàm analyzeAIImage với model:", modelName);
   
   const messages = schema ? [
-    { role: "system", content: "You are a helpful assistant. You must respond ONLY with a valid JSON object. Do not include any explanations or markdown formatting outside the JSON." },
+    { 
+      role: "system", 
+      content: "You are a helpful assistant. You must respond ONLY with a valid JSON object. Do NOT use markdown lists or bullet points (like '*') inside JSON arrays. All list items must be proper quoted strings." 
+    },
     {
       role: "user",
       content: [
@@ -79,7 +96,6 @@ export async function analyzeAIImage(prompt: string, imageBase64: string, mimeTy
     const response = await axios.post("/api/ai", {
       model: modelName,
       messages,
-      // Bỏ response_format
     });
 
     console.log(">>> [AI] Phản hồi từ server:", response.data);
@@ -96,6 +112,18 @@ export async function analyzeAIImage(prompt: string, imageBase64: string, mimeTy
         return JSON.parse(text);
       } catch (parseError) {
         console.error(">>> [AI] Lỗi parse JSON Vision. Nội dung gốc:", text);
+        
+        try {
+          let fixedText = text.replace(/\n\s*\*\s*(.+)/g, '\n"$1",');
+          fixedText = fixedText.replace(/,\s*\]/, ']');
+          const jsonMatch = fixedText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+          }
+        } catch (e) {
+          console.error(">>> [AI] Thử fix JSON thất bại.");
+        }
+        
         throw new Error("AI returned invalid JSON structure");
       }
     }
