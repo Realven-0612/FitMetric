@@ -3,9 +3,8 @@ import axios from "axios";
 export async function generateAIContent(prompt: string, schema?: any, modelName: string = "llama-3.3-70b-versatile") {
   console.log(">>> [AI] Đang gọi hàm generateAIContent với model:", modelName);
   
-  // Tạo danh sách tin nhắn, nếu cần JSON thì thêm system message chứa từ "json"
   const messages = schema ? [
-    { role: "system", content: "You are a helpful assistant. You must respond with a valid json object matching the requested schema." },
+    { role: "system", content: "You are a helpful assistant. You must respond ONLY with a valid JSON object. Do not include any explanations or markdown formatting outside the JSON." },
     { role: "user", content: prompt }
   ] : [
     { role: "user", content: prompt }
@@ -15,15 +14,29 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
     const response = await axios.post("/api/ai", {
       model: modelName,
       messages,
-      response_format: schema ? { type: "json_object" } : undefined
+      // Bỏ response_format: { type: "json_object" } để tránh lỗi của Groq
     });
 
     console.log(">>> [AI] Phản hồi từ server:", response.data);
 
-    const text = response.data.choices?.[0]?.message?.content;
+    let text = response.data.choices?.[0]?.message?.content;
     if (!text) throw new Error("No text returned from AI");
     
-    return schema ? JSON.parse(text) : text;
+    if (schema) {
+      try {
+        // Cố gắng tìm phần JSON trong văn bản (nếu AI có lỡ trả về markdown ```json ... ```)
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          text = jsonMatch[0];
+        }
+        return JSON.parse(text);
+      } catch (parseError) {
+        console.error(">>> [AI] Lỗi parse JSON. Nội dung gốc:", text);
+        throw new Error("AI returned invalid JSON structure");
+      }
+    }
+    
+    return text;
   } catch (error: any) {
     console.error(">>> [AI] Lỗi khi gọi API:", error.response?.data || error.message);
     throw error;
@@ -34,7 +47,7 @@ export async function analyzeAIImage(prompt: string, imageBase64: string, mimeTy
   console.log(">>> [AI] Đang gọi hàm analyzeAIImage với model:", modelName);
   
   const messages = schema ? [
-    { role: "system", content: "You are a helpful assistant. You must respond with a valid json object matching the requested schema." },
+    { role: "system", content: "You are a helpful assistant. You must respond ONLY with a valid JSON object. Do not include any explanations or markdown formatting outside the JSON." },
     {
       role: "user",
       content: [
@@ -66,15 +79,28 @@ export async function analyzeAIImage(prompt: string, imageBase64: string, mimeTy
     const response = await axios.post("/api/ai", {
       model: modelName,
       messages,
-      response_format: schema ? { type: "json_object" } : undefined
+      // Bỏ response_format
     });
 
     console.log(">>> [AI] Phản hồi từ server:", response.data);
 
-    const text = response.data.choices?.[0]?.message?.content;
+    let text = response.data.choices?.[0]?.message?.content;
     if (!text) throw new Error("No text returned from AI");
 
-    return schema ? JSON.parse(text) : text;
+    if (schema) {
+      try {
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          text = jsonMatch[0];
+        }
+        return JSON.parse(text);
+      } catch (parseError) {
+        console.error(">>> [AI] Lỗi parse JSON Vision. Nội dung gốc:", text);
+        throw new Error("AI returned invalid JSON structure");
+      }
+    }
+
+    return text;
   } catch (error: any) {
     console.error(">>> [AI] Lỗi Vision:", error.response?.data || error.message);
     throw error;
