@@ -212,7 +212,7 @@ export default function Training() {
   const { t, language } = useTranslation();
   const { 
     profile, 
-    workoutPlan: plan, 
+    workoutPlan: rawPlan, 
     setWorkoutPlan: setPlan,
     exerciseWeights, 
     updateExerciseWeight,
@@ -222,6 +222,32 @@ export default function Training() {
     removeLogSet,
     clearSessionLogs
   } = useStore();
+
+  // Sanitize plan to handle legacy/malformed Firestore data
+  const plan = rawPlan ? (() => {
+    const DAY_KEYS = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
+    let days = rawPlan.days;
+    if (!Array.isArray(days)) {
+      // Try to extract from day-name keys
+      const fromKeys = DAY_KEYS.map(k => rawPlan[k] || rawPlan[k[0].toUpperCase()+k.slice(1)]).filter(Boolean);
+      days = fromKeys.length > 0 ? fromKeys : [];
+    }
+    // Ensure each day has exercises as an array
+    days = days.map((d: any) => ({
+      ...d,
+      exercises: Array.isArray(d?.exercises) ? d.exercises : [],
+      warmup: Array.isArray(d?.warmup) ? d.warmup : [],
+      cooldown: Array.isArray(d?.cooldown) ? d.cooldown : [],
+    }));
+    // Ensure progressionGuide is a string
+    let progressionGuide = rawPlan.progressionGuide;
+    if (Array.isArray(progressionGuide)) {
+      progressionGuide = progressionGuide.map((l: any) => typeof l === 'string' ? l : JSON.stringify(l)).join('\n');
+    } else if (typeof progressionGuide !== 'string') {
+      progressionGuide = String(progressionGuide ?? '');
+    }
+    return { ...rawPlan, days, progressionGuide };
+  })() : null;
 
   const [selectedDay, setSelectedDay] = useState(() =>
     new Date().getDay() === 0 ? 6 : new Date().getDay() - 1,
@@ -1557,7 +1583,7 @@ export default function Training() {
                           ? plan.progressionGuide.split(/(?<=\.)\s+/)
                           : [String(plan.progressionGuide)])
                     ).map((line, i) => {
-                      const lineStr = typeof line === 'string' ? line : JSON.stringify(line);
+                      const lineStr = line == null ? '' : typeof line === 'string' ? line : (JSON.stringify(line) || '');
                       const t = lineStr
                         .replace(/^- /, "")
                         .replace(/^\* /, "")
