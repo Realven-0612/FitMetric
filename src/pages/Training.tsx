@@ -563,8 +563,9 @@ export default function Training() {
         const daysVi = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
         const daysEn = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
         const dayNames = language === 'vi' ? daysVi : daysEn;
+        const daysArray = result.days || result.workoutPlan || [];
         for (let i = 0; i < 7; i++) {
-          const d = result.days[i] || { focusName: language === 'vi' ? "Ngày nghỉ" : "Rest Day", exercises: [] };
+          const d = daysArray[i] || { focusName: language === 'vi' ? "Ngày nghỉ" : "Rest Day", exercises: [] };
           validDays.push({ ...d, dayName: dayNames[i] });
         }
 
