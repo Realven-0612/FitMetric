@@ -556,7 +556,7 @@ export default function Training() {
         required: ["progressionGuide", "days"],
       };
 
-      const result = await generateAIContent(prompt, schema, "gemini-2.0-flash");
+      const result = await generateAIContent(prompt, schema);
 
       if (result) {
         const validDays = [];
