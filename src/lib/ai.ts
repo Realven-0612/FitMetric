@@ -1,17 +1,14 @@
 import axios from "axios";
 
-export async function generateAIContent(prompt: string, schema?: any, modelName: string = "gemini-2.5-flash") {
+export async function generateAIContent(prompt: string, schema?: any, modelName: string = "llama-3.3-70b-versatile") {
   try {
     const response = await axios.post("/api/ai", {
       model: modelName,
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: schema ? {
-        responseMimeType: "application/json",
-        responseSchema: schema
-      } : undefined
+      messages: [{ role: "user", content: prompt }],
+      response_format: schema ? { type: "json_object" } : undefined
     });
 
-    const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const text = response.data.choices?.[0]?.message?.content;
     if (!text) throw new Error("No text returned from AI");
     
     return schema ? JSON.parse(text) : text;
@@ -21,24 +18,28 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
   }
 }
 
-export async function analyzeAIImage(prompt: string, imageBase64: string, mimeType: string, schema?: any, modelName: string = "gemini-2.5-flash") {
+export async function analyzeAIImage(prompt: string, imageBase64: string, mimeType: string, schema?: any, modelName: string = "llama-3.2-11b-vision-preview") {
   try {
     const response = await axios.post("/api/ai", {
       model: modelName,
-      contents: [{
-        role: "user",
-        parts: [
-          { text: prompt },
-          { inlineData: { data: imageBase64.split(",")[1] || imageBase64, mimeType } }
-        ]
-      }],
-      generationConfig: schema ? {
-        responseMimeType: "application/json",
-        responseSchema: schema
-      } : undefined
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:${mimeType};base64,${imageBase64.split(",")[1] || imageBase64}`
+              }
+            }
+          ]
+        }
+      ],
+      response_format: schema ? { type: "json_object" } : undefined
     });
 
-    const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const text = response.data.choices?.[0]?.message?.content;
     if (!text) throw new Error("No text returned from AI");
 
     return schema ? JSON.parse(text) : text;

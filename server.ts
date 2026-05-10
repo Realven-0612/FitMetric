@@ -96,16 +96,26 @@ async function startServer() {
 
   // AI Proxy Route
   app.post("/api/ai", async (req, res) => {
-    if (!GEMINI_API_KEY) {
-      return res.status(500).json({ error: "GEMINI_API_KEY not configured on server" });
+    const apiKey = process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: "GROQ_API_KEY or GEMINI_API_KEY not configured on server" });
     }
 
     try {
-      const { model, contents, generationConfig } = req.body;
+      const { model, messages, response_format } = req.body;
       const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.5-flash'}:generateContent?key=${GEMINI_API_KEY}`,
-        { contents, generationConfig },
-        { headers: { 'Content-Type': 'application/json' } }
+        "https://api.groq.com/openai/v1/chat/completions",
+        { 
+          model: model || 'llama-3.3-70b-versatile', 
+          messages, 
+          response_format 
+        },
+        { 
+          headers: { 
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json' 
+          } 
+        }
       );
       res.json(response.data);
     } catch (error: any) {
