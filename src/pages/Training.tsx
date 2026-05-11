@@ -598,37 +598,67 @@ export default function Training() {
         const dayNames = language === 'vi' ? daysVi : daysEn;
         const DAY_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
         
-        // ─── Normalise the AI response into a flat array of 7 day objects ───
-        const extractDaysFromObject = (obj: any): any[] =>
-          DAY_KEYS.map(key =>
-            obj[key] || obj[key.charAt(0).toUpperCase() + key.slice(1)] ||
-            { focusName: language === 'vi' ? "Ngày nghỉ" : "Rest Day", exercises: [] }
-          );
+        // ─── Universal parser: find days array no matter the response shape ───
+        const DAY_KEYS_LOWER = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
-        let daysArray: any[];
-        if (Array.isArray(result)) {
-          daysArray = result;
-        } else if (result.days && Array.isArray(result.days)) {
-          daysArray = result.days;
-        } else if (result.weekSchedule && Array.isArray(result.weekSchedule)) {
-          daysArray = result.weekSchedule;
-        } else if (result.workoutPlan && Array.isArray(result.workoutPlan)) {
-          daysArray = result.workoutPlan;
-        } else if (result.weeklyPlan && typeof result.weeklyPlan === 'object') {
-          // AI returned { weeklyPlan: { monday: {...}, tuesday: {...}, ... } }
-          daysArray = extractDaysFromObject(result.weeklyPlan);
-        } else {
-          // AI returned { "Monday": {...}, "Tuesday": {...}, ... } at root level
-          daysArray = extractDaysFromObject(result);
+        // Check if an object looks like a single workout day
+        const isDayObject = (obj: any): boolean =>
+          obj && typeof obj === 'object' && !Array.isArray(obj) &&
+          ('exercises' in obj || 'focusName' in obj || 'focus' in obj);
+
+        // Check if an array looks like a list of workout days
+        const isDaysArray = (arr: any[]): boolean =>
+          arr.length >= 3 && arr.some(item => isDayObject(item));
+
+        // Extract days from { monday: {...}, tuesday: {...}, ... } style object
+        const extractFromDayKeyed = (obj: any): any[] | null => {
+          const found = DAY_KEYS_LOWER.map(k =>
+            obj[k] || obj[k.charAt(0).toUpperCase() + k.slice(1)]
+          ).filter(Boolean);
+          return found.length >= 3 ? DAY_KEYS_LOWER.map(k =>
+            obj[k] || obj[k.charAt(0).toUpperCase() + k.slice(1)] ||
+            { focusName: language === 'vi' ? "Ngày nghỉ" : "Rest Day", exercises: [] }
+          ) : null;
+        };
+
+        // Recursively search for the days array in any nested structure
+        const findDays = (data: any, depth = 0): any[] | null => {
+          if (depth > 5) return null; // prevent infinite loops
+          if (Array.isArray(data) && isDaysArray(data)) return data;
+          if (data && typeof data === 'object' && !Array.isArray(data)) {
+            // Check if this object itself is day-keyed
+            const fromKeys = extractFromDayKeyed(data);
+            if (fromKeys) return fromKeys;
+            // Otherwise check each value
+            for (const val of Object.values(data)) {
+              const found = findDays(val, depth + 1);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+
+        let daysArray: any[] = findDays(result) || [];
+        console.log(">>> [Training] Parsed daysArray length:", daysArray.length, "first day:", daysArray[0]?.focusName || daysArray[0]?.focus);
+
+        // If still empty, last resort: treat the result itself as day-keyed
+        if (daysArray.length === 0) {
+          daysArray = DAY_KEYS_LOWER.map(() => ({
+            focusName: language === 'vi' ? "Ngày nghỉ" : "Rest Day",
+            exercises: []
+          }));
         }
 
-        // Normalise each day: allow exercises with field 'exerciseName' OR 'name'
+        // Normalise each day: handle 'exerciseName' vs 'name', ensure arrays
         daysArray = daysArray.map((d: any) => ({
           ...d,
+          focusName: d.focusName || d.focus || (language === 'vi' ? "Ngày nghỉ" : "Rest Day"),
           exercises: (Array.isArray(d?.exercises) ? d.exercises : []).map((ex: any) => ({
             ...ex,
             name: ex.name || ex.exerciseName || "Unknown",
           })),
+          warmup: Array.isArray(d?.warmup) ? d.warmup : [],
+          cooldown: Array.isArray(d?.cooldown) ? d.cooldown : [],
         }));
 
         for (let i = 0; i < 7; i++) {
@@ -636,8 +666,20 @@ export default function Training() {
           validDays.push({ ...d, dayName: dayNames[i] });
         }
 
+        // Find progressionGuide anywhere in the result
+        const findGuide = (data: any, depth = 0): string | null => {
+          if (depth > 5 || !data || typeof data !== 'object') return null;
+          if (data.progressionGuide && typeof data.progressionGuide === 'string') return data.progressionGuide;
+          for (const val of Object.values(data)) {
+            const found = findGuide(val, depth + 1);
+            if (found) return found;
+          }
+          return null;
+        };
+        const guideDefault = "Tăng dần mức tạ 2.5-5% mỗi tuần.";
+
         const newPlan: WorkoutPlan = {
-          progressionGuide: Array.isArray(result) ? "Tăng dần mức tạ 2.5-5% mỗi tuần." : (result.progressionGuide || "Tăng dần mức tạ 2.5-5% mỗi tuần."),
+          progressionGuide: findGuide(result) || guideDefault,
           days: validDays,
           completedSessions: plan ? plan.completedSessions : 0,
           currentCycle: plan
