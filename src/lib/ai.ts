@@ -110,7 +110,7 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
   }
 }
 
-export async function analyzeAIImage(prompt: string, imageBase64: string, mimeType: string, schema?: any, modelName: string = "llama-3.2-11b-vision-preview") {
+export async function analyzeAIImage(prompt: string, imageBase64: string, mimeType: string, schema?: any, modelName: string = "gemini-2.0-flash") {
   console.log(">>> [AI] analyzeAIImage model:", modelName);
 
   // Compress image to avoid 413 Content Too Large

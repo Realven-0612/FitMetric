@@ -99,9 +99,88 @@ async function startServer() {
   app.post("/api/ai", async (req, res) => {
     const { model, messages, response_format, temperature } = req.body;
     
+    let modelToUse = model || 'meta-llama/llama-4-scout-17b-16e-instruct';
+
+    // Log for debugging
+    const hasImage = JSON.stringify(messages || []).includes('image_url');
+    console.log(`[AI Proxy] model=${model} hasImage=${hasImage}`);
+    
+    // ─── GEMINI: Use native REST API ───
+    if (model && model.includes('gemini')) {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
+
+      // Convert OpenAI messages → Gemini native format
+      const geminiContents: any[] = [];
+      const systemParts: string[] = [];
+
+      for (const msg of messages) {
+        if (msg.role === 'system') {
+          systemParts.push(typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content));
+          continue;
+        }
+        
+        const parts: any[] = [];
+        if (typeof msg.content === 'string') {
+          parts.push({ text: msg.content });
+        } else if (Array.isArray(msg.content)) {
+          for (const block of msg.content) {
+            if (block.type === 'text') {
+              parts.push({ text: block.text });
+            } else if (block.type === 'image_url' && block.image_url?.url) {
+              const dataUrl = block.image_url.url;
+              const match = dataUrl.match(/^data:(.+?);base64,(.+)$/);
+              if (match) {
+                parts.push({
+                  inline_data: {
+                    mime_type: match[1],
+                    data: match[2]
+                  }
+                });
+              }
+            }
+          }
+        }
+
+        geminiContents.push({
+          role: msg.role === 'assistant' ? 'model' : 'user',
+          parts
+        });
+      }
+
+      const geminiPayload: any = { contents: geminiContents };
+      if (systemParts.length > 0) {
+        geminiPayload.systemInstruction = { parts: [{ text: systemParts.join('\n') }] };
+      }
+
+      const geminiModel = modelToUse || 'gemini-2.0-flash';
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`;
+      console.log(`[AI Proxy] Gemini native → ${geminiModel}`);
+
+      try {
+        const response = await axios.post(geminiUrl, geminiPayload, {
+          headers: { 'Content-Type': 'application/json' },
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+        });
+
+        // Convert Gemini response → OpenAI format
+        const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        res.json({
+          choices: [{ message: { role: 'assistant', content: text } }]
+        });
+      } catch (error: any) {
+        const errData = error.response?.data;
+        const status = error.response?.status || 500;
+        console.error(`[Gemini Error] status=${status}`, JSON.stringify(errData)?.substring(0, 500));
+        res.status(status).json(errData || { error: "Gemini request failed", details: error.message });
+      }
+      return;
+    }
+
+    // ─── OTHER PROVIDERS (OpenAI-compatible) ───
     let apiKey: string | undefined;
     let apiUrl: string;
-    let modelToUse = model || 'meta-llama/llama-4-scout-17b-16e-instruct';
     let extraPayload: any = {};
     
     if (model && model.includes('deepseek')) {
@@ -111,13 +190,6 @@ async function startServer() {
       if (model === "deepseek-reasoner") modelToUse = "deepseek/deepseek-r1";
       else if (model === "deepseek-chat") modelToUse = "deepseek/deepseek-chat";
       extraPayload = { response_format, temperature };
-
-    } else if (model && model.includes('gemini')) {
-      apiKey = process.env.GEMINI_API_KEY;
-      apiUrl = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-      if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
-      // Gemini vision doesn't support response_format
-
     } else {
       // Groq (default)
       apiKey = process.env.GROQ_API_KEY;
@@ -126,12 +198,7 @@ async function startServer() {
       extraPayload = { response_format, temperature };
     }
 
-    // Build payload AFTER model name is finalized
     const payload = { model: modelToUse, messages, ...extraPayload };
-
-    // Log for debugging (truncate messages to avoid dumping base64)
-    const hasImage = JSON.stringify(messages).includes('image_url');
-    console.log(`[AI Proxy] model=${modelToUse} url=${apiUrl} hasImage=${hasImage}`);
 
     try {
       const response = await axios.post(apiUrl, payload, {
