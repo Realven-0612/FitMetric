@@ -134,7 +134,8 @@ async function startServer() {
       res.json(response.data);
     } catch (error: any) {
       console.error("AI Proxy Error:", error.response?.data || error.message);
-      res.status(500).json({ error: "AI request failed", details: error.response?.data });
+      const status = error.response?.status || 500;
+      res.status(status).json(error.response?.data || { error: "AI request failed", details: error.message });
     }
   });
 
