@@ -92,7 +92,7 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
   }
 }
 
-export async function analyzeAIImage(prompt: string, imageBase64: string, mimeType: string, schema?: any, modelName: string = "llama-3.2-11b-vision-preview") {
+export async function analyzeAIImage(prompt: string, imageBase64: string, mimeType: string, schema?: any, modelName: string = "gemini-1.5-flash") {
   console.log(">>> [AI] Đang gọi hàm analyzeAIImage với model:", modelName);
   
   const messages = schema ? [

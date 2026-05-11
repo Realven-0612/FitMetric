@@ -114,6 +114,12 @@ async function startServer() {
       } else if (model === "deepseek-chat") {
         modelToUse = "deepseek/deepseek-chat";
       }
+    } else if (model && model.includes('gemini')) {
+      apiKey = process.env.GEMINI_API_KEY;
+      apiUrl = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+      if (!apiKey) {
+        return res.status(500).json({ error: "GEMINI_API_KEY not configured on server" });
+      }
     } else {
       apiKey = process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY;
       apiUrl = "https://api.groq.com/openai/v1/chat/completions";
