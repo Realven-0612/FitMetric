@@ -100,12 +100,19 @@ async function startServer() {
     
     let apiKey;
     let apiUrl;
+    let modelToUse = model || 'meta-llama/llama-4-scout-17b-16e-instruct';
     
     if (model && model.includes('deepseek')) {
-      apiKey = process.env.DEEPSEEK_API_KEY;
-      apiUrl = "https://api.deepseek.com/chat/completions";
+      apiKey = process.env.OPENROUTER_API_KEY;
+      apiUrl = "https://openrouter.ai/api/v1/chat/completions";
       if (!apiKey) {
-        return res.status(500).json({ error: "DEEPSEEK_API_KEY not configured on server" });
+        return res.status(500).json({ error: "OPENROUTER_API_KEY not configured on server" });
+      }
+      // Map to OpenRouter model IDs
+      if (model === "deepseek-reasoner") {
+        modelToUse = "deepseek/deepseek-r1";
+      } else if (model === "deepseek-chat") {
+        modelToUse = "deepseek/deepseek-chat";
       }
     } else {
       apiKey = process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY;
@@ -119,7 +126,7 @@ async function startServer() {
       const response = await axios.post(
         apiUrl,
         { 
-          model: model || 'meta-llama/llama-4-scout-17b-16e-instruct', 
+          model: modelToUse, 
           messages, 
           response_format,
           temperature
