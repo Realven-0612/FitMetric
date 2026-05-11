@@ -110,40 +110,34 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
   }
 }
 
-export async function analyzeAIImage(prompt: string, imageBase64: string, mimeType: string, schema?: any, modelName: string = "llama-3.2-90b-vision-preview") {
-  console.log(">>> [AI] Đang gọi hàm analyzeAIImage với model:", modelName);
+export async function analyzeAIImage(prompt: string, imageBase64: string, mimeType: string, schema?: any, modelName: string = "llama-3.2-11b-vision-preview") {
+  console.log(">>> [AI] analyzeAIImage model:", modelName);
 
   // Compress image to avoid 413 Content Too Large
-  const compressedBase64 = await compressImage(imageBase64, 1024, 0.8);
+  const compressedBase64 = await compressImage(imageBase64, 1024, 0.7);
   const base64Data = compressedBase64.split(',')[1] || compressedBase64;
   const finalMime = 'image/jpeg';
+
+  // Log image payload size for debugging
+  const payloadSizeKB = Math.round(base64Data.length / 1024);
+  console.log(`>>> [AI] Image payload: ${payloadSizeKB}KB (compressed)`);
+
+  const userContent: any[] = [
+    { type: "text", text: prompt },
+    {
+      type: "image_url",
+      image_url: { url: `data:${finalMime};base64,${base64Data}` }
+    }
+  ];
 
   const messages = schema ? [
     { 
       role: "system", 
       content: "You are a helpful assistant. You must respond ONLY with a valid JSON object or array. Do NOT use markdown lists or bullet points (like '*') inside JSON arrays. All list items must be proper quoted strings." 
     },
-    {
-      role: "user",
-      content: [
-        { type: "text", text: prompt },
-        {
-          type: "image_url",
-          image_url: { url: `data:${finalMime};base64,${base64Data}` }
-        }
-      ]
-    }
+    { role: "user", content: userContent }
   ] : [
-    {
-      role: "user",
-      content: [
-        { type: "text", text: prompt },
-        {
-          type: "image_url",
-          image_url: { url: `data:${finalMime};base64,${base64Data}` }
-        }
-      ]
-    }
+    { role: "user", content: userContent }
   ];
 
   try {
@@ -152,7 +146,7 @@ export async function analyzeAIImage(prompt: string, imageBase64: string, mimeTy
       messages,
     });
 
-    console.log(">>> [AI] Phản hồi từ server:", response.data);
+    console.log(">>> [AI] Vision response OK");
 
     let text = response.data.choices?.[0]?.message?.content;
     if (!text) throw new Error("No text returned from AI");
@@ -178,7 +172,7 @@ export async function analyzeAIImage(prompt: string, imageBase64: string, mimeTy
 
         return JSON.parse(text);
       } catch (parseError) {
-        console.error(">>> [AI] Lỗi parse JSON Vision. Nội dung gốc:", text);
+        console.error(">>> [AI] Vision JSON parse error. Raw:", text);
         
         try {
           let fixedText = text.replace(/\n\s*\*\s*(.+)/g, '\n"$1",');
@@ -202,7 +196,7 @@ export async function analyzeAIImage(prompt: string, imageBase64: string, mimeTy
             return JSON.parse(fixedText);
           }
         } catch (e) {
-          console.error(">>> [AI] Thử fix JSON thất bại.");
+          console.error(">>> [AI] JSON fix attempt failed.");
         }
         
         throw new Error("AI returned invalid JSON structure");
@@ -211,7 +205,14 @@ export async function analyzeAIImage(prompt: string, imageBase64: string, mimeTy
 
     return text;
   } catch (error: any) {
-    console.error(">>> [AI] Lỗi Vision:", error.response?.data || error.message);
+    // Show the FULL error details to help debug
+    const errDetail = error.response?.data;
+    console.error(">>> [AI] Vision FAILED:", {
+      status: error.response?.status,
+      error: typeof errDetail === 'string' ? errDetail : JSON.stringify(errDetail, null, 2),
+      model: modelName,
+      imageSizeKB: payloadSizeKB,
+    });
     throw error;
   }
 }
