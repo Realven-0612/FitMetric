@@ -1,5 +1,23 @@
 import axios from "axios";
 
+// Compress image to max size before sending to API
+async function compressImage(base64: string, maxPx: number = 1024, quality: number = 0.8): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(base64); // fallback: send as-is
+    img.src = base64.startsWith('data:') ? base64 : `data:image/jpeg;base64,${base64}`;
+  });
+}
+
 export async function generateAIContent(prompt: string, schema?: any, modelName: string = "meta-llama/llama-4-scout-17b-16e-instruct") {
   console.log(">>> [AI] Đang gọi hàm generateAIContent với model:", modelName);
   
@@ -94,7 +112,12 @@ export async function generateAIContent(prompt: string, schema?: any, modelName:
 
 export async function analyzeAIImage(prompt: string, imageBase64: string, mimeType: string, schema?: any, modelName: string = "gemini-1.5-flash") {
   console.log(">>> [AI] Đang gọi hàm analyzeAIImage với model:", modelName);
-  
+
+  // Compress image to avoid 413 Content Too Large
+  const compressedBase64 = await compressImage(imageBase64, 1024, 0.8);
+  const base64Data = compressedBase64.split(',')[1] || compressedBase64;
+  const finalMime = 'image/jpeg';
+
   const messages = schema ? [
     { 
       role: "system", 
@@ -106,9 +129,7 @@ export async function analyzeAIImage(prompt: string, imageBase64: string, mimeTy
         { type: "text", text: prompt },
         {
           type: "image_url",
-          image_url: {
-            url: `data:${mimeType};base64,${imageBase64.split(",")[1] || imageBase64}`
-          }
+          image_url: { url: `data:${finalMime};base64,${base64Data}` }
         }
       ]
     }
@@ -119,9 +140,7 @@ export async function analyzeAIImage(prompt: string, imageBase64: string, mimeTy
         { type: "text", text: prompt },
         {
           type: "image_url",
-          image_url: {
-            url: `data:${mimeType};base64,${imageBase64.split(",")[1] || imageBase64}`
-          }
+          image_url: { url: `data:${finalMime};base64,${base64Data}` }
         }
       ]
     }
