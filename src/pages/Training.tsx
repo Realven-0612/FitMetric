@@ -605,6 +605,9 @@ export default function Training() {
         } else if (result.days && Array.isArray(result.days)) {
           // AI returned { days: [...] }
           daysArray = result.days;
+        } else if (result.weekSchedule && Array.isArray(result.weekSchedule)) {
+          // AI returned { weekSchedule: [...] }
+          daysArray = result.weekSchedule;
         } else if (result.workoutPlan && Array.isArray(result.workoutPlan)) {
           // AI returned { workoutPlan: [...] }
           daysArray = result.workoutPlan;
