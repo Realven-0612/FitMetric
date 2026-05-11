@@ -588,7 +588,7 @@ export default function Training() {
         required: ["progressionGuide", "days"],
       };
 
-      const result = await generateAIContent(prompt, schema);
+      const result = await generateAIContent(prompt, schema, "deepseek-reasoner");
       console.log(">>> [Training] Kết quả AI (raw result):", JSON.stringify(result, null, 2));
 
       if (result) {

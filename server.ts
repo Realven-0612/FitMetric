@@ -96,15 +96,28 @@ async function startServer() {
 
   // AI Proxy Route
   app.post("/api/ai", async (req, res) => {
-    const apiKey = process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: "GROQ_API_KEY or GEMINI_API_KEY not configured on server" });
+    const { model, messages, response_format, temperature } = req.body;
+    
+    let apiKey;
+    let apiUrl;
+    
+    if (model && model.includes('deepseek')) {
+      apiKey = process.env.DEEPSEEK_API_KEY;
+      apiUrl = "https://api.deepseek.com/chat/completions";
+      if (!apiKey) {
+        return res.status(500).json({ error: "DEEPSEEK_API_KEY not configured on server" });
+      }
+    } else {
+      apiKey = process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY;
+      apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+      if (!apiKey) {
+        return res.status(500).json({ error: "GROQ_API_KEY or GEMINI_API_KEY not configured on server" });
+      }
     }
 
     try {
-      const { model, messages, response_format, temperature } = req.body;
       const response = await axios.post(
-        "https://api.groq.com/openai/v1/chat/completions",
+        apiUrl,
         { 
           model: model || 'meta-llama/llama-4-scout-17b-16e-instruct', 
           messages, 
