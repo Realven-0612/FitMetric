@@ -105,74 +105,32 @@ async function startServer() {
     const hasImage = JSON.stringify(messages || []).includes('image_url');
     console.log(`[AI Proxy] model=${model} hasImage=${hasImage}`);
     
-    // ─── GEMINI: Use native REST API ───
+    // ─── GEMINI: Route through OpenRouter (bypass geo-restriction) ───
     if (model && model.includes('gemini')) {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
+      const apiKey = process.env.OPENROUTER_API_KEY;
+      if (!apiKey) return res.status(500).json({ error: "OPENROUTER_API_KEY not configured" });
 
-      // Convert OpenAI messages → Gemini native format
-      const geminiContents: any[] = [];
-      const systemParts: string[] = [];
-
-      for (const msg of messages) {
-        if (msg.role === 'system') {
-          systemParts.push(typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content));
-          continue;
-        }
-        
-        const parts: any[] = [];
-        if (typeof msg.content === 'string') {
-          parts.push({ text: msg.content });
-        } else if (Array.isArray(msg.content)) {
-          for (const block of msg.content) {
-            if (block.type === 'text') {
-              parts.push({ text: block.text });
-            } else if (block.type === 'image_url' && block.image_url?.url) {
-              const dataUrl = block.image_url.url;
-              const match = dataUrl.match(/^data:(.+?);base64,(.+)$/);
-              if (match) {
-                parts.push({
-                  inline_data: {
-                    mime_type: match[1],
-                    data: match[2]
-                  }
-                });
-              }
-            }
-          }
-        }
-
-        geminiContents.push({
-          role: msg.role === 'assistant' ? 'model' : 'user',
-          parts
-        });
-      }
-
-      const geminiPayload: any = { contents: geminiContents };
-      if (systemParts.length > 0) {
-        geminiPayload.systemInstruction = { parts: [{ text: systemParts.join('\n') }] };
-      }
-
-      const geminiModel = modelToUse || 'gemini-2.0-flash';
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`;
-      console.log(`[AI Proxy] Gemini native → ${geminiModel}`);
+      // Map to OpenRouter model ID: gemini-3.1-flash-lite → google/gemini-3.1-flash-lite
+      const orModel = model.startsWith('google/') ? model : `google/${model}`;
+      console.log(`[AI Proxy] Gemini via OpenRouter → ${orModel}`);
 
       try {
-        const response = await axios.post(geminiUrl, geminiPayload, {
-          headers: { 'Content-Type': 'application/json' },
+        const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+          model: orModel,
+          messages,
+        }, {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
           maxBodyLength: Infinity,
           maxContentLength: Infinity,
         });
-
-        // Convert Gemini response → OpenAI format
-        const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        res.json({
-          choices: [{ message: { role: 'assistant', content: text } }]
-        });
+        res.json(response.data);
       } catch (error: any) {
         const errData = error.response?.data;
         const status = error.response?.status || 500;
-        console.error(`[Gemini Error] status=${status}`, JSON.stringify(errData)?.substring(0, 500));
+        console.error(`[Gemini/OR Error] status=${status}`, JSON.stringify(errData)?.substring(0, 500));
         res.status(status).json(errData || { error: "Gemini request failed", details: error.message });
       }
       return;
