@@ -264,6 +264,13 @@ export default function Scanner() {
                      <div className="w-full h-full max-w-md mx-auto flex flex-col justify-center gap-4">
                         <div className="relative rounded-[2rem] overflow-hidden border border-white/10 aspect-[3/4]">
                           <img src={image} alt="Physique" className="w-full h-full object-cover" />
+                          {/* X button to clear image */}
+                          {!loading && (
+                            <button
+                              onClick={() => { setImage(null); setAnalysis(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                              className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/70 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-red-500/80 transition-all z-10"
+                            >✕</button>
+                          )}
                           {loading && (
                             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-8 gap-6">
                                <Fingerprint className="w-20 h-20 text-primary animate-pulse"/>
@@ -271,6 +278,24 @@ export default function Scanner() {
                             </div>
                           )}
                         </div>
+                        {!loading && !analysis && (
+                          <div className="flex gap-3">
+                            <Button
+                              variant="outline"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="flex-1 h-12 rounded-2xl border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                            >
+                              📷 Change Photo
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => { setImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                              className="flex-1 h-12 rounded-2xl border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                            >
+                              ✕ Cancel
+                            </Button>
+                          </div>
+                        )}
                         {!loading && !analysis && <Button onClick={analyzeImage} className="w-full bg-cyan-500 h-14 rounded-2xl font-black">START SCAN</Button>}
                      </div>
                   )}
