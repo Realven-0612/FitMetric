@@ -14,11 +14,11 @@ service cloud.firestore {
       return data.keys().hasAll(['userId', 'createdAt']) &&
              data.userId == request.auth.uid &&
              (!('name' in data) || (data.name is string && data.name.size() <= 100)) &&
-             (!('weight' in data) || (data.weight is string && data.weight.size() <= 10)) &&
-             (!('height' in data) || (data.height is string && data.height.size() <= 10)) &&
-             (!('bodyFat' in data) || (data.bodyFat is string && data.bodyFat.size() <= 10)) &&
+             (!('weight' in data) || data.weight is number || (data.weight is string && data.weight.size() <= 10)) &&
+             (!('height' in data) || data.height is number || (data.height is string && data.height.size() <= 10)) &&
+             (!('bodyFat' in data) || data.bodyFat is number || (data.bodyFat is string && data.bodyFat.size() <= 10)) &&
              (!('preferredStyle' in data) || (data.preferredStyle is string && data.preferredStyle.size() <= 50)) &&
-             (!('age' in data) || (data.age is string && data.age.size() <= 10)) &&
+             (!('age' in data) || data.age is number || (data.age is string && data.age.size() <= 10)) &&
              (!('level' in data) || (data.level is string && data.level.size() <= 50)) &&
              (!('primaryGoal' in data) || (data.primaryGoal is string && data.primaryGoal.size() <= 50)) &&
              (!('gender' in data) || (data.gender is string && data.gender.size() <= 20)) &&
@@ -29,11 +29,11 @@ service cloud.firestore {
     function isValidUserUpdate(data) {
       return data.userId == request.auth.uid &&
              (!('name' in data) || (data.name is string && data.name.size() <= 100)) &&
-             (!('weight' in data) || (data.weight is string && data.weight.size() <= 10)) &&
-             (!('height' in data) || (data.height is string && data.height.size() <= 10)) &&
-             (!('bodyFat' in data) || (data.bodyFat is string && data.bodyFat.size() <= 10)) &&
+             (!('weight' in data) || data.weight is number || (data.weight is string && data.weight.size() <= 10)) &&
+             (!('height' in data) || data.height is number || (data.height is string && data.height.size() <= 10)) &&
+             (!('bodyFat' in data) || data.bodyFat is number || (data.bodyFat is string && data.bodyFat.size() <= 10)) &&
              (!('preferredStyle' in data) || (data.preferredStyle is string && data.preferredStyle.size() <= 50)) &&
-             (!('age' in data) || (data.age is string && data.age.size() <= 10)) &&
+             (!('age' in data) || data.age is number || (data.age is string && data.age.size() <= 10)) &&
              (!('level' in data) || (data.level is string && data.level.size() <= 50)) &&
              (!('primaryGoal' in data) || (data.primaryGoal is string && data.primaryGoal.size() <= 50)) &&
              (!('gender' in data) || (data.gender is string && data.gender.size() <= 20)) &&
