@@ -598,26 +598,38 @@ export default function Training() {
         const dayNames = language === 'vi' ? daysVi : daysEn;
         const DAY_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
         
+        // ─── Normalise the AI response into a flat array of 7 day objects ───
+        const extractDaysFromObject = (obj: any): any[] =>
+          DAY_KEYS.map(key =>
+            obj[key] || obj[key.charAt(0).toUpperCase() + key.slice(1)] ||
+            { focusName: language === 'vi' ? "Ngày nghỉ" : "Rest Day", exercises: [] }
+          );
+
         let daysArray: any[];
         if (Array.isArray(result)) {
-          // AI returned an array directly
           daysArray = result;
         } else if (result.days && Array.isArray(result.days)) {
-          // AI returned { days: [...] }
           daysArray = result.days;
         } else if (result.weekSchedule && Array.isArray(result.weekSchedule)) {
-          // AI returned { weekSchedule: [...] }
           daysArray = result.weekSchedule;
         } else if (result.workoutPlan && Array.isArray(result.workoutPlan)) {
-          // AI returned { workoutPlan: [...] }
           daysArray = result.workoutPlan;
+        } else if (result.weeklyPlan && typeof result.weeklyPlan === 'object') {
+          // AI returned { weeklyPlan: { monday: {...}, tuesday: {...}, ... } }
+          daysArray = extractDaysFromObject(result.weeklyPlan);
         } else {
-          // AI returned { "Monday": {...}, "Tuesday": {...}, ... }
-          daysArray = DAY_KEYS.map(key => {
-            const val = result[key] || result[key.charAt(0).toUpperCase() + key.slice(1)];
-            return val || { focusName: language === 'vi' ? "Ngày nghỉ" : "Rest Day", exercises: [] };
-          });
+          // AI returned { "Monday": {...}, "Tuesday": {...}, ... } at root level
+          daysArray = extractDaysFromObject(result);
         }
+
+        // Normalise each day: allow exercises with field 'exerciseName' OR 'name'
+        daysArray = daysArray.map((d: any) => ({
+          ...d,
+          exercises: (Array.isArray(d?.exercises) ? d.exercises : []).map((ex: any) => ({
+            ...ex,
+            name: ex.name || ex.exerciseName || "Unknown",
+          })),
+        }));
 
         for (let i = 0; i < 7; i++) {
           const d = daysArray[i] || { focusName: language === 'vi' ? "Ngày nghỉ" : "Rest Day", exercises: [] };
