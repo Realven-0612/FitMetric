@@ -249,6 +249,11 @@ export default function Training() {
     return { ...rawPlan, days, progressionGuide };
   })() : null;
 
+  // Defensive checks
+  if (rawPlan && (!plan || !plan.days || !Array.isArray(plan.days))) {
+    return <div>No workout plan available. Please generate a new one.</div>;
+  }
+
   const [selectedDay, setSelectedDay] = useState(() =>
     new Date().getDay() === 0 ? 6 : new Date().getDay() - 1,
   );
@@ -1454,7 +1459,7 @@ export default function Training() {
                             {/* Khối lượng */}
                             <div className="bg-black/60 border border-white/5 rounded-lg px-2 py-1.5 flex flex-col gap-0.5 min-w-0">
                               <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{t('volume_label')}</span>
-                              <span className="text-white font-black text-[10px] leading-tight break-words">{ex.sets?.replace(/đến khi không thực hiện được nữa/gi, 'đến ngưỡng thất bại')}</span>
+                              <span className="text-white font-black text-[10px] leading-tight break-words">{typeof ex.sets === 'string' ? ex.sets.replace(/đến khi không thực hiện được nữa/gi, 'đến ngưỡng thất bại') : ex.sets}</span>
                             </div>
                             {/* Nghỉ */}
                             <div className="bg-black/60 border border-white/5 rounded-lg px-2 py-1.5 flex flex-col gap-0.5 min-w-0">
@@ -1583,16 +1588,23 @@ export default function Training() {
                           ? plan.progressionGuide.split(/(?<=\.)\s+/)
                           : [String(plan.progressionGuide)])
                     ).map((line, i) => {
-                      const lineStr = line == null ? '' : typeof line === 'string' ? line : (JSON.stringify(line) || '');
-                      const t = lineStr
-                        .replace(/^- /, "")
-                        .replace(/^\* /, "")
+                      const lineStr = line == null 
+                        ? '' 
+                        : typeof line === 'string' 
+                          ? line 
+                          : (JSON.stringify(line) || '');
+
+                      const cleaned = lineStr
+                        .replace(/^\s*-\s*/, "")     // Xóa dấu - đầu dòng
+                        .replace(/^\s*\*\s*/, "")    // Xóa dấu * đầu dòng
                         .trim();
-                      if (!t) return null;
+
+                      if (!cleaned) return null;
+
                       return (
                         <div key={i} className="flex gap-2 items-start">
                           <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_8px_rgba(34,211,238,0.8)]"></div>
-                          <p>{t}</p>
+                          <p>{cleaned}</p>
                         </div>
                       );
                     })}
