@@ -99,9 +99,11 @@ async function startServer() {
   app.post("/api/ai", async (req, res) => {
     const { model, messages, response_format, temperature } = req.body;
     
-    let apiKey;
-    let apiUrl;
+    let apiKey: string | undefined;
+    let apiUrl: string;
     let modelToUse = model || 'meta-llama/llama-4-scout-17b-16e-instruct';
+    let headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    let payload: any = { model: modelToUse, messages };
     
     if (model && model.includes('deepseek')) {
       apiKey = process.env.OPENROUTER_API_KEY;
@@ -109,42 +111,34 @@ async function startServer() {
       if (!apiKey) {
         return res.status(500).json({ error: "OPENROUTER_API_KEY not configured on server" });
       }
-      // Map to OpenRouter model IDs
-      if (model === "deepseek-reasoner") {
-        modelToUse = "deepseek/deepseek-r1";
-      } else if (model === "deepseek-chat") {
-        modelToUse = "deepseek/deepseek-chat";
-      }
+      if (model === "deepseek-reasoner") modelToUse = "deepseek/deepseek-r1";
+      else if (model === "deepseek-chat") modelToUse = "deepseek/deepseek-chat";
+      headers['Authorization'] = `Bearer ${apiKey}`;
+      payload = { model: modelToUse, messages, response_format, temperature };
+
     } else if (model && model.includes('gemini')) {
       apiKey = process.env.GEMINI_API_KEY;
-      apiUrl = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
       if (!apiKey) {
         return res.status(500).json({ error: "GEMINI_API_KEY not configured on server" });
       }
+      // Gemini OpenAI-compatible endpoint uses API key as query param
+      apiUrl = `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`;
+      headers['Authorization'] = `Bearer ${apiKey}`;
+      // Gemini doesn't support response_format for vision — only send messages + model
+      payload = { model: modelToUse, messages };
+
     } else {
       apiKey = process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY;
       apiUrl = "https://api.groq.com/openai/v1/chat/completions";
       if (!apiKey) {
         return res.status(500).json({ error: "GROQ_API_KEY or GEMINI_API_KEY not configured on server" });
       }
+      headers['Authorization'] = `Bearer ${apiKey}`;
+      payload = { model: modelToUse, messages, response_format, temperature };
     }
 
     try {
-      const response = await axios.post(
-        apiUrl,
-        { 
-          model: modelToUse, 
-          messages, 
-          response_format,
-          temperature
-        },
-        { 
-          headers: { 
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json' 
-          } 
-        }
-      );
+      const response = await axios.post(apiUrl, payload, { headers });
       res.json(response.data);
     } catch (error: any) {
       console.error("AI Proxy Error:", error.response?.data || error.message);
