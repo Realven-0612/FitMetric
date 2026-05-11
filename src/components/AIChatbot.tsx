@@ -338,7 +338,7 @@ ACTION:REQUEST_WORKOUT:{"focus": "chest"}
                   key={m.id} 
                   className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`flex gap-3 max-w-[85%] ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <div className={`flex gap-3 max-w-[85%] min-w-0 ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                     <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center border ${
                       m.role === 'assistant' 
                         ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400' 
@@ -346,8 +346,8 @@ ACTION:REQUEST_WORKOUT:{"focus": "chest"}
                     }`}>
                       {m.role === 'assistant' ? <Sparkles className="w-4 h-4" /> : <User className="w-4 h-4" />}
                     </div>
-                    <div className={`space-y-1 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
-                      <div className={`p-4 rounded-2xl text-xs font-medium leading-relaxed break-words overflow-hidden ${
+                    <div className={`space-y-1 min-w-0 overflow-hidden ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
+                      <div className={`p-4 rounded-2xl text-xs font-medium leading-relaxed break-words break-all overflow-hidden w-full ${
                         m.role === 'assistant'
                           ? 'bg-[#1a1a1a] text-slate-200 border border-white/5'
                           : 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/10'
