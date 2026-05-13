@@ -3,6 +3,44 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import cors from "cors";
 import axios from "axios";
+import crypto from "crypto";
+
+function base64url(str: string | Buffer) {
+  return (typeof str === 'string' ? Buffer.from(str) : str).toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
+async function getAccessToken(serviceAccount: any) {
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const iat = Math.floor(Date.now() / 1000);
+  const exp = iat + 3600;
+  
+  const claimSet = {
+    iss: serviceAccount.client_email,
+    scope: 'https://www.googleapis.com/auth/cloud-platform',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp,
+    iat
+  };
+  
+  const encodedHeader = base64url(JSON.stringify(header));
+  const encodedClaimSet = base64url(JSON.stringify(claimSet));
+  
+  const sign = crypto.createSign('RSA-SHA256');
+  sign.update(`${encodedHeader}.${encodedClaimSet}`);
+  const signature = base64url(sign.sign(serviceAccount.private_key));
+  
+  const jwt = `${encodedHeader}.${encodedClaimSet}.${signature}`;
+  
+  const response = await axios.post('https://oauth2.googleapis.com/token', {
+    grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+    assertion: jwt
+  });
+  
+  return response.data.access_token;
+}
 
 async function startServer() {
   const app = express();
@@ -99,39 +137,95 @@ async function startServer() {
   app.post("/api/ai", async (req, res) => {
     const { model, messages, response_format, temperature } = req.body;
     
-    let modelToUse = model || 'meta-llama/llama-4-scout-17b-16e-instruct';
+    let modelToUse = model || 'llama-3.3-70b-versatile';
 
     // Log for debugging
     const hasImage = JSON.stringify(messages || []).includes('image_url');
     console.log(`[AI Proxy] model=${model} hasImage=${hasImage}`);
     
-    // ─── GEMINI: Route through OpenRouter (bypass geo-restriction) ───
+    // ─── GEMINI: Route through Vertex AI ───
     if (model && model.includes('gemini')) {
-      const apiKey = process.env.OPENROUTER_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: "OPENROUTER_API_KEY not configured" });
-
-      // Map to OpenRouter model ID: gemini-3.1-flash-lite → google/gemini-3.1-flash-lite
-      const orModel = model.startsWith('google/') ? model : `google/${model}`;
-      console.log(`[AI Proxy] Gemini via OpenRouter → ${orModel}`);
-
       try {
-        const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-          model: orModel,
-          messages,
+        const saJson = process.env.GCP_SERVICE_ACCOUNT_JSON;
+        if (!saJson) {
+          return res.status(500).json({ error: "GCP_SERVICE_ACCOUNT_JSON not configured" });
+        }
+        const serviceAccount = JSON.parse(saJson);
+        
+        console.log(`[AI Proxy] Getting Vertex AI access token...`);
+        const token = await getAccessToken(serviceAccount);
+        
+        let vertexModel = model;
+        if (model.includes('flash-lite')) vertexModel = 'gemini-1.5-flash';
+        else if (model.includes('flash')) vertexModel = 'gemini-1.5-flash';
+        else if (model.includes('pro')) vertexModel = 'gemini-1.5-pro';
+        
+        const region = 'us-central1'; // Force US region to bypass geo-restrictions
+        const url = `https://${region}-aiplatform.googleapis.com/v1/projects/${serviceAccount.project_id}/locations/${region}/publishers/google/models/${vertexModel}:generateContent`;
+
+        console.log(`[AI Proxy] Calling Vertex AI (${region}) for model ${vertexModel}`);
+
+        // Convert OpenAI messages to Vertex AI format
+        const contents = messages.map((m: any) => {
+          const parts = [];
+          if (typeof m.content === 'string') {
+            parts.push({ text: m.content });
+          } else if (Array.isArray(m.content)) {
+            m.content.forEach((part: any) => {
+              if (part.type === 'text') parts.push({ text: part.text });
+              else if (part.type === 'image_url') {
+                const base64 = part.image_url.url.split(',')[1];
+                const mimeType = part.image_url.url.split(';')[0].split(':')[1];
+                parts.push({
+                  inlineData: {
+                    mimeType,
+                    data: base64
+                  }
+                });
+              }
+            });
+          }
+          return { role: m.role === 'assistant' ? 'model' : m.role, parts };
+        });
+
+        const systemMessage = messages.find((m: any) => m.role === 'system');
+        const systemInstruction = systemMessage ? {
+          parts: [{ text: systemMessage.content }]
+        } : undefined;
+
+        const vertexContents = contents.filter((c: any) => c.role !== 'system');
+
+        const response = await axios.post(url, { 
+          contents: vertexContents,
+          systemInstruction,
+          generationConfig: {
+            temperature: temperature || 0.3,
+            responseMimeType: response_format?.type === 'json_object' ? 'application/json' : 'text/plain'
+          }
         }, {
           headers: {
-            'Authorization': `Bearer ${apiKey}`,
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
-          },
-          maxBodyLength: Infinity,
-          maxContentLength: Infinity,
+          }
         });
-        res.json(response.data);
+
+        const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        res.json({
+          choices: [
+            {
+              message: {
+                role: 'assistant',
+                content: text
+              }
+            }
+          ]
+        });
       } catch (error: any) {
         const errData = error.response?.data;
         const status = error.response?.status || 500;
-        console.error(`[Gemini/OR Error] status=${status}`, JSON.stringify(errData)?.substring(0, 500));
-        res.status(status).json(errData || { error: "Gemini request failed", details: error.message });
+        console.error(`[Vertex AI Error] status=${status}`, JSON.stringify(errData)?.substring(0, 500));
+        res.status(status).json(errData || { error: "Vertex AI request failed", details: error.message });
       }
       return;
     }
@@ -141,20 +235,11 @@ async function startServer() {
     let apiUrl: string;
     let extraPayload: any = {};
     
-    if (model && model.includes('deepseek')) {
-      apiKey = process.env.OPENROUTER_API_KEY;
-      apiUrl = "https://openrouter.ai/api/v1/chat/completions";
-      if (!apiKey) return res.status(500).json({ error: "OPENROUTER_API_KEY not configured" });
-      if (model === "deepseek-reasoner") modelToUse = "deepseek/deepseek-r1";
-      else if (model === "deepseek-chat") modelToUse = "deepseek/deepseek-chat";
-      extraPayload = { response_format, temperature };
-    } else {
-      // Groq (default)
-      apiKey = process.env.GROQ_API_KEY;
-      apiUrl = "https://api.groq.com/openai/v1/chat/completions";
-      if (!apiKey) return res.status(500).json({ error: "GROQ_API_KEY not configured" });
-      extraPayload = { response_format, temperature };
-    }
+    // Groq (default)
+    apiKey = process.env.GROQ_API_KEY;
+    apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+    if (!apiKey) return res.status(500).json({ error: "GROQ_API_KEY not configured" });
+    extraPayload = { response_format, temperature };
 
     const payload = { model: modelToUse, messages, ...extraPayload };
 
