@@ -28,7 +28,7 @@ const ACTIVITY_LEVELS = [
 
 export default function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
   const { setProfile } = useStore();
-  const { t } = useTranslation();
+  const { t, language, setLanguage } = useTranslation();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({
     name: "", age: "", gender: "male",
@@ -110,6 +110,35 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                   <h1 className="text-5xl font-black tracking-tight mb-3">Fit<span className="text-cyan-500">Metric</span></h1>
                   <p className="text-slate-400 text-lg">{t('fitness_quantified')}</p>
                 </div>
+              </div>
+
+              {/* Language Picker */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setLanguage('en')}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl border font-bold text-sm transition-all ${
+                    language === 'en'
+                      ? 'bg-cyan-500/15 border-cyan-500/60 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.25)]'
+                      : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-slate-200'
+                  }`}
+                >
+                  <span className="text-lg">🇺🇸</span>
+                  <span>English</span>
+                  {language === 'en' && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.8)]" />}
+                </button>
+
+                <button
+                  onClick={() => setLanguage('vi')}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl border font-bold text-sm transition-all ${
+                    language === 'vi'
+                      ? 'bg-cyan-500/15 border-cyan-500/60 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.25)]'
+                      : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-slate-200'
+                  }`}
+                >
+                  <span className="text-lg">🇻🇳</span>
+                  <span>Tiếng Việt</span>
+                  {language === 'vi' && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.8)]" />}
+                </button>
               </div>
               
               <div className="flex flex-col gap-2 mb-8 w-fit mx-auto">
