@@ -44,7 +44,7 @@ async function getAccessToken(serviceAccount: any) {
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT || 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(cors());
   app.use(express.json({ limit: '20mb' }));
@@ -152,10 +152,10 @@ async function startServer() {
         window.opener.postMessage({ type: 'STRAVA_AUTH_ERROR', error: 'Failed to exchange token' }, '*');
         window.close();
       } else {
-        window.location.href = '${appUrl}/profile#strava-error';
+        window.location.href = '${APP_URL}/profile#strava-error';
       }
     } catch(e) {
-      window.location.href = '${appUrl}/profile#strava-error';
+      window.location.href = '${APP_URL}/profile#strava-error';
     }
   <\/script>
 </body></html>`;
