@@ -13,6 +13,7 @@ import { TranslationProvider } from "./lib/i18n";
 import { useStore } from "./lib/store";
 import { useEffect, useState } from "react";
 import OnboardingScreen from "./components/OnboardingScreen";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 // Splash screen shown while Firebase resolves auth state
 function SplashScreen() {
@@ -77,13 +78,13 @@ function AppShell() {
       ) : (
         <AppLayout>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/training" element={<Training />} />
-            <Route path="/library" element={<Library />} />
-            <Route path="/scanner" element={<Scanner />} />
-            <Route path="/nutrition" element={<Nutrition />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/watch" element={<Watch />} />
+            <Route path="/" element={<ErrorBoundary label="Dashboard"><Dashboard /></ErrorBoundary>} />
+            <Route path="/training" element={<ErrorBoundary label="Training"><Training /></ErrorBoundary>} />
+            <Route path="/library" element={<ErrorBoundary label="Library"><Library /></ErrorBoundary>} />
+            <Route path="/scanner" element={<ErrorBoundary label="Scanner"><Scanner /></ErrorBoundary>} />
+            <Route path="/nutrition" element={<ErrorBoundary label="Nutrition"><Nutrition /></ErrorBoundary>} />
+            <Route path="/profile" element={<ErrorBoundary label="Profile"><Profile /></ErrorBoundary>} />
+            <Route path="/watch" element={<ErrorBoundary label="Watch"><Watch /></ErrorBoundary>} />
           </Routes>
         </AppLayout>
       )}

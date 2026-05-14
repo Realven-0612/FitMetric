@@ -56,6 +56,36 @@ async function startServer() {
   const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
   const REDIRECT_URI = `${APP_URL}/api/strava/callback`;
 
+  // ─── Simple IP-based rate limiter for /api/ai ────────────────────────────
+  // Max 30 AI requests per IP per 60-second window (protects Groq/Gemini quotas)
+  const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+  const AI_RATE_LIMIT = 30;       // requests
+  const AI_RATE_WINDOW_MS = 60_000; // 1 minute
+
+  function aiRateLimiter(req: any, res: any, next: any) {
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+    const now = Date.now();
+    const entry = rateLimitMap.get(ip);
+
+    if (!entry || now > entry.resetAt) {
+      rateLimitMap.set(ip, { count: 1, resetAt: now + AI_RATE_WINDOW_MS });
+      return next();
+    }
+
+    if (entry.count >= AI_RATE_LIMIT) {
+      const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
+      res.set('Retry-After', String(retryAfter));
+      return res.status(429).json({
+        error: 'Too many AI requests. Please wait a moment.',
+        retryAfter,
+      });
+    }
+
+    entry.count++;
+    next();
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   // Strava Auth Initializer
   app.get("/api/strava/auth", (req, res) => {
     if (!STRAVA_CLIENT_ID) {
@@ -134,10 +164,11 @@ async function startServer() {
   });
 
   // AI Proxy Route
-  app.post("/api/ai", async (req, res) => {
+  app.post("/api/ai", aiRateLimiter, async (req, res) => {
     const { model, messages, response_format, temperature } = req.body;
     
-    let modelToUse = model || 'llama-3.3-70b-versatile';
+    const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
+    let modelToUse = model || DEFAULT_MODEL;
 
     // Log for debugging
     const hasImage = JSON.stringify(messages || []).includes('image_url');

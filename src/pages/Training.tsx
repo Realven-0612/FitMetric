@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/select";
 import { useStore } from "../lib/store";
 import { generateAIContent } from "../lib/ai";
+import { AI_MODELS } from "../lib/aiModels";
 import { saveSessionRecord, getSessionHistory, deleteSessionRecord, getCustomVideoLibrary, addCustomVideo } from "../services/firebaseService";
 
 export interface LoggedSet {
@@ -588,7 +589,7 @@ export default function Training() {
         required: ["progressionGuide", "days"],
       };
 
-      const result = await generateAIContent(prompt, schema, "llama-3.3-70b-versatile");
+      const result = await generateAIContent(prompt, schema, AI_MODELS.GROQ_TEXT);
       console.log(">>> [Training] Kết quả AI (raw result):", JSON.stringify(result, null, 2));
 
       if (result) {
