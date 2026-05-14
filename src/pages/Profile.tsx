@@ -169,6 +169,19 @@ export default function Profile() {
     }
   };
 
+  const handleDisablePush = () => {
+    clearReminders();
+    setIsNotifEnabled(false);
+    toast.info("Notifications disabled");
+  };
+
+  const handleDisconnectStrava = () => {
+    localStorage.removeItem("strava_token");
+    setIsStravaConnected(false);
+    toast.info("Strava disconnected");
+  };
+
+
   const handleSaveAllRecords = () => {
     toast.success('All records and history successfully synced to cloud!');
   };
@@ -540,15 +553,15 @@ export default function Profile() {
                        </div>
                      </div>
                       <button
-                        onClick={isStravaConnected ? undefined : handleConnectStrava}
-                        disabled={isStravaConnected}
+                        onClick={isStravaConnected ? handleDisconnectStrava : handleConnectStrava}
+                        disabled={!user}
                         className={`text-[10px] font-black px-3 py-1.5 rounded-xl transition-all ${
                           isStravaConnected
-                            ? 'text-emerald-400 border border-emerald-500/40 bg-emerald-500/10 cursor-default'
-                            : 'text-slate-400 border border-white/10 hover:bg-white/5'
+                            ? 'text-red-400 border border-red-500/30 hover:bg-red-500/10'
+                            : 'text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10'
                         }`}
                       >
-                        {isStravaConnected ? '✓ CONNECTED' : t('connect')}
+                        {isStravaConnected ? '✕ DISCONNECT' : t('connect')}
                       </button>
                    </div>
                    {!user && <p className="text-[10px] text-slate-600 mt-2">* Sign in first to connect integrations.</p>}
@@ -568,15 +581,14 @@ export default function Profile() {
                        </div>
                      </div>
                       <button
-                        onClick={isNotifEnabled ? undefined : handleEnablePush}
-                        disabled={isNotifEnabled}
+                        onClick={isNotifEnabled ? handleDisablePush : handleEnablePush}
                         className={`text-[10px] font-black px-3 py-1.5 rounded-xl transition-all ${
                           isNotifEnabled
-                            ? 'text-emerald-400 border border-emerald-500/40 bg-emerald-500/10 cursor-default'
+                            ? 'text-red-400 border border-red-500/30 hover:bg-red-500/10'
                             : 'text-purple-400 border border-purple-500/30 hover:bg-purple-500/10'
                         }`}
                       >
-                        {isNotifEnabled ? '✓ ENABLED' : t('enable')}
+                        {isNotifEnabled ? '✕ DISABLE' : t('enable')}
                       </button>
                    </div>
                  </div>
