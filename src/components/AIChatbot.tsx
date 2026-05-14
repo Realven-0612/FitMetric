@@ -38,7 +38,7 @@ interface Message {
 export default function AIChatbot() {
   const navigate = useNavigate();
   const { profile, setProfile, addNutritionEntry } = useStore();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
