@@ -30,14 +30,16 @@
   <!-- OneSignal Push Notifications -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <script>
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    OneSignalDeferred.push(async function(OneSignal) {
-      await OneSignal.init({
-        appId: "f4e2e7b3-462e-47b1-88d1-07f06c9e8a69",
-        notifyButton: { enable: false },
-        allowLocalhostAsSecureOrigin: true,
-        serviceWorkerPath: "/OneSignalSDKWorker.js",
-        serviceWorkerParam: { scope: "/" }
+    window.addEventListener('load', function() {
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.init({
+          appId: "f4e2e7b3-462e-47b1-88d1-07f06c9e8a69",
+          notifyButton: { enable: false },
+          allowLocalhostAsSecureOrigin: true,
+          serviceWorkerPath: "/OneSignalSDKWorker.js",
+          serviceWorkerParam: { scope: "/" }
+        });
       });
     });
   </script>
