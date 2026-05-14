@@ -47,7 +47,7 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 // --- SERVER WEB PUSH SUBSCRIPTION ---
-export async function startReminders(profile: { waterIntake?: number; targetKcal?: number }) {
+export async function startReminders(uid: string) {
   if (!isNotificationSupported()) return;
   
   try {
@@ -68,7 +68,7 @@ export async function startReminders(profile: { waterIntake?: number; targetKcal
     await fetch(`${API_BASE}/api/push/subscribe`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(subscription)
+      body: JSON.stringify({ uid, subscription })
     });
     
     console.log('Successfully subscribed to Server Web Push!');

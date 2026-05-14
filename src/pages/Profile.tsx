@@ -161,7 +161,9 @@ export default function Profile() {
     if (success) {
       setIsNotifEnabled(true);
       toast.success(t('toast_notif_enabled'));
-      startReminders({ waterIntake: 0 });
+      if (user?.uid) {
+        startReminders(user.uid);
+      }
     } else {
       toast.error(t('toast_notif_error'));
     }

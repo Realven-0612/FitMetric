@@ -5,6 +5,7 @@ import cors from "cors";
 import axios from "axios";
 import crypto from "crypto";
 import webpush from "web-push";
+import * as admin from "firebase-admin";
 
 function base64url(str: string | Buffer) {
   return (typeof str === 'string' ? Buffer.from(str) : str).toString('base64')
@@ -65,8 +66,18 @@ async function startServer() {
     console.warn("VAPID keys missing. Web Push will not work until added to environment variables.");
   }
 
-  // In-memory subscription store for demonstration
-  let pushSubscriptions: { sub: any; lastWater: number }[] = [];
+  // Initialize Firebase Admin for persistent push subscriptions
+  if (process.env.GCP_SERVICE_ACCOUNT_JSON && !admin.apps.length) {
+    try {
+      const serviceAccount = JSON.parse(process.env.GCP_SERVICE_ACCOUNT_JSON);
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+      console.log("Firebase Admin initialized successfully.");
+    } catch (error) {
+      console.error("Failed to initialize Firebase Admin:", error);
+    }
+  }
   const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
   const REDIRECT_URI = `${APP_URL}/api/strava/callback`;
 
@@ -106,64 +117,105 @@ async function startServer() {
     res.json({ key: PUBLIC_VAPID_KEY });
   });
 
-  // 1. Subscribe to notifications
-  app.post("/api/push/subscribe", (req, res) => {
-    const subscription = req.body;
-    if (!subscription || !subscription.endpoint) {
-      return res.status(400).json({ error: "Invalid subscription" });
+  // 1. Subscribe to notifications (Firestore)
+  app.post("/api/push/subscribe", async (req, res) => {
+    const { uid, subscription } = req.body;
+    if (!uid || !subscription || !subscription.endpoint) {
+      return res.status(400).json({ error: "Invalid payload" });
     }
     
-    // Check if exists
-    const existsIndex = pushSubscriptions.findIndex(s => s.sub.endpoint === subscription.endpoint);
-    if (existsIndex >= 0) {
-      pushSubscriptions[existsIndex].sub = subscription; // Update if changed
+    if (admin.apps.length > 0) {
+      try {
+        await admin.firestore().collection("users").doc(uid)
+          .collection("pushSubscriptions").doc("primary")
+          .set({
+            sub: subscription,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        return res.status(201).json({ success: true });
+      } catch (err) {
+        console.error("Error saving subscription:", err);
+        return res.status(500).json({ error: "Failed to save subscription" });
+      }
     } else {
-      pushSubscriptions.push({ sub: subscription, lastWater: Date.now() });
+      console.warn("Firebase Admin not initialized, cannot save subscription");
+      return res.status(500).json({ error: "Server missing database connection" });
     }
-    
-    res.status(201).json({ success: true });
   });
 
-  // 2. Cron endpoint to trigger pushes
-  // This endpoint should be called periodically by a service like cron-job.org
+  // 2. Cron endpoint to trigger pushes (Smart Notifications via Firestore)
   app.get("/api/push/cron", async (req, res) => {
-    const now = Date.now();
+    if (!admin.apps.length) {
+      return res.status(500).json({ error: "Firebase Admin not initialized" });
+    }
+
+    const now = new Date();
+    // Assuming server runs in UTC or a specific timezone. Adjusting to a generic user local time approximation 
+    // or just using the UTC hour + 7 (Vietnam) for now, as it's targeted for VN users:
+    const vnHour = (now.getUTCHours() + 7) % 24;
     let sentCount = 0;
     const promises = [];
 
-    // Filter valid subscriptions
-    const validSubs: { sub: any; lastWater: number }[] = [];
+    try {
+      const usersSnap = await admin.firestore().collection("users").get();
+      
+      for (const userDoc of usersSnap.docs) {
+        const uid = userDoc.id;
+        const userData = userDoc.data();
+        
+        const subDoc = await admin.firestore().collection("users").doc(uid)
+          .collection("pushSubscriptions").doc("primary").get();
+          
+        if (!subDoc.exists) continue;
+        const subData = subDoc.data();
+        if (!subData || !subData.sub) continue;
 
-    for (const entry of pushSubscriptions) {
-      // Nhắc uống nước mỗi 2 tiếng (2 * 60 * 60 * 1000)
-      if (now - entry.lastWater > 2 * 60 * 60 * 1000) {
-        const payload = JSON.stringify({
-          title: "💧 Nhắc nhở uống nước",
-          body: "Đã 2 tiếng rồi! Hãy bổ sung thêm nước để cơ thể luôn khỏe mạnh nhé.",
-        });
+        let title = "";
+        let body = "";
 
-        const p = webpush.sendNotification(entry.sub, payload)
-          .then(() => {
-            entry.lastWater = now;
-            sentCount++;
-            validSubs.push(entry);
-          })
-          .catch((err) => {
-            if (err.statusCode === 404 || err.statusCode === 410) {
-              console.log("Subscription has expired or is no longer valid:", err);
-            } else {
-              validSubs.push(entry); // keep if another error
-            }
-          });
-        promises.push(p);
-      } else {
-        validSubs.push(entry);
+        // Smart Logic for Notifications (between 7 AM and 9 PM VN time)
+        if (vnHour >= 7 && vnHour <= 21) {
+          // Greet user
+          const namePrefix = userData.name ? `Chào ${userData.name}! ` : "";
+          
+          // Logic 1: Morning motivation (7 AM)
+          if (vnHour === 7) {
+            title = "🌅 Chào buổi sáng!";
+            body = `${namePrefix}Hôm nay bạn dự định tập gì nào? Đừng quên uống một ly nước nhé.`;
+          } 
+          // Logic 2: Workout reminder (5 PM / 17:00)
+          else if (vnHour === 17) {
+            title = "🏋️ Thời gian vận động!";
+            body = `${namePrefix}Sau một ngày làm việc, hãy dành 30 phút tập luyện để giải tỏa căng thẳng nhé.`;
+          }
+          // Logic 3: Hydration reminder (Every 3 hours)
+          else if (vnHour % 3 === 0) {
+            title = "💧 Nhắc nhở uống nước";
+            body = "Cơ thể bạn cần nước để duy trì trao đổi chất tốt nhất. Nhớ uống một cốc nước nha!";
+          }
+        }
+
+        if (title && body) {
+          const payload = JSON.stringify({ title, body });
+          const p = webpush.sendNotification(subData.sub, payload)
+            .then(() => { sentCount++; })
+            .catch(async (err) => {
+              if (err.statusCode === 404 || err.statusCode === 410) {
+                // Subscription is no longer valid, clean it up
+                console.log(`Cleaning up expired subscription for ${uid}`);
+                await subDoc.ref.delete();
+              }
+            });
+          promises.push(p);
+        }
       }
-    }
 
-    await Promise.all(promises);
-    pushSubscriptions = validSubs; // clean up expired subs
-    res.json({ success: true, sent: sentCount, totalSubs: pushSubscriptions.length });
+      await Promise.all(promises);
+      res.json({ success: true, sent: sentCount });
+    } catch (error) {
+      console.error("Cron Error:", error);
+      res.status(500).json({ error: "Cron execution failed" });
+    }
   });
 
   // Strava Auth Initializer
