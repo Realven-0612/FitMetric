@@ -97,15 +97,36 @@ export default function Watch() {
                  <Button onClick={disconnectStrava} variant="outline" className="w-full hover:bg-red-500/10 hover:text-red-400 border-white/5 bg-black/20 text-slate-300 rounded-xl font-bold uppercase tracking-widest text-xs h-12">
                    <Unlink className="w-4 h-4 mr-2"/> {t('disconnect_strava')}
                  </Button>
+
+                 <div className="flex justify-center items-center mt-4">
+                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      Powered by <span className="text-[#FC4C02]">Strava</span>
+                   </span>
+                 </div>
               </div>
             ) : (
               <div className="space-y-4 relative z-10">
                  <p className="text-sm text-slate-300 font-medium leading-relaxed mb-6">
                     {t('strava_connect_desc')}
                  </p>
-                 <Button onClick={connectStrava} className="w-full bg-[#fc4c02] text-white hover:bg-[#fc4c02]/80 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-[#fc4c02]/20 border-none h-12 text-xs">
-                   <Link2 className="w-4 h-4 mr-2"/> {t('connect_strava_btn')}
-                 </Button>
+                 
+                 {/* OFFICIAL STRAVA CONNECT BUTTON */}
+                 <button 
+                   onClick={connectStrava} 
+                   className="w-full bg-[#FC4C02] hover:bg-[#E34402] transition-colors rounded-[4px] flex items-center justify-center h-12 shadow-sm border-none mb-3"
+                 >
+                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" className="w-5 h-5 mr-3" aria-hidden="true">
+                     <path fill="#ffffff" d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
+                   </svg>
+                   <span className="text-white font-bold text-[15px] tracking-wide">Connect with Strava</span>
+                 </button>
+
+                 <div className="flex justify-center items-center pb-2">
+                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      Powered by <span className="text-[#FC4C02]">Strava</span>
+                   </span>
+                 </div>
+
                  <div className="p-4 bg-black/40 rounded-xl border border-white/5 text-[10px] font-medium text-slate-400 leading-relaxed uppercase tracking-wide">
                     <strong className="text-orange-400">Developer Note:</strong> {t('strava_dev_note').replace('Developer Note:', '')}
                  </div>
