@@ -56,9 +56,14 @@ async function startServer() {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
   // Web Push VAPID Keys
-  const PUBLIC_VAPID_KEY = process.env.PUBLIC_VAPID_KEY || 'BABShjlcawk_xuXWZYcD9wqmt5_errjXlWQkLegoEqG-RVTASpC1UXwVxKWIHSaT2Z3peNtlL3tuvYhTpeUdYpg';
-  const PRIVATE_VAPID_KEY = process.env.PRIVATE_VAPID_KEY || 'FN6wz-f52AKsZ1u62pXvDy-gNYAeyNNEThyucpJVCpA';
-  webpush.setVapidDetails('mailto:admin@fitmetric.app', PUBLIC_VAPID_KEY, PRIVATE_VAPID_KEY);
+  const PUBLIC_VAPID_KEY = process.env.PUBLIC_VAPID_KEY;
+  const PRIVATE_VAPID_KEY = process.env.PRIVATE_VAPID_KEY;
+  
+  if (PUBLIC_VAPID_KEY && PRIVATE_VAPID_KEY) {
+    webpush.setVapidDetails('mailto:admin@fitmetric.app', PUBLIC_VAPID_KEY, PRIVATE_VAPID_KEY);
+  } else {
+    console.warn("VAPID keys missing. Web Push will not work until added to environment variables.");
+  }
 
   // In-memory subscription store for demonstration
   let pushSubscriptions: { sub: any; lastWater: number }[] = [];
@@ -94,6 +99,12 @@ async function startServer() {
     next();
   }
   // ─────────────────────────────────────────────────────────────────────────
+
+  // 0. Provide Public Key to frontend
+  app.get("/api/push/key", (req, res) => {
+    if (!PUBLIC_VAPID_KEY) return res.status(500).json({ error: "VAPID key not configured" });
+    res.json({ key: PUBLIC_VAPID_KEY });
+  });
 
   // 1. Subscribe to notifications
   app.post("/api/push/subscribe", (req, res) => {

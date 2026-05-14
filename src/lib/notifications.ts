@@ -52,7 +52,11 @@ export async function startReminders(profile: { waterIntake?: number; targetKcal
   
   try {
     const reg = await navigator.serviceWorker.ready;
-    const PUBLIC_VAPID_KEY = 'BABShjlcawk_xuXWZYcD9wqmt5_errjXlWQkLegoEqG-RVTASpC1UXwVxKWIHSaT2Z3peNtlL3tuvYhTpeUdYpg';
+    
+    // Fetch dynamic VAPID public key from the backend
+    const keyRes = await fetch(`${API_BASE}/api/push/key`);
+    if (!keyRes.ok) throw new Error("VAPID key not configured on server");
+    const { key: PUBLIC_VAPID_KEY } = await keyRes.json();
     
     // Subscribe device to push server
     const subscription = await reg.pushManager.subscribe({
