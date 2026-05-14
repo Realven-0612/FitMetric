@@ -14,6 +14,7 @@ import { useStore } from "./lib/store";
 import { useEffect, useState } from "react";
 import OnboardingScreen from "./components/OnboardingScreen";
 import ErrorBoundary from "./components/ErrorBoundary";
+import IOSInstallPrompt from "./components/IOSInstallPrompt";
 
 // Splash screen shown while Firebase resolves auth state
 function SplashScreen() {
@@ -112,6 +113,7 @@ export default function App() {
               },
             }}
           />
+          <IOSInstallPrompt />
         </BrowserRouter>
       </AuthProvider>
     </TranslationProvider>
