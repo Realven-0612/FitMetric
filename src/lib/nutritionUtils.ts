@@ -1,20 +1,31 @@
 export function calcBMR(weight: number, height: number, age: number, gender: 'male' | 'female', bodyFat?: number): { bmr: number, isKatch: boolean } {
   const w = weight || 0;
   const h = height || 0;
-  const a = age || 0;
+  let actualAge = age || 0;
+  
+  // If user accidentally inputs their birth year (e.g. 2000) instead of their age
+  if (actualAge > 100) {
+    actualAge = new Date().getFullYear() - actualAge;
+    // Fallback if they put something completely random like 9999
+    if (actualAge < 0 || actualAge > 100) actualAge = 25; 
+  }
   
   if (bodyFat && bodyFat > 0) {
     // Katch-McArdle Formula
     const lbm = w * (100 - bodyFat) / 100;
-    return { bmr: 370 + (21.6 * lbm), isKatch: true };
+    return { bmr: Math.max(1000, 370 + (21.6 * lbm)), isKatch: true };
   }
   
   // Mifflin-St Jeor Equation
+  let calculatedBmr = 0;
   if (gender === 'male' || gender?.toString().toLowerCase() === 'male') {
-    return { bmr: (10 * w) + (6.25 * h) - (5 * a) + 5, isKatch: false };
+    calculatedBmr = (10 * w) + (6.25 * h) - (5 * actualAge) + 5;
   } else {
-    return { bmr: (10 * w) + (6.25 * h) - (5 * a) - 161, isKatch: false };
+    calculatedBmr = (10 * w) + (6.25 * h) - (5 * actualAge) - 161;
   }
+  
+  // Prevent absurdly negative values if users enter invalid data
+  return { bmr: Math.max(1000, calculatedBmr), isKatch: false };
 }
 
 export function calcActivityMultiplier(activityLevel: string): number {
