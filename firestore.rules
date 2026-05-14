@@ -111,6 +111,16 @@ service cloud.firestore {
         allow read, list, delete: if isSignedIn() && request.auth.uid == userId;
         allow create, update: if isSignedIn() && request.auth.uid == userId && isValidSession(incoming());
       }
+      
+      // AI Pose Scanner History
+      match /poseHistory/{poseId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+      
+      // Web Push Subscriptions
+      match /pushSubscriptions/{subId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
     }
 
     match /video_library/{exerciseName} {
