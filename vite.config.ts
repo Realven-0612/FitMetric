@@ -14,7 +14,41 @@ export default defineConfig(({mode}) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'assets/app_icon.png'],
         workbox: {
-          maximumFileSizeToCacheInBytes: 5000000 // 5 MB
+          maximumFileSizeToCacheInBytes: 5_000_000,
+          // Cache strategies for different resource types
+          runtimeCaching: [
+            {
+              // Google Fonts — cache forever
+              urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'google-fonts',
+                expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              // App static assets (JS, CSS, images)
+              urlPattern: /\.(js|css|png|jpg|jpeg|svg|ico|webp|woff2?)$/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'static-assets',
+                expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              // Firebase Firestore / Auth — network-first, fall back to cache
+              urlPattern: /^https:\/\/(firestore|identitytoolkit|securetoken)\.googleapis\.com\/.*/i,
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'firebase-api',
+                networkTimeoutSeconds: 5,
+                expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+          ],
         },
         manifest: {
           name: 'FitMetric',

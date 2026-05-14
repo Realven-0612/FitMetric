@@ -111,10 +111,10 @@ export default function Profile() {
   const handleEnablePush = async () => {
     const success = await enableNotifications();
     if (success) {
-      toast.success('🔔 Đã bật thông báo! Bạn sẽ được nhắc nhở uống nước và tập luyện.');
+      toast.success(t('toast_notif_enabled'));
       startReminders({ waterIntake: 0 });
     } else {
-      toast.error('Không thể bật thông báo. Vui lòng kiểm tra cài đặt trình duyệt.');
+      toast.error(t('toast_notif_error'));
     }
   };
 

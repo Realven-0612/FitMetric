@@ -391,6 +391,26 @@ const translations = {
     save_all: 'SAVE ALL',
     connect: 'CONNECT',
     enable: 'ENABLE',
+    // Training toast messages
+    toast_video_added: 'Video added to the database!',
+    toast_video_error: 'Error adding video.',
+    toast_no_weight: 'No weight set in Profile!',
+    toast_plan_generated: 'Your optimized training plan has been reset.',
+    toast_plan_upgraded: 'New level ready! Training intensity has been upgraded.',
+    toast_plan_error: 'Could not generate training plan. Please check your connection.',
+    toast_rest_day: 'Cannot complete a rest day.',
+    toast_session_done: 'Session complete! Keep it up!',
+    toast_calendar_exported: 'Training schedule exported!',
+    toast_milestone: 'New milestone reached! Generating next level plan...',
+    // Profile toast messages
+    toast_notif_enabled: '🔔 Notifications enabled! You will be reminded to drink water and train.',
+    toast_notif_error: 'Could not enable notifications. Please check your browser settings.',
+    // AI Chatbot toast messages
+    toast_image_too_large: 'Image too large! Please choose an image under 4MB.',
+    toast_pose_saved: 'Pose image saved to profile!',
+    toast_body_updated: 'Body metrics updated!',
+    toast_food_logged: 'Added {name} to the diary!',
+    toast_redirecting_training: 'Redirecting to training page...',
   },
   vi: {
     dashboard: 'Bảng điều khiển',
@@ -779,6 +799,26 @@ const translations = {
     save_all: 'LƯU TẤT CẢ',
     connect: 'KẾT NỐI',
     enable: 'BẬT',
+    // Training toast messages
+    toast_video_added: 'Đã thêm video vào cơ sở dữ liệu!',
+    toast_video_error: 'Lỗi khi thêm video.',
+    toast_no_weight: 'Chưa có cân nặng trong Profile!',
+    toast_plan_generated: 'Lịch tập tối ưu đã được tái lập thành công.',
+    toast_plan_upgraded: 'Cấp độ mới đã sẵn sàng! Cường độ lịch tập đã được nâng cấp.',
+    toast_plan_error: 'Không thể tạo lịch tập. Vui lòng kiểm tra kết nối.',
+    toast_rest_day: 'Không thể hoàn thành ngày nghỉ.',
+    toast_session_done: 'Đã hoàn thành buổi tập! Tiếp tục cố gắng nhé!',
+    toast_calendar_exported: 'Đã xuất file lịch tập!',
+    toast_milestone: 'Đã đạt cột mốc mới! Đang tạo lịch tập ở cấp độ tiếp theo...',
+    // Profile toast messages
+    toast_notif_enabled: '🔔 Đã bật thông báo! Bạn sẽ được nhắc nhở uống nước và tập luyện.',
+    toast_notif_error: 'Không thể bật thông báo. Vui lòng kiểm tra cài đặt trình duyệt.',
+    // AI Chatbot toast messages
+    toast_image_too_large: 'Ảnh quá lớn! Vui lòng chọn ảnh dưới 4MB.',
+    toast_pose_saved: 'Đã lưu ảnh pose vào hồ sơ!',
+    toast_body_updated: 'Chỉ số cơ thể đã được cập nhật!',
+    toast_food_logged: 'Đã thêm {name} vào nhật ký!',
+    toast_redirecting_training: 'Đang chuyển hướng đến trang bài tập...',
   }
 };
 

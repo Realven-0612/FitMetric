@@ -13,6 +13,7 @@ import { useStore } from "../lib/store";
 import { useNutritionStats } from "../hooks/useNutritionStats";
 import { getDailyQuote } from "../lib/quotes";
 import { API_BASE } from "../lib/api";
+import { SkeletonDashboard } from "../components/Skeleton";
 
 const defaultConsumptionData = [
   { name: "t2", value: 0 },
@@ -25,7 +26,7 @@ const defaultConsumptionData = [
 ];
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { t, language } = useTranslation();
   const { profile, workoutPlan, nutritionDiary, stravaCalories, setStravaCalories, sessionLogs, waterIntake } = useStore();
   const { targetKcal, consumedKcal, targetPro, consumedPro, waterTarget } = useNutritionStats();
@@ -158,6 +159,8 @@ export default function Dashboard() {
   const showProteinAlert = currentHour >= 16 && consumedPro < (targetPro * 0.8);
   const showWaterAlert = (currentHour >= 14 && waterIntake < (waterTarget * 0.5)) || (currentHour >= 18 && waterIntake < waterTarget);
   const showWorkoutAlert = currentHour >= 17 && nextOperation !== "Rest" && Object.keys(sessionLogs || {}).length === 0;
+
+  if (authLoading) return <SkeletonDashboard />;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10">

@@ -24,6 +24,8 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { useStore } from '../lib/store';
 import { uploadPosePhoto } from '../services/firebaseService';
+import { useTranslation } from '../lib/i18n';
+import { AI_MODELS } from '../lib/aiModels';
 
 interface Message {
   id: string;
@@ -36,6 +38,7 @@ interface Message {
 export default function AIChatbot() {
   const navigate = useNavigate();
   const { profile, setProfile, addNutritionEntry } = useStore();
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -83,7 +86,7 @@ export default function AIChatbot() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 4 * 1024 * 1024) {
-      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh dưới 4MB.');
+      toast.error(t('toast_image_too_large'));
       return;
     }
     const reader = new FileReader();
@@ -185,7 +188,7 @@ ACTION:REQUEST_WORKOUT:{"focus": "chest"}
     }
 
     const response = await axios.post("/api/ai", {
-      model: imageBase64 ? "llama-3.2-11b-vision-preview" : "meta-llama/llama-4-scout-17b-16e-instruct",
+      model: imageBase64 ? "llama-3.2-11b-vision-preview" : AI_MODELS.GROQ_TEXT,
       messages,
     });
 
@@ -221,7 +224,7 @@ ACTION:REQUEST_WORKOUT:{"focus": "chest"}
       const isPosePhoto = responseText.includes('vóc dáng') || responseText.includes('% mỡ') || responseText.includes('cơ thể');
       if (isPosePhoto) {
         const url = await uploadPosePhoto(imageBase64);
-        if (url) toast.success('Đã lưu ảnh pose vào hồ sơ!');
+        if (url) toast.success(t('toast_pose_saved'));
       }
     }
   };
@@ -229,7 +232,7 @@ ACTION:REQUEST_WORKOUT:{"focus": "chest"}
   const handleUpdateProfile = (args: any) => {
     const updatedProfile = { ...profile, ...args };
     setProfile(updatedProfile);
-    toast.success('Chỉ số cơ thể đã được cập nhật!');
+    toast.success(t('toast_body_updated'));
   };
 
   const handleAddFood = (args: any) => {
@@ -241,7 +244,7 @@ ACTION:REQUEST_WORKOUT:{"focus": "chest"}
       fat: args.fat || 0,
       timestamp: new Date().toISOString()
     });
-    toast.success(`Đã thêm ${args.name} vào nhật ký!`);
+    toast.success(t('toast_food_logged').replace('{name}', args.name));
   };
 
   const handleRequestWorkout = (args: any) => {
@@ -251,7 +254,7 @@ ACTION:REQUEST_WORKOUT:{"focus": "chest"}
     setTimeout(() => {
       window.dispatchEvent(new Event('request_workout_generation'));
     }, 100);
-    toast.info('Đang chuyển hướng đến trang bài tập...');
+    toast.info(t('toast_redirecting_training'));
   };
 
   const quickActions = [

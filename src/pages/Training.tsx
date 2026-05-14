@@ -274,9 +274,9 @@ export default function Training() {
       setCustomVideoLibrary(prev => ({ ...prev, [exerciseName]: missingVideoId }));
       setAddingVideoEx(null);
       setMissingVideoId('');
-      toast.success("Đã thêm video vào cơ sở dữ liệu!");
+      toast.success(t('toast_video_added'));
     } catch {
-      toast.error("Lỗi khi thêm video.");
+      toast.error(t('toast_video_error'));
     }
   };
 
@@ -465,7 +465,7 @@ export default function Training() {
           icon: <Sparkles className="w-4 h-4 text-cyan-400" />
         });
       } else {
-        toast.info("Chưa có cân nặng trong Profile!");
+        toast.info(t('toast_no_weight'));
       }
       return;
     }
@@ -695,14 +695,14 @@ export default function Training() {
 
         if (!isAutoRefresh) {
           setOpen(false);
-          toast.success("Lịch tập tối ưu đã được tái lập thành công.");
+          toast.success(t('toast_plan_generated'));
         } else {
-          toast.success("Cấp độ mới đã sẵn sàng! Cường độ lịch tập đã được nâng cấp.");
+          toast.success(t('toast_plan_upgraded'));
         }
       }
     } catch (e) {
       console.error(e);
-      toast.error("Không thể tạo lịch tập. Vui lòng kiểm tra kết nối.");
+      toast.error(t('toast_plan_error'));
     } finally {
       setIsGenerating(false);
     }
@@ -712,7 +712,7 @@ export default function Training() {
     if (!plan) return;
     const currentDay = plan.days[selectedDay];
     if (!currentDay || currentDay.exercises.length === 0) {
-      toast.info("Không thể hoàn thành ngày nghỉ.");
+      toast.info(t('toast_rest_day'));
       return;
     }
 
@@ -728,11 +728,11 @@ export default function Training() {
       completedSessions: (plan.completedSessions || 0) + 1,
     };
     setPlan(newPlan);
-    toast.success("Đã hoàn thành buổi tập! Tiếp tục cố gắng nhé!");
+    toast.success(t('toast_session_done'));
 
     // Auto upgrade check (every 14 sessions)
     if (newPlan.completedSessions && newPlan.completedSessions % 14 === 0) {
-      toast("Đã đạt cột mốc mới! Đang tạo lịch tập ở cấp độ tiếp theo...");
+      toast(t('toast_milestone'));
       handleGenerate(true);
     }
   };
@@ -882,7 +882,7 @@ export default function Training() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("Đã xuất file lịch tập!");
+    toast.success(t('toast_calendar_exported'));
   };
 
   const defaultDays = Array.from({ length: 7 }).map(
