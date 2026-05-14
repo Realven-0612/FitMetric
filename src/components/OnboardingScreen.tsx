@@ -211,16 +211,18 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                 <p className="text-slate-400 font-medium tracking-wide">Tell us a bit about yourself.</p>
               </div>
 
-              <div className="space-y-6">
+                <div className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest pl-1">Your Name *</label>
+                  <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest pl-1">
+                    {language === 'vi' ? 'Tên của bạn *' : 'Your Name *'}
+                  </label>
                   <div className="relative">
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input 
                       type="text" 
                       value={form.name}
                       onChange={(e) => update("name", e.target.value)}
-                      placeholder="e.g. John Doe"
+                      placeholder={language === 'vi' ? 'VD: Nguyễn Văn A' : 'e.g. John Doe'}
                       className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-medium"
                     />
                   </div>
@@ -228,25 +230,29 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest pl-1">Age *</label>
+                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest pl-1">
+                      {language === 'vi' ? 'Tuổi thật *' : 'Age *'}
+                    </label>
                     <input 
                       type="number" 
                       value={form.age}
                       onChange={(e) => update("age", e.target.value)}
-                      placeholder="Years"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-medium"
+                      placeholder={language === 'vi' ? 'VD: 24 (Ko nhập năm sinh)' : 'e.g. 24'}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder-slate-500 text-xs md:text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-medium"
                     />
                   </div>
                   
                   <div className="space-y-2">
-                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest pl-1">Gender</label>
+                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest pl-1">
+                      {language === 'vi' ? 'Giới tính' : 'Gender'}
+                    </label>
                     <select 
                       value={form.gender}
                       onChange={(e) => update("gender", e.target.value)}
                       className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-medium appearance-none"
                     >
-                      <option value="male" className="bg-[#161618]">Male</option>
-                      <option value="female" className="bg-[#161618]">Female</option>
+                      <option value="male" className="bg-[#161618]">{language === 'vi' ? 'Nam' : 'Male'}</option>
+                      <option value="female" className="bg-[#161618]">{language === 'vi' ? 'Nữ' : 'Female'}</option>
                     </select>
                   </div>
                 </div>
