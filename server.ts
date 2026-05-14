@@ -4,8 +4,6 @@ import { createServer as createViteServer } from "vite";
 import cors from "cors";
 import axios from "axios";
 import crypto from "crypto";
-import webpush from "web-push";
-import admin from "firebase-admin";
 
 function base64url(str: string | Buffer) {
   return (typeof str === 'string' ? Buffer.from(str) : str).toString('base64')
@@ -55,35 +53,6 @@ async function startServer() {
   const STRAVA_CLIENT_ID = process.env.STRAVA_CLIENT_ID;
   const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET;
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
-  // Web Push VAPID Keys
-  const PUBLIC_VAPID_KEY = process.env.PUBLIC_VAPID_KEY;
-  const PRIVATE_VAPID_KEY = process.env.PRIVATE_VAPID_KEY;
-  
-  if (PUBLIC_VAPID_KEY && PRIVATE_VAPID_KEY) {
-    webpush.setVapidDetails('mailto:admin@fitmetric.app', PUBLIC_VAPID_KEY, PRIVATE_VAPID_KEY);
-  } else {
-    console.warn("VAPID keys missing. Web Push will not work until added to environment variables.");
-  }
-
-  // Initialize Firebase Admin for persistent push subscriptions
-  if (process.env.GCP_SERVICE_ACCOUNT_JSON && !admin.apps.length) {
-    try {
-      const serviceAccount = JSON.parse(process.env.GCP_SERVICE_ACCOUNT_JSON);
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-      });
-      console.log("Firebase Admin initialized successfully.");
-    } catch (error) {
-      console.error("Failed to initialize Firebase Admin:", error);
-    }
-  }
-
-  // Helper to access the named database instead of the (default) database
-  const getDb = () => {
-    const { getFirestore } = require('firebase-admin/firestore');
-    return getFirestore(admin.app(), 'ai-studio-811dee83-be99-4fc6-ab6e-f4d434512837');
-  };
   const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
   const REDIRECT_URI = `${APP_URL}/api/strava/callback`;
 
@@ -115,114 +84,6 @@ async function startServer() {
     entry.count++;
     next();
   }
-  // ─────────────────────────────────────────────────────────────────────────
-
-  // 0. Provide Public Key to frontend
-  app.get("/api/push/key", (req, res) => {
-    if (!PUBLIC_VAPID_KEY) return res.status(500).json({ error: "VAPID key not configured" });
-    res.json({ key: PUBLIC_VAPID_KEY });
-  });
-
-  // 1. Subscribe to notifications (Firestore)
-  app.post("/api/push/subscribe", async (req, res) => {
-    const { uid, subscription } = req.body;
-    if (!uid || !subscription || !subscription.endpoint) {
-      return res.status(400).json({ error: "Invalid payload" });
-    }
-    
-    if (admin.apps.length > 0) {
-      try {
-        await getDb().collection("users").doc(uid)
-          .collection("pushSubscriptions").doc("primary")
-          .set({
-            sub: subscription,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-          }, { merge: true });
-        return res.status(201).json({ success: true });
-      } catch (err) {
-        console.error("Error saving subscription:", err);
-        return res.status(500).json({ error: "Failed to save subscription" });
-      }
-    } else {
-      console.warn("Firebase Admin not initialized, cannot save subscription");
-      return res.status(500).json({ error: "Server missing database connection" });
-    }
-  });
-
-  // 2. Cron endpoint to trigger pushes (Smart Notifications via Firestore)
-  app.get("/api/push/cron", async (req, res) => {
-    if (!admin.apps.length) {
-      return res.status(500).json({ error: "Firebase Admin not initialized" });
-    }
-
-    const now = new Date();
-    // Assuming server runs in UTC or a specific timezone. Adjusting to a generic user local time approximation 
-    // or just using the UTC hour + 7 (Vietnam) for now, as it's targeted for VN users:
-    const vnHour = (now.getUTCHours() + 7) % 24;
-    let sentCount = 0;
-    const promises = [];
-
-    try {
-      const usersSnap = await getDb().collection("users").get();
-      
-      for (const userDoc of usersSnap.docs) {
-        const uid = userDoc.id;
-        const userData = userDoc.data();
-        
-        const subDoc = await getDb().collection("users").doc(uid)
-          .collection("pushSubscriptions").doc("primary").get();
-          
-        if (!subDoc.exists) continue;
-        const subData = subDoc.data();
-        if (!subData || !subData.sub) continue;
-
-        let title = "";
-        let body = "";
-
-        // Smart Logic for Notifications (between 7 AM and 9 PM VN time)
-        if (vnHour >= 7 && vnHour <= 21) {
-          // Greet user
-          const namePrefix = userData.name ? `Chào ${userData.name}! ` : "";
-          
-          // Logic 1: Morning motivation (7 AM)
-          if (vnHour === 7) {
-            title = "🌅 Chào buổi sáng!";
-            body = `${namePrefix}Hôm nay bạn dự định tập gì nào? Đừng quên uống một ly nước nhé.`;
-          } 
-          // Logic 2: Workout reminder (5 PM / 17:00)
-          else if (vnHour === 17) {
-            title = "🏋️ Thời gian vận động!";
-            body = `${namePrefix}Sau một ngày làm việc, hãy dành 30 phút tập luyện để giải tỏa căng thẳng nhé.`;
-          }
-          // Logic 3: Hydration reminder (Every 3 hours)
-          else if (vnHour % 3 === 0) {
-            title = "💧 Nhắc nhở uống nước";
-            body = "Cơ thể bạn cần nước để duy trì trao đổi chất tốt nhất. Nhớ uống một cốc nước nha!";
-          }
-        }
-
-        if (title && body) {
-          const payload = JSON.stringify({ title, body });
-          const p = webpush.sendNotification(subData.sub, payload)
-            .then(() => { sentCount++; })
-            .catch(async (err) => {
-              if (err.statusCode === 404 || err.statusCode === 410) {
-                // Subscription is no longer valid, clean it up
-                console.log(`Cleaning up expired subscription for ${uid}`);
-                await subDoc.ref.delete();
-              }
-            });
-          promises.push(p);
-        }
-      }
-
-      await Promise.all(promises);
-      res.json({ success: true, sent: sentCount });
-    } catch (error) {
-      console.error("Cron Error:", error);
-      res.status(500).json({ error: "Cron execution failed" });
-    }
-  });
 
   // Strava Auth Initializer
   app.get("/api/strava/auth", (req, res) => {

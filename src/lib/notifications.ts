@@ -1,24 +1,95 @@
 // src/lib/notifications.ts
-import { API_BASE } from "./api";
+// OneSignal Web Push — replaces old web-push/VAPID system
 
-// Kiểm tra trình duyệt có hỗ trợ không
+declare const window: Window & { OneSignalDeferred?: any[] };
+
+const ONESIGNAL_APP_ID = import.meta.env.VITE_ONESIGNAL_APP_ID || '';
+
+let initialized = false;
+
+/** Load OneSignal SDK script dynamically */
+function loadScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (document.getElementById('onesignal-sdk')) {
+      resolve();
+      return;
+    }
+    const s = document.createElement('script');
+    s.id = 'onesignal-sdk';
+    s.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+    s.defer = true;
+    s.onload = () => resolve();
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+/** Initialize OneSignal (call once on app startup) */
+export async function initOneSignal(): Promise<void> {
+  if (initialized || !ONESIGNAL_APP_ID) return;
+  initialized = true;
+
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  await loadScript();
+
+  window.OneSignalDeferred.push(async (OneSignal: any) => {
+    await OneSignal.init({
+      appId: ONESIGNAL_APP_ID,
+      safari_web_id: '', // optional for Safari
+      notifyButton: { enable: false }, // we use our own UI button
+      allowLocalhostAsSecureOrigin: true,
+    });
+  });
+}
+
+/** Check if notifications are supported in this browser */
 export function isNotificationSupported(): boolean {
   return 'Notification' in window && 'serviceWorker' in navigator;
 }
 
-// Hỏi quyền + đăng ký Service Worker
+/** Ask user permission and subscribe to OneSignal */
 export async function enableNotifications(): Promise<boolean> {
   if (!isNotificationSupported()) return false;
-  const permission = await Notification.requestPermission();
-  if (permission !== 'granted') return false;
-  // Đăng ký Service Worker tùy chỉnh của mình
-  await navigator.serviceWorker.register('/sw-notifications.js');
-  localStorage.setItem('push_enabled', 'true');
-  return true;
+  if (!ONESIGNAL_APP_ID) {
+    console.warn('[OneSignal] VITE_ONESIGNAL_APP_ID is not set');
+    return false;
+  }
+
+  try {
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    return new Promise((resolve) => {
+      window.OneSignalDeferred!.push(async (OneSignal: any) => {
+        try {
+          await OneSignal.Slidedown.promptPush();
+          const permission = await OneSignal.Notifications.permission;
+          localStorage.setItem('push_enabled', permission ? 'true' : 'false');
+          resolve(permission);
+        } catch {
+          resolve(false);
+        }
+      });
+    });
+  } catch {
+    return false;
+  }
 }
 
-// Gửi notification từ phía client (không cần server)
-export function sendLocalNotification(title: string, body: string) {
+/** Tag the user with their UID so OneSignal can target them */
+export async function startReminders(uid: string): Promise<void> {
+  if (!ONESIGNAL_APP_ID) return;
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  window.OneSignalDeferred.push(async (OneSignal: any) => {
+    try {
+      await OneSignal.login(uid);           // Link OneSignal player to Firebase UID
+      await OneSignal.User.addTag('uid', uid);
+    } catch (e) {
+      console.warn('[OneSignal] Failed to tag user:', e);
+    }
+  });
+}
+
+/** Send a local notification via the browser (no server needed) */
+export function sendLocalNotification(title: string, body: string): void {
   if (Notification.permission !== 'granted') return;
   navigator.serviceWorker.ready.then((reg) => {
     reg.showNotification(title, {
@@ -30,53 +101,13 @@ export function sendLocalNotification(title: string, body: string) {
   });
 }
 
-// Helper to convert base64 to Uint8Array for VAPID key
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, '+')
-    .replace(/_/g, '/');
-
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
-
-// --- SERVER WEB PUSH SUBSCRIPTION ---
-export async function startReminders(uid: string) {
-  if (!isNotificationSupported()) return;
-  
-  try {
-    const reg = await navigator.serviceWorker.ready;
-    
-    // Fetch dynamic VAPID public key from the backend
-    const keyRes = await fetch(`${API_BASE}/api/push/key`);
-    if (!keyRes.ok) throw new Error("VAPID key not configured on server");
-    const { key: PUBLIC_VAPID_KEY } = await keyRes.json();
-    
-    // Subscribe device to push server
-    const subscription = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
-    });
-
-    // Send subscription to our backend
-    await fetch(`${API_BASE}/api/push/subscribe`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uid, subscription })
-    });
-    
-    console.log('Successfully subscribed to Server Web Push!');
-  } catch (error) {
-    console.error('Failed to subscribe to Web Push:', error);
-  }
-}
-
-export function clearReminders() {
-  // Not needed for server push, could implement unsub
+export function clearReminders(): void {
+  // Unsubscribe via OneSignal dashboard or:
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  window.OneSignalDeferred.push(async (OneSignal: any) => {
+    try {
+      await OneSignal.User.PushSubscription.optOut();
+      localStorage.setItem('push_enabled', 'false');
+    } catch { /* ignore */ }
+  });
 }

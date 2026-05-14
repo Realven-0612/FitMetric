@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { registerSW } from 'virtual:pwa-register';
+import { initOneSignal } from './lib/notifications';
 
 // Register Service Worker for PWA
 const updateSW = registerSW({
@@ -15,6 +16,9 @@ const updateSW = registerSW({
     console.log('App is ready to work offline');
   },
 });
+
+// Initialize OneSignal for push notifications (no Service Account needed)
+initOneSignal();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
