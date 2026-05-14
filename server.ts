@@ -5,7 +5,7 @@ import cors from "cors";
 import axios from "axios";
 import crypto from "crypto";
 import webpush from "web-push";
-import * as admin from "firebase-admin";
+import admin from "firebase-admin";
 
 function base64url(str: string | Buffer) {
   return (typeof str === 'string' ? Buffer.from(str) : str).toString('base64')
