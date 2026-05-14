@@ -78,6 +78,12 @@ async function startServer() {
       console.error("Failed to initialize Firebase Admin:", error);
     }
   }
+
+  // Helper to access the named database instead of the (default) database
+  const getDb = () => {
+    const { getFirestore } = require('firebase-admin/firestore');
+    return getFirestore(admin.app(), 'ai-studio-811dee83-be99-4fc6-ab6e-f4d434512837');
+  };
   const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
   const REDIRECT_URI = `${APP_URL}/api/strava/callback`;
 
@@ -126,7 +132,7 @@ async function startServer() {
     
     if (admin.apps.length > 0) {
       try {
-        await admin.firestore().collection("users").doc(uid)
+        await getDb().collection("users").doc(uid)
           .collection("pushSubscriptions").doc("primary")
           .set({
             sub: subscription,
@@ -157,13 +163,13 @@ async function startServer() {
     const promises = [];
 
     try {
-      const usersSnap = await admin.firestore().collection("users").get();
+      const usersSnap = await getDb().collection("users").get();
       
       for (const userDoc of usersSnap.docs) {
         const uid = userDoc.id;
         const userData = userDoc.data();
         
-        const subDoc = await admin.firestore().collection("users").doc(uid)
+        const subDoc = await getDb().collection("users").doc(uid)
           .collection("pushSubscriptions").doc("primary").get();
           
         if (!subDoc.exists) continue;
