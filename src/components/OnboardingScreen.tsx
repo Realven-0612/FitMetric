@@ -199,6 +199,14 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                   <span className="text-xs text-slate-600 font-medium">{language === 'vi' ? 'hoặc' : 'or'}</span>
                   <div className="flex-1 h-px bg-white/10" />
                 </div>
+                
+                <button 
+                  onClick={nextStep}
+                  className="w-full py-3.5 bg-white/5 hover:bg-white/10 border border-white/15 text-slate-300 hover:text-white font-bold text-sm rounded-2xl transition-all flex items-center justify-center gap-2 group"
+                >
+                  <span>{language === 'vi' ? 'Tiếp tục không cần đăng nhập' : 'Continue without signing in'}</span>
+                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
               </div>
             </div>
           )}
@@ -408,17 +416,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
 
         {/* Footer */}
         <div className="absolute bottom-0 left-0 right-0 pt-6 mt-4">
-          {step === 0 ? (
-            <div className="flex justify-center mb-16">
-              <button 
-                onClick={nextStep}
-                className="px-10 py-3.5 bg-white/5 hover:bg-white/10 border border-white/15 text-slate-300 hover:text-white font-bold text-sm rounded-2xl transition-all flex items-center justify-center gap-2 group"
-              >
-                <span>{language === 'vi' ? 'Tiếp tục không cần đăng nhập' : 'Continue without signing in'}</span>
-                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
-          ) : (
+          {step > 0 && (
             <div className="flex gap-4 pb-16">
               <button 
                 onClick={prevStep}
