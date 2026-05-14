@@ -86,7 +86,7 @@ async function postWithRetry(url: string, payload: any): Promise<any> {
 export async function generateAIContent(
   prompt: string,
   schema?: any,
-  modelName: string = AI_MODELS.GROQ_TEXT,
+  modelName: string = AI_MODELS.GEMINI_FLASH_LITE,
 ) {
   console.log(">>> [AI] generateAIContent model:", modelName);
 
@@ -129,7 +129,7 @@ export async function analyzeAIImage(
   imageBase64: string,
   mimeType: string,
   schema?: any,
-  modelName: string = AI_MODELS.GROQ_VISION,
+  modelName: string = AI_MODELS.GEMINI_FLASH_LITE,
 ) {
   console.log(">>> [AI] analyzeAIImage model:", modelName);
 

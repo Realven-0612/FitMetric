@@ -589,7 +589,7 @@ export default function Training() {
         required: ["progressionGuide", "days"],
       };
 
-      const result = await generateAIContent(prompt, schema, AI_MODELS.GROQ_TEXT);
+      const result = await generateAIContent(prompt, schema);
       console.log(">>> [Training] Kết quả AI (raw result):", JSON.stringify(result, null, 2));
 
       if (result) {

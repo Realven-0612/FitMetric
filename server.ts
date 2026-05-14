@@ -204,42 +204,21 @@ async function startServer() {
     }
   });
 
-  // AI Proxy Route
+  // AI Proxy Route with Google AI Studio & Groq support
   app.post("/api/ai", aiRateLimiter, async (req, res) => {
     const { model, messages, response_format, temperature } = req.body;
     
-    const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
-    let modelToUse = model || DEFAULT_MODEL;
+    const isGemini = model?.includes('gemini');
+    const googleKey = process.env.GOOGLE_API_KEY;
 
-    // Log for debugging
-    const hasImage = JSON.stringify(messages || []).includes('image_url');
-    console.log(`[AI Proxy] model=${model} hasImage=${hasImage}`);
-    
-    // ─── GEMINI: Route through Vertex AI ───
-    if (model && model.includes('gemini')) {
+    // ─── GOOGLE AI STUDIO (Gemini) ───
+    if (isGemini && googleKey) {
       try {
-        const saJson = process.env.GCP_SERVICE_ACCOUNT_JSON;
-        if (!saJson) {
-          return res.status(500).json({ error: "GCP_SERVICE_ACCOUNT_JSON not configured" });
-        }
-        const serviceAccount = JSON.parse(saJson);
+        console.log(`[AI Proxy] Routing to Google AI Studio: ${model}`);
         
-        console.log(`[AI Proxy] Getting Vertex AI access token...`);
-        const token = await getAccessToken(serviceAccount);
-        
-        let vertexModel = model;
-        if (model.includes('flash-lite')) vertexModel = 'gemini-1.5-flash-002';
-        else if (model.includes('flash')) vertexModel = 'gemini-1.5-flash-002';
-        else if (model.includes('pro')) vertexModel = 'gemini-1.5-pro-002';
-        
-        const region = 'us-central1'; // Force US region to bypass geo-restrictions
-        const url = `https://${region}-aiplatform.googleapis.com/v1/projects/${serviceAccount.project_id}/locations/${region}/publishers/google/models/${vertexModel}:generateContent`;
-
-        console.log(`[AI Proxy] Calling Vertex AI (${region}) for model ${vertexModel}`);
-
-        // Convert OpenAI messages to Vertex AI format
-        const contents = messages.map((m: any) => {
-          const parts = [];
+        // Convert OpenAI messages to Gemini format
+        const contents = messages.filter((m: any) => m.role !== 'system').map((m: any) => {
+          const parts: any[] = [];
           if (typeof m.content === 'string') {
             parts.push({ text: m.content });
           } else if (Array.isArray(m.content)) {
@@ -248,87 +227,63 @@ async function startServer() {
               else if (part.type === 'image_url') {
                 const base64 = part.image_url.url.split(',')[1];
                 const mimeType = part.image_url.url.split(';')[0].split(':')[1];
-                parts.push({
-                  inlineData: {
-                    mimeType,
-                    data: base64
-                  }
-                });
+                parts.push({ inlineData: { mimeType, data: base64 } });
               }
             });
           }
-          return { role: m.role === 'assistant' ? 'model' : m.role, parts };
+          return { role: m.role === 'assistant' ? 'model' : 'user', parts };
         });
 
         const systemMessage = messages.find((m: any) => m.role === 'system');
-        const systemInstruction = systemMessage ? {
-          parts: [{ text: systemMessage.content }]
-        } : undefined;
+        const systemInstruction = systemMessage ? { parts: [{ text: systemMessage.content }] } : undefined;
 
-        const vertexContents = contents.filter((c: any) => c.role !== 'system');
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleKey}`;
 
-        const response = await axios.post(url, { 
-          contents: vertexContents,
+        const response = await axios.post(url, {
+          contents,
           systemInstruction,
           generationConfig: {
             temperature: temperature || 0.3,
             responseMimeType: response_format?.type === 'json_object' ? 'application/json' : 'text/plain'
           }
         }, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+          headers: { 'Content-Type': 'application/json' }
         });
 
         const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
-        
-        res.json({
-          choices: [
-            {
-              message: {
-                role: 'assistant',
-                content: text
-              }
-            }
-          ]
+        return res.json({
+          choices: [{ message: { role: 'assistant', content: text } }]
         });
       } catch (error: any) {
-        const errData = error.response?.data;
-        const status = error.response?.status || 500;
-        console.error(`[Vertex AI Error] status=${status}`, JSON.stringify(errData)?.substring(0, 500));
-        res.status(status).json(errData || { error: "Vertex AI request failed", details: error.message });
+        console.error(`[AI Proxy] Gemini AI Studio Error:`, error.response?.data || error.message);
+        // Fallback to Groq if Gemini fails
       }
-      return;
     }
 
-    // ─── OTHER PROVIDERS (OpenAI-compatible) ───
-    let apiKey: string | undefined;
-    let apiUrl: string;
-    let extraPayload: any = {};
-    
-    // Groq (default)
-    apiKey = process.env.GROQ_API_KEY;
-    apiUrl = "https://api.groq.com/openai/v1/chat/completions";
-    if (!apiKey) return res.status(500).json({ error: "GROQ_API_KEY not configured" });
-    extraPayload = { response_format, temperature };
+    // ─── GROQ (Fallback or Direct) ───
+    const groqKey = process.env.GROQ_API_KEY;
+    if (!groqKey) return res.status(500).json({ error: "No AI provider keys configured (GROQ or GOOGLE)" });
 
-    const payload = { model: modelToUse, messages, ...extraPayload };
+    const groqModel = model?.includes('gemini') ? 'llama-3.3-70b-versatile' : (model || 'llama-3.3-70b-versatile');
+    console.log(`[AI Proxy] Routing to Groq: ${groqModel}`);
 
     try {
-      const response = await axios.post(apiUrl, payload, {
+      const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
+        model: groqModel,
+        messages,
+        response_format,
+        temperature: temperature || 0.3
+      }, {
         headers: { 
-          'Authorization': `Bearer ${apiKey}`,
+          'Authorization': `Bearer ${groqKey}`,
           'Content-Type': 'application/json'
-        },
-        maxBodyLength: Infinity,
-        maxContentLength: Infinity,
+        }
       });
       res.json(response.data);
     } catch (error: any) {
       const errData = error.response?.data;
       const status = error.response?.status || 500;
-      console.error(`[AI Proxy Error] status=${status} model=${modelToUse}`, JSON.stringify(errData)?.substring(0, 500));
+      console.error(`[AI Proxy] Groq Error: status=${status}`, JSON.stringify(errData)?.substring(0, 500));
       res.status(status).json(errData || { error: "AI request failed", details: error.message });
     }
   });

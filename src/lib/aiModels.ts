@@ -12,6 +12,14 @@ export const AI_MODELS = {
 
   /** Vision / image analysis (food scanner, 3D body scanner) */
   GROQ_VISION: "llama-3.2-90b-vision-preview",
+
+  /** Ultra-fast, budget-friendly Gemini model from Google AI Studio */
+  GEMINI_FLASH_LITE: "gemini-3.1-flash-lite",
+} as const;
+
+export const AI_PROVIDERS = {
+  GROQ: "groq",
+  GOOGLE: "google",
 } as const;
 
 export type AIModelKey = keyof typeof AI_MODELS;

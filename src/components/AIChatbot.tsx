@@ -194,7 +194,7 @@ ACTION:REQUEST_WORKOUT:{"focus": "chest"}
     }
 
     const response = await axios.post("/api/ai", {
-      model: imageBase64 ? "llama-3.2-11b-vision-preview" : AI_MODELS.GROQ_TEXT,
+      model: AI_MODELS.GEMINI_FLASH_LITE,
       messages,
     });
 
