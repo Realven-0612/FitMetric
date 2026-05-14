@@ -6,21 +6,59 @@ import axios from "axios";
 import crypto from "crypto";
 import webpush from "web-push";
 import cron from "node-cron";
+import * as admin from "firebase-admin";
 
-// VAPID Keys (Generated)
+// ─── VAPID Keys ───────────────────────────────────────────────────────────────
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "BHgYFT3fKh7KNAh4rMVCjULIBEe7l30uSV9ggK4661qmcBMUdmNOkso93NdqTcj6RGgMFrKuV--1ir-_27fx4tg";
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "EXlgfUjh0d1e6cpYIHogWnKXSa5AAx2M3PS-cTd9iBE";
-
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:admin@fitmetric.app";
 
-webpush.setVapidDetails(
-  VAPID_SUBJECT,
-  VAPID_PUBLIC_KEY,
-  VAPID_PRIVATE_KEY
-);
+webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
-// In-memory store for subscriptions
-let subscriptions: any[] = [];
+// ─── Firebase Admin (for persistent push subscriptions) ──────────────────────
+let db: admin.firestore.Firestore | null = null;
+try {
+  const serviceAccountJson = process.env.GCP_SERVICE_ACCOUNT_JSON;
+  if (serviceAccountJson && !admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert(JSON.parse(serviceAccountJson)),
+    });
+    db = admin.firestore();
+    console.log("[Firebase Admin] Initialized — subscriptions will persist in Firestore.");
+  } else if (!serviceAccountJson) {
+    console.warn("[Firebase Admin] GCP_SERVICE_ACCOUNT_JSON not set — falling back to in-memory subscriptions.");
+  }
+} catch (e: any) {
+  console.error("[Firebase Admin] Init failed:", e.message);
+}
+
+// ─── Subscription helpers (Firestore-backed, memory fallback) ─────────────────
+let _memSubs: any[] = []; // used only when Firestore is unavailable
+
+async function getSubscriptions(): Promise<any[]> {
+  if (!db) return _memSubs;
+  const snap = await db.collection("pushSubscriptions").get();
+  return snap.docs.map(d => d.data().subscription);
+}
+
+async function addSubscription(sub: any): Promise<void> {
+  if (!db) {
+    if (!_memSubs.find(s => s.endpoint === sub.endpoint)) _memSubs.push(sub);
+    return;
+  }
+  // Use a hash of the endpoint as the document ID so it's idempotent
+  const id = Buffer.from(sub.endpoint).toString("base64").slice(0, 100);
+  await db.collection("pushSubscriptions").doc(id).set({ subscription: sub, updatedAt: new Date() });
+}
+
+async function removeSubscription(endpoint: string): Promise<void> {
+  if (!db) {
+    _memSubs = _memSubs.filter(s => s.endpoint !== endpoint);
+    return;
+  }
+  const id = Buffer.from(endpoint).toString("base64").slice(0, 100);
+  await db.collection("pushSubscriptions").doc(id).delete();
+}
 
 function base64url(str: string | Buffer) {
   return (typeof str === 'string' ? Buffer.from(str) : str).toString('base64')
@@ -320,106 +358,111 @@ async function startServer() {
   });
 
   // Register a push subscription from browser
-  app.post("/api/notifications/subscribe", (req, res) => {
+  app.post("/api/notifications/subscribe", async (req, res) => {
     const subscription = req.body;
     if (!subscription?.endpoint) {
       return res.status(400).json({ error: "Invalid subscription object" });
     }
-    // Upsert: add only if endpoint is new
-    if (!subscriptions.find(s => s.endpoint === subscription.endpoint)) {
-      subscriptions.push(subscription);
-      console.log(`[Push] New subscription registered. Total: ${subscriptions.length}`);
+    try {
+      await addSubscription(subscription);
+      const all = await getSubscriptions();
+      console.log(`[Push] Subscription saved. Total: ${all.length}`);
+      res.status(201).json({ status: "subscribed", total: all.length });
+    } catch (err: any) {
+      console.error("[Push] Failed to save subscription:", err.message);
+      res.status(500).json({ error: "Failed to save subscription" });
     }
-    res.status(201).json({ status: "subscribed", total: subscriptions.length });
   });
 
   // Unsubscribe a specific endpoint
-  app.post("/api/notifications/unsubscribe", (req, res) => {
+  app.post("/api/notifications/unsubscribe", async (req, res) => {
     const { endpoint } = req.body;
-    const before = subscriptions.length;
-    subscriptions = subscriptions.filter(s => s.endpoint !== endpoint);
-    console.log(`[Push] Unsubscribed. ${before} → ${subscriptions.length}`);
-    res.json({ status: "unsubscribed" });
+    try {
+      await removeSubscription(endpoint);
+      console.log(`[Push] Unsubscribed: ${endpoint.substring(0, 50)}...`);
+      res.json({ status: "unsubscribed" });
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to remove subscription" });
+    }
   });
 
-  // ─── Protected send endpoint (called by cron-job.org) ───
-  app.post("/api/notifications/send", async (req, res) => {
-    const secret = req.headers["x-cron-secret"];
-    const expected = process.env.CRON_SECRET;
-
-    if (!expected || secret !== expected) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    if (subscriptions.length === 0) {
-      return res.json({ status: "skipped", reason: "no subscribers" });
-    }
-
-    // Dynamic message based on hour (UTC)
-    const hour = new Date().getUTCHours();
-    let title = "FitMetric 💪";
-    let body = "Time to check your goals!";
-    if (hour >= 0 && hour < 10) {
-      title = "Good Morning! 🌅";
-      body = "Start your day right — log your breakfast and plan your workout!";
-    } else if (hour >= 10 && hour < 14) {
-      title = "Lunchtime! 🥗";
-      body = "Don't forget to log your lunch and stay hydrated!";
-    } else {
-      title = "Evening Check-in! 🌙";
-      body = "How did you do today? Log your dinner and review your progress!";
-    }
-
-    const payload = JSON.stringify({ title, body });
-    const results = await Promise.allSettled(
-      subscriptions.map(sub =>
-        webpush.sendNotification(sub, payload).catch(err => {
-          if (err.statusCode === 410 || err.statusCode === 404) {
-            subscriptions = subscriptions.filter(s => s.endpoint !== sub.endpoint);
-          }
-          throw err;
-        })
-      )
-    );
-    const sent = results.filter(r => r.status === "fulfilled").length;
-    console.log(`[Push] Cron triggered. Sent: ${sent}/${subscriptions.length}`);
-    res.json({ status: "done", sent, total: subscriptions.length, title, body });
-  });
-
-  // Dev-only test endpoint (no secret required)
+  // Test: send a push to all subscribers immediately
   app.post("/api/notifications/test", async (_req, res) => {
-    if (subscriptions.length === 0) {
-      return res.status(404).json({ error: "No subscribers. Enable notifications in Profile first." });
+    const subs = await getSubscriptions();
+    if (subs.length === 0) {
+      return res.status(404).json({ error: "No subscribers. Enable notifications first." });
     }
     const payload = JSON.stringify({
       title: "FitMetric Test 🏋️",
       body: "Push notifications are working correctly!"
     });
     const results = await Promise.allSettled(
-      subscriptions.map(sub => webpush.sendNotification(sub, payload))
+      subs.map(sub => webpush.sendNotification(sub, payload))
     );
     const sent = results.filter(r => r.status === "fulfilled").length;
-    res.json({ status: "done", sent, total: subscriptions.length });
+    res.json({ status: "done", sent, total: subs.length });
+  });
+
+  // ─── Send reminder push to all active subscribers (called by cron) ───
+  app.post("/api/notifications/send-reminders", async (_req, res) => {
+    const subs = await getSubscriptions();
+    if (subs.length === 0) {
+      return res.json({ status: "skipped", reason: "no subscribers" });
+    }
+
+    const hour = new Date().getUTCHours();
+    let title = "FitMetric 💪";
+    let body = "Stay on track with your health goals today!";
+    if (hour < 10) {
+      title = "Good Morning! 🌅";
+      body = "Log your breakfast and kick off a healthy day!";
+    } else if (hour < 15) {
+      title = "Midday Check-In 🥗";
+      body = "Don't forget to log lunch and stay hydrated!";
+    } else {
+      title = "Evening Reminder 🌙";
+      body = "Log your dinner and review today's progress!";
+    }
+
+    const payload = JSON.stringify({ title, body, icon: "/assets/app_icon.png" });
+    let sent = 0;
+    const stale: string[] = [];
+
+    await Promise.allSettled(
+      subs.map(async sub => {
+        try {
+          await webpush.sendNotification(sub, payload);
+          sent++;
+        } catch (err: any) {
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            stale.push(sub.endpoint);
+          }
+        }
+      })
+    );
+
+    // Clean up stale subscriptions
+    for (const endpoint of stale) {
+      await removeSubscription(endpoint);
+    }
+    if (stale.length > 0) {
+      console.log(`[Push] Removed ${stale.length} stale subscription(s).`);
+    }
+
+    console.log(`[Push] Reminders sent: ${sent}/${subs.length} (${stale.length} removed as stale).`);
+    res.json({ status: "done", sent, total: subs.length, staleRemoved: stale.length });
   });
 
   // ─── Cron Jobs ───
-  // Reminders: 8:00, 12:00, 20:00 UTC (adjust to server timezone)
-  cron.schedule("0 8,12,20 * * *", () => {
-    if (subscriptions.length === 0) return;
-    console.log(`[Cron] Sending reminders to ${subscriptions.length} subscriber(s)...`);
-    const payload = JSON.stringify({
-      title: "FitMetric Reminder 💪",
-      body: "Time to log your meals and check your goals!"
-    });
-    subscriptions.forEach(sub => {
-      webpush.sendNotification(sub, payload).catch(err => {
-        // Remove stale subscriptions (410 Gone, 404 Not Found)
-        if (err.statusCode === 410 || err.statusCode === 404) {
-          console.log(`[Push] Removing stale subscription: ${sub.endpoint.substring(0, 50)}...`);
-          subscriptions = subscriptions.filter(s => s.endpoint !== sub.endpoint);
-        }
-      });
-    });
+  // Reminders: 8:00, 12:00, 20:00 UTC — calls /api/notifications/send-reminders
+  cron.schedule("0 8,12,20 * * *", async () => {
+    console.log(`[Cron] Triggering send-reminders...`);
+    try {
+      const response = await axios.post(`http://localhost:${PORT}/api/notifications/send-reminders`);
+      console.log(`[Cron] Result:`, response.data);
+    } catch (err: any) {
+      console.error("[Cron] Failed to call /api/notifications/send-reminders:", err.message);
+    }
   });
 
   // ─── Static Files / SPA Fallback ───
@@ -442,7 +485,7 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`[Push] VAPID Public Key ready (${subscriptions.length} subscribers)`);
+    console.log(`[Push] VAPID Public Key configured. Subscriptions backed by ${db ? "Firestore" : "memory"}.`);
   });
 }
 
