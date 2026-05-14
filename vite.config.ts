@@ -14,6 +14,7 @@ export default defineConfig(({mode}) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'assets/app_icon.png'],
         workbox: {
+          importScripts: ['sw-notifications.js'],
           maximumFileSizeToCacheInBytes: 5_000_000,
           navigateFallbackDenylist: [/^\/api\//],
           // Cache strategies for different resource types

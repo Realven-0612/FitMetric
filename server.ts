@@ -4,6 +4,21 @@ import { createServer as createViteServer } from "vite";
 import cors from "cors";
 import axios from "axios";
 import crypto from "crypto";
+import webpush from "web-push";
+import cron from "node-cron";
+
+// VAPID Keys (Generated)
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "BHgYFT3fKh7KNAh4rMVCjULIBEe7l30uSV9ggK4661qmcBMUdmNOkso93NdqTcj6RGgMFrKuV--1ir-_27fx4tg";
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "EXlgfUjh0d1e6cpYIHogWnKXSa5AAx2M3PS-cTd9iBE";
+
+webpush.setVapidDetails(
+  "mailto:example@yourdomain.com",
+  VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY
+);
+
+// In-memory store for subscriptions
+let subscriptions: any[] = [];
 
 function base64url(str: string | Buffer) {
   return (typeof str === 'string' ? Buffer.from(str) : str).toString('base64')
@@ -311,8 +326,42 @@ async function startServer() {
     });
   }
 
+  // Push Notification Subscription
+  app.post("/api/notifications/subscribe", (req, res) => {
+    const subscription = req.body;
+    if (!subscription || !subscription.endpoint) {
+      return res.status(400).json({ error: "Invalid subscription" });
+    }
+    // Add to list if not exists
+    if (!subscriptions.find(s => s.endpoint === subscription.endpoint)) {
+      subscriptions.push(subscription);
+      console.log(`[Push] New subscription added. Total: ${subscriptions.length}`);
+    }
+    res.status(201).json({ status: "success" });
+  });
+
+  // Cron Job: Send daily reminders at 08:00, 12:00, 20:00
+  cron.schedule("0 8,12,20 * * *", () => {
+    console.log(`[Cron] Sending scheduled reminders to ${subscriptions.length} users...`);
+    const payload = JSON.stringify({
+      title: "FitMetric Reminder",
+      body: "Time to check your goals and log your meals! 🏃🥗"
+    });
+
+    subscriptions.forEach(sub => {
+      webpush.sendNotification(sub, payload).catch(err => {
+        console.error("[Push] Error sending notification:", err.endpoint);
+        // Clean up failed subscriptions
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          subscriptions = subscriptions.filter(s => s.endpoint !== sub.endpoint);
+        }
+      });
+    });
+  });
+
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`[Push] VAPID Public Key: ${VAPID_PUBLIC_KEY}`);
   });
 }
 
