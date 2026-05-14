@@ -162,31 +162,39 @@ async function startServer() {
     }
   });
 
-  // Fetch Today's Strava Activities
+  // Fetch recent Strava Activities (last 10)
   app.post("/api/strava/activities", async (req, res) => {
-    const { accessToken } = req.body;
+    const { accessToken, todayOnly } = req.body;
     if (!accessToken) return res.status(401).json({ error: "No access token" });
 
     try {
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
-      const afterTimestamp = Math.floor(startOfDay.getTime() / 1000);
+      const params: any = { per_page: 10 };
+
+      // todayOnly mode: used by Dashboard for calorie sum
+      if (todayOnly) {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        params.after = Math.floor(startOfDay.getTime() / 1000);
+      }
 
       const response = await axios.get(`https://www.strava.com/api/v3/athlete/activities`, {
         headers: { Authorization: `Bearer ${accessToken}` },
-        params: { after: afterTimestamp }
+        params
       });
 
-      // Sum calories if available, or estimate based on distance/type if needed
-      // Strava API activities often don't include calories unless they come from a device with HR
-      // but 'kilojoules' for rides or we can use a basic MET estimation
       const activities = response.data.map((act: any) => ({
         id: act.id,
         name: act.name,
-        type: act.type,
-        distance: act.distance,
-        moving_time: act.moving_time,
-        calories: act.calories || (act.kilojoules ? act.kilojoules / 4.184 : 0) // rough estimate for kJ to kcal
+        type: act.sport_type || act.type,
+        distance: act.distance,           // meters
+        moving_time: act.moving_time,     // seconds
+        elapsed_time: act.elapsed_time,   // seconds
+        start_date: act.start_date_local, // ISO string
+        calories: act.calories || (act.kilojoules ? Math.round(act.kilojoules / 4.184 * 1000) / 1000 : 0),
+        average_heartrate: act.average_heartrate || null,
+        max_heartrate: act.max_heartrate || null,
+        total_elevation_gain: act.total_elevation_gain || 0,
+        strava_url: `https://www.strava.com/activities/${act.id}`
       }));
 
       res.json({ activities });

@@ -61,7 +61,7 @@ export default function Dashboard() {
         const response = await fetch(`${API_BASE}/api/strava/activities`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accessToken: tokenData.access_token })
+          body: JSON.stringify({ accessToken: tokenData.access_token, todayOnly: true })
         });
         
         if (response.ok) {
