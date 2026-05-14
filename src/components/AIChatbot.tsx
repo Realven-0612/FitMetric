@@ -350,7 +350,7 @@ ACTION:REQUEST_WORKOUT:{"focus": "chest"}
                       {m.role === 'assistant' ? <Sparkles className="w-4 h-4" /> : <User className="w-4 h-4" />}
                     </div>
                     <div className={`space-y-1 min-w-0 overflow-hidden ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
-                      <div className={`p-4 rounded-2xl text-xs font-medium leading-relaxed break-words break-all overflow-hidden w-full ${
+                      <div className={`p-4 rounded-2xl text-xs font-medium leading-relaxed break-words overflow-hidden w-full ${
                         m.role === 'assistant'
                           ? 'bg-[#1a1a1a] text-slate-200 border border-white/5'
                           : 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/10'
