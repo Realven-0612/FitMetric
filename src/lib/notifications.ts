@@ -1,25 +1,32 @@
 // src/lib/notifications.ts
-// Native Web Push API with VAPID — no third-party SDK required
+// Native Web Push API with VAPID
 
-const VAPID_PUBLIC_KEY = "BHgYFT3fKh7KNAh4rMVCjULIBEe7l30uSV9ggK4661qmcBMUdmNOkso93NdqTcj6RGgMFrKuV--1ir-_27fx4tg";
-
-function urlBase64ToUint8Array(base64String: string) {
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
+  const output = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) output[i] = rawData.charCodeAt(i);
+  return output;
 }
 
-/** Check if notifications are supported in this browser */
+/** Check if push notifications are supported in this browser */
 export function isNotificationSupported(): boolean {
-  return "Notification" in window && "serviceWorker" in navigator;
+  return "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
 }
 
-/** Ask user permission for push notifications and subscribe to VAPID */
+/** Fetch VAPID public key from server */
+async function getVapidPublicKey(): Promise<string> {
+  const res = await fetch("/api/notifications/vapid-public-key");
+  if (!res.ok) throw new Error("Could not fetch VAPID public key");
+  const { publicKey } = await res.json();
+  return publicKey;
+}
+
+/**
+ * Request permission + register VAPID push subscription.
+ * Sends the subscription to the server so the Cron job can reach this device.
+ */
 export async function enableNotifications(): Promise<boolean> {
   if (!isNotificationSupported()) return false;
 
@@ -27,35 +34,37 @@ export async function enableNotifications(): Promise<boolean> {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return false;
 
+    const publicKey = await getVapidPublicKey();
     const registration = await navigator.serviceWorker.ready;
-    
-    // Subscribe to push service
-    const subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    });
 
-    // Send subscription to server
-    await fetch("/api/notifications/subscribe", {
+    // Subscribe to browser push service
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+    }
+
+    // Register with our server
+    const res = await fetch("/api/notifications/subscribe", {
       method: "POST",
       body: JSON.stringify(subscription),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
     });
 
+    if (!res.ok) throw new Error("Server rejected subscription");
+
     localStorage.setItem("push_enabled", "true");
+    console.log("[Notifications] Push subscription registered successfully.");
     return true;
   } catch (error) {
-    console.error("[Notifications] Subscription failed:", error);
+    console.error("[Notifications] enableNotifications failed:", error);
     return false;
   }
 }
 
-/** No-op: kept for API compatibility */
-export async function initOneSignal(): Promise<void> {}
-
-/** Send a local notification instantly via the PWA service worker */
+/** Send a local notification immediately via the service worker */
 export function sendLocalNotification(title: string, body: string): void {
   if (Notification.permission !== "granted") return;
   navigator.serviceWorker.ready
@@ -67,28 +76,34 @@ export function sendLocalNotification(title: string, body: string): void {
         vibrate: [200, 100, 200],
       } as NotificationOptions);
     })
-    .catch(() => {
-      new Notification(title, { body, icon: "/assets/app_icon.png" });
-    });
+    .catch(() => new Notification(title, { body, icon: "/assets/app_icon.png" }));
 }
 
-/** Reminders logic (for native VAPID, this is handled server-side via Cron) */
+/** Tag user as active — server-side cron handles timed reminders */
 export async function startReminders(uid: string): Promise<void> {
-  console.log("[Notifications] Server-side Cron reminders enabled for user:", uid);
-  // We already subscribed the device in enableNotifications()
+  console.log("[Notifications] VAPID reminders active for uid:", uid);
 }
 
-/** Opt out of notifications */
+/** Unsubscribe from push and notify server */
 export async function clearReminders(): Promise<void> {
   try {
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.getSubscription();
     if (subscription) {
+      // Notify server first
+      await fetch("/api/notifications/unsubscribe", {
+        method: "POST",
+        body: JSON.stringify({ endpoint: subscription.endpoint }),
+        headers: { "Content-Type": "application/json" },
+      });
       await subscription.unsubscribe();
     }
     localStorage.setItem("push_enabled", "false");
-    console.log("[Notifications] Reminders cleared");
+    console.log("[Notifications] Unsubscribed from push notifications.");
   } catch (error) {
-    console.error("[Notifications] Error clearing reminders:", error);
+    console.error("[Notifications] clearReminders error:", error);
   }
 }
+
+/** No-op: kept for import compatibility */
+export async function initOneSignal(): Promise<void> {}

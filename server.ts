@@ -11,8 +11,10 @@ import cron from "node-cron";
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "BHgYFT3fKh7KNAh4rMVCjULIBEe7l30uSV9ggK4661qmcBMUdmNOkso93NdqTcj6RGgMFrKuV--1ir-_27fx4tg";
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "EXlgfUjh0d1e6cpYIHogWnKXSa5AAx2M3PS-cTd9iBE";
 
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:admin@fitmetric.app";
+
 webpush.setVapidDetails(
-  "mailto:example@yourdomain.com",
+  VAPID_SUBJECT,
   VAPID_PUBLIC_KEY,
   VAPID_PRIVATE_KEY
 );
@@ -309,6 +311,74 @@ async function startServer() {
   });
 
   // Vite middleware for development
+  // ─── Push Notification API Routes ───
+  // Must be registered BEFORE static/catch-all handler
+
+  // Serve public VAPID key to frontend
+  app.get("/api/notifications/vapid-public-key", (_req, res) => {
+    res.json({ publicKey: VAPID_PUBLIC_KEY });
+  });
+
+  // Register a push subscription from browser
+  app.post("/api/notifications/subscribe", (req, res) => {
+    const subscription = req.body;
+    if (!subscription?.endpoint) {
+      return res.status(400).json({ error: "Invalid subscription object" });
+    }
+    // Upsert: add only if endpoint is new
+    if (!subscriptions.find(s => s.endpoint === subscription.endpoint)) {
+      subscriptions.push(subscription);
+      console.log(`[Push] New subscription registered. Total: ${subscriptions.length}`);
+    }
+    res.status(201).json({ status: "subscribed", total: subscriptions.length });
+  });
+
+  // Unsubscribe a specific endpoint
+  app.post("/api/notifications/unsubscribe", (req, res) => {
+    const { endpoint } = req.body;
+    const before = subscriptions.length;
+    subscriptions = subscriptions.filter(s => s.endpoint !== endpoint);
+    console.log(`[Push] Unsubscribed. ${before} → ${subscriptions.length}`);
+    res.json({ status: "unsubscribed" });
+  });
+
+  // Test: send a push to all subscribers immediately
+  app.post("/api/notifications/test", async (_req, res) => {
+    if (subscriptions.length === 0) {
+      return res.status(404).json({ error: "No subscribers. Enable notifications first." });
+    }
+    const payload = JSON.stringify({
+      title: "FitMetric Test 🏋️",
+      body: "Push notifications are working correctly!"
+    });
+    const results = await Promise.allSettled(
+      subscriptions.map(sub => webpush.sendNotification(sub, payload))
+    );
+    const sent = results.filter(r => r.status === "fulfilled").length;
+    res.json({ status: "done", sent, total: subscriptions.length });
+  });
+
+  // ─── Cron Jobs ───
+  // Reminders: 8:00, 12:00, 20:00 UTC (adjust to server timezone)
+  cron.schedule("0 8,12,20 * * *", () => {
+    if (subscriptions.length === 0) return;
+    console.log(`[Cron] Sending reminders to ${subscriptions.length} subscriber(s)...`);
+    const payload = JSON.stringify({
+      title: "FitMetric Reminder 💪",
+      body: "Time to log your meals and check your goals!"
+    });
+    subscriptions.forEach(sub => {
+      webpush.sendNotification(sub, payload).catch(err => {
+        // Remove stale subscriptions (410 Gone, 404 Not Found)
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          console.log(`[Push] Removing stale subscription: ${sub.endpoint.substring(0, 50)}...`);
+          subscriptions = subscriptions.filter(s => s.endpoint !== sub.endpoint);
+        }
+      });
+    });
+  });
+
+  // ─── Static Files / SPA Fallback ───
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -326,42 +396,9 @@ async function startServer() {
     });
   }
 
-  // Push Notification Subscription
-  app.post("/api/notifications/subscribe", (req, res) => {
-    const subscription = req.body;
-    if (!subscription || !subscription.endpoint) {
-      return res.status(400).json({ error: "Invalid subscription" });
-    }
-    // Add to list if not exists
-    if (!subscriptions.find(s => s.endpoint === subscription.endpoint)) {
-      subscriptions.push(subscription);
-      console.log(`[Push] New subscription added. Total: ${subscriptions.length}`);
-    }
-    res.status(201).json({ status: "success" });
-  });
-
-  // Cron Job: Send daily reminders at 08:00, 12:00, 20:00
-  cron.schedule("0 8,12,20 * * *", () => {
-    console.log(`[Cron] Sending scheduled reminders to ${subscriptions.length} users...`);
-    const payload = JSON.stringify({
-      title: "FitMetric Reminder",
-      body: "Time to check your goals and log your meals! 🏃🥗"
-    });
-
-    subscriptions.forEach(sub => {
-      webpush.sendNotification(sub, payload).catch(err => {
-        console.error("[Push] Error sending notification:", err.endpoint);
-        // Clean up failed subscriptions
-        if (err.statusCode === 410 || err.statusCode === 404) {
-          subscriptions = subscriptions.filter(s => s.endpoint !== sub.endpoint);
-        }
-      });
-    });
-  });
-
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`[Push] VAPID Public Key: ${VAPID_PUBLIC_KEY}`);
+    console.log(`[Push] VAPID Public Key ready (${subscriptions.length} subscribers)`);
   });
 }
 
