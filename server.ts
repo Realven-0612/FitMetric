@@ -353,9 +353,9 @@ async function startServer() {
         const token = await getAccessToken(serviceAccount);
         
         let vertexModel = model;
-        if (model.includes('flash-lite')) vertexModel = 'gemini-1.5-flash';
-        else if (model.includes('flash')) vertexModel = 'gemini-1.5-flash';
-        else if (model.includes('pro')) vertexModel = 'gemini-1.5-pro';
+        if (model.includes('flash-lite')) vertexModel = 'gemini-1.5-flash-002';
+        else if (model.includes('flash')) vertexModel = 'gemini-1.5-flash-002';
+        else if (model.includes('pro')) vertexModel = 'gemini-1.5-pro-002';
         
         const region = 'us-central1'; // Force US region to bypass geo-restrictions
         const url = `https://${region}-aiplatform.googleapis.com/v1/projects/${serviceAccount.project_id}/locations/${region}/publishers/google/models/${vertexModel}:generateContent`;
