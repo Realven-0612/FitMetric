@@ -324,12 +324,51 @@ export async function uploadPosePhoto(base64Data: string): Promise<string | null
     await addDoc(collection(db, path), {
       date,
       photoUrl: url,
-      uploadedAt: serverTimestamp()
+      uploadedAt: serverTimestamp(),
+      isDeleted: false // Mặc định ảnh mới không bị xóa
     });
     return url;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `storage/users/${userId}/poses`);
     return null;
+  }
+}
+
+// XÓA MỀM ẢNH (Soft Delete)
+export async function deletePosePhoto(poseId: string) {
+  const userId = auth.currentUser?.uid;
+  if (!userId || !poseId) return;
+  const path = `users/${userId}/poseHistory/${poseId}`;
+  try {
+    // Không dùng deleteDoc. Chỉ đánh dấu cờ isDeleted = true để giấu trên App
+    await setDoc(doc(db, 'users', userId, 'poseHistory', poseId), {
+      isDeleted: true,
+      deletedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+// LẤY DANH SÁCH ẢNH (Bỏ qua ảnh đã bị xóa)
+export async function getPoseHistory() {
+  const userId = auth.currentUser?.uid;
+  if (!userId) return [];
+  const path = `users/${userId}/poseHistory`;
+  try {
+    const s = await getDocs(collection(db, path));
+    const docs: any[] = [];
+    s.forEach(d => {
+      const data = d.data();
+      // Chỉ lấy những tấm ảnh chưa bị gắn cờ xóa mềm
+      if (data.isDeleted !== true) {
+        docs.push({ id: d.id, ...data });
+      }
+    });
+    return docs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  } catch (e) {
+    handleFirestoreError(e, OperationType.LIST, path);
+    return [];
   }
 }
 
