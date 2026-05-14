@@ -70,24 +70,18 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
 
   const handleGoogleSignIn = async () => {
     setSigningIn(true);
-    await signInWithGoogle();
-    // After sign-in, AuthProvider will hydrate the store.
-    // Give it a moment to load, then check if profile exists.
-    setTimeout(() => {
+    const { hasProfile } = await signInWithGoogle();
+    localStorage.setItem("fitmetric_onboarding_done", "true");
+    if (hasProfile) {
+      // Returning user with full profile → go straight to app
+      onComplete();
+    } else {
+      // New Google user → pre-fill name and continue form
       const profile = useStore.getState().profile;
-      localStorage.setItem("fitmetric_onboarding_done", "true");
-      if (profile?.weight && profile?.height) {
-        // Has full profile → skip onboarding
-        onComplete();
-      } else {
-        // New user → pre-fill name and continue to basics
-        if (profile?.name) {
-          setForm(prev => ({ ...prev, name: profile.name || "" }));
-        }
-        setSigningIn(false);
-        setStep(1);
-      }
-    }, 1500);
+      if (profile?.name) setForm(prev => ({ ...prev, name: profile.name || "" }));
+      setSigningIn(false);
+      setStep(1);
+    }
   };
 
   const nextStep = () => {
