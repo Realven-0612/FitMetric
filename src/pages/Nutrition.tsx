@@ -33,10 +33,10 @@ export default function Nutrition() {
 
   const { targetKcal, targetPro, targetCarbs, targetFat, waterTarget, consumedKcal, consumedPro, consumedCarbs, consumedFat, remainingKcal, remainingPro, remainingCarbs, remainingFat } = useNutritionStats();
 
-  const [calcWeight, setCalcWeight] = useState(profile?.weight || 72);
-  const [calcHeight, setCalcHeight] = useState(profile?.height || 168);
-  const [calcAge, setCalcAge] = useState(profile?.age || 24);
-  const [calcBodyFat, setCalcBodyFat] = useState(profile?.bodyFat?.toString() || "");
+  const [calcWeight, setCalcWeight] = useState<number | "">(profile?.weight || "");
+  const [calcHeight, setCalcHeight] = useState<number | "">(profile?.height || "");
+  const [calcAge, setCalcAge] = useState<number | "">(profile?.age || "");
+  const [calcBodyFat, setCalcBodyFat] = useState<string>(profile?.bodyFat?.toString() || "");
   const [calcGender, setCalcGender] = useState<'male' | 'female'>(profile?.gender || "male");
   
   const getCalcActivity = () => {
@@ -130,9 +130,9 @@ export default function Nutrition() {
   };
 
   const calcResults = calcNutritionStats(
-    calcWeight,
-    calcHeight,
-    calcAge,
+    Number(calcWeight) || 0,
+    Number(calcHeight) || 0,
+    Number(calcAge) || 0,
     calcGender,
     calcActivity === 1.2 ? "Sedentary" : 
     calcActivity === 1.375 ? "Lightly Active" : 
@@ -457,15 +457,15 @@ export default function Nutrition() {
                    </div>
                    <div className="space-y-2">
                       <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('weight_kg')}</Label>
-                      <Input type="number" value={calcWeight} onChange={(e) => setCalcWeight(Number(e.target.value))} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
+                      <Input type="number" value={calcWeight} onChange={(e) => setCalcWeight(e.target.value === "" ? "" : Number(e.target.value))} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
                    </div>
                    <div className="space-y-2">
                       <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('height_cm')}</Label>
-                      <Input type="number" value={calcHeight} onChange={(e) => setCalcHeight(Number(e.target.value))} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
+                      <Input type="number" value={calcHeight} onChange={(e) => setCalcHeight(e.target.value === "" ? "" : Number(e.target.value))} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
                    </div>
                    <div className="space-y-2">
                       <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('age_label')}</Label>
-                      <Input type="number" value={calcAge} onChange={(e) => setCalcAge(Number(e.target.value))} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
+                      <Input type="number" value={calcAge} onChange={(e) => setCalcAge(e.target.value === "" ? "" : Number(e.target.value))} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
                    </div>
                    <div className="space-y-2 sm:col-span-2">
                       <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest group relative flex items-center gap-1">
@@ -556,9 +556,9 @@ export default function Nutrition() {
                    <Button onClick={() => {
                       setProfile({
                         ...profile,
-                        weight: calcWeight,
-                        height: calcHeight,
-                        age: calcAge,
+                        weight: Number(calcWeight) || undefined,
+                        height: Number(calcHeight) || undefined,
+                        age: Number(calcAge) || undefined,
                         gender: calcGender,
                         bodyFat: calcBodyFat ? parseFloat(calcBodyFat) : undefined,
                         activityLevel: calcActivity === 1.2 ? "Sedentary" : 
