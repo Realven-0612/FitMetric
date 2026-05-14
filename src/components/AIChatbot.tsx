@@ -57,7 +57,9 @@ export default function AIChatbot() {
       setMessages([{
         id: 'welcome',
         role: 'assistant',
-        content: `Xin chào ${profile.name || 'bạn'}! 👋 Tôi là FitMetric AI. Tôi có thể giúp bạn theo dõi dinh dưỡng, cập nhật chỉ số cơ thể hoặc thiết kế bài tập cá nhân hóa. Bạn muốn bắt đầu từ đâu?`,
+        content: language === 'en' 
+          ? `Hello ${profile.name || 'there'}! 👋 I am FitMetric AI. I can help you track nutrition, update body metrics, or design personalized workouts. Where would you like to start?`
+          : `Xin chào ${profile.name || 'bạn'}! 👋 Tôi là FitMetric AI. Tôi có thể giúp bạn theo dõi dinh dưỡng, cập nhật chỉ số cơ thể hoặc thiết kế bài tập cá nhân hóa. Bạn muốn bắt đầu từ đâu?`,
         timestamp: Date.now(),
       }]);
       localStorage.setItem(welcomeKey, 'true');
@@ -67,12 +69,14 @@ export default function AIChatbot() {
         {
           id: 'welcome-back',
           role: 'assistant',
-          content: 'Chào mừng trở lại! Tôi có thể giúp gì cho bạn hôm nay? (Ví dụ: "Thêm một bát phở vào nhật ký" hoặc "Cập nhật cân nặng của tôi là 75kg")',
+          content: language === 'en'
+            ? 'Welcome back! How can I help you today? (e.g., "Add a bowl of pho to my diary" or "Update my weight to 75kg")'
+            : 'Chào mừng trở lại! Tôi có thể giúp gì cho bạn hôm nay? (Ví dụ: "Thêm một bát phở vào nhật ký" hoặc "Cập nhật cân nặng của tôi là 75kg")',
           timestamp: Date.now(),
         }
       ]);
     }
-  }, [profile]);
+  }, [profile, language]);
 
   useEffect(() => {
     scrollToBottom();
@@ -123,7 +127,9 @@ export default function AIChatbot() {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'Xin lỗi, tôi gặp chút trục trặc khi kết nối. Bạn vui lòng thử lại sau nhé!',
+        content: language === 'en' 
+          ? 'Sorry, I encountered a connection issue. Please try again later!' 
+          : 'Xin lỗi, tôi gặp chút trục trặc khi kết nối. Bạn vui lòng thử lại sau nhé!',
         timestamp: Date.now(),
       }]);
     } finally {
@@ -154,7 +160,7 @@ Khi người dùng muốn tạo lịch tập mới, hãy trả lời kèm:
 ACTION:REQUEST_WORKOUT:{"focus": "chest"}
 
 === QUY TẮC TRẢ LỜI ===
-- Luôn trả lời bằng tiếng Việt (trừ khi user hỏi bằng tiếng Anh).
+- NGÔN NGỮ QUAN TRỌNG: ${language === 'en' ? 'BẠN BẮT BUỘC PHẢI TRẢ LỜI HOÀN TOÀN BẰNG TIẾNG ANH (ENGLISH) do user đang chọn ngôn ngữ tiếng Anh.' : 'Luôn trả lời bằng tiếng Việt (trừ khi user hỏi bằng tiếng Anh).'}
 - Súc tích, có cấu trúc, dùng emoji nhẹ nhàng khi phù hợp.
 - KHÔNG dùng dấu ** để in đậm, KHÔNG dùng ### hay ## để làm tiêu đề.
 - Dùng số thứ tự (1. 2. 3.) hoặc dấu gạch đầu dòng (-) khi cần liệt kê.
