@@ -129,7 +129,7 @@ export async function analyzeAIImage(
   imageBase64: string,
   mimeType: string,
   schema?: any,
-  modelName: string = AI_MODELS.GEMINI_VISION,
+  modelName: string = AI_MODELS.GROQ_VISION,
 ) {
   console.log(">>> [AI] analyzeAIImage model:", modelName);
 
