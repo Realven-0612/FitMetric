@@ -1,4 +1,6 @@
 // src/lib/notifications.ts
+import { API_BASE } from "./api";
+
 // Kiểm tra trình duyệt có hỗ trợ không
 export function isNotificationSupported(): boolean {
   return 'Notification' in window && 'serviceWorker' in navigator;
@@ -24,39 +26,53 @@ export function sendLocalNotification(title: string, body: string) {
       icon: '/assets/app_icon.png',
       badge: '/icon-192x192.svg',
       vibrate: [200, 100, 200],
-    });
+    } as any);
   });
 }
 
-// --- CÁC LỊCH NHẮC NHỞ ---
-let reminderTimers: ReturnType<typeof setInterval>[] = [];
-export function startReminders(profile: { waterIntake?: number; targetKcal?: number }) {
-  clearReminders(); // Xóa lịch cũ nếu có
-  // Nhắc uống nước mỗi 2 tiếng
-  const waterTimer = setInterval(() => {
-    sendLocalNotification('💧 Nhắc nhở uống nước', 'Bạn đã uống đủ nước chưa? Hãy uống thêm 300ml nhé!');
-  }, 2 * 60 * 60 * 1000); // 2 tiếng
+// Helper to convert base64 to Uint8Array for VAPID key
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+// --- SERVER WEB PUSH SUBSCRIPTION ---
+export async function startReminders(profile: { waterIntake?: number; targetKcal?: number }) {
+  if (!isNotificationSupported()) return;
   
-  // Nhắc tập luyện lúc 7h sáng hôm sau
-  const now = new Date();
-  const nextWorkout = new Date();
-  nextWorkout.setHours(7, 0, 0, 0);
-  if (nextWorkout <= now) nextWorkout.setDate(nextWorkout.getDate() + 1);
-  const msUntilWorkout = nextWorkout.getTime() - now.getTime();
-  
-  const workoutTimer = setTimeout(() => {
-    sendLocalNotification('🏋️ Giờ tập luyện!', 'Đã đến giờ tập! Hãy bắt đầu ngày mới với buổi tập của bạn.');
-    // Sau đó lặp lại mỗi 24h
-    const dailyTimer = setInterval(() => {
-      sendLocalNotification('🏋️ Giờ tập luyện!', 'Đã đến giờ tập! Hãy bắt đầu ngày mới với buổi tập của bạn.');
-    }, 24 * 60 * 60 * 1000);
-    reminderTimers.push(dailyTimer);
-  }, msUntilWorkout);
-  
-  reminderTimers.push(waterTimer, workoutTimer as any);
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const PUBLIC_VAPID_KEY = 'BABShjlcawk_xuXWZYcD9wqmt5_errjXlWQkLegoEqG-RVTASpC1UXwVxKWIHSaT2Z3peNtlL3tuvYhTpeUdYpg';
+    
+    // Subscribe device to push server
+    const subscription = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+    });
+
+    // Send subscription to our backend
+    await fetch(`${API_BASE}/api/push/subscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(subscription)
+    });
+    
+    console.log('Successfully subscribed to Server Web Push!');
+  } catch (error) {
+    console.error('Failed to subscribe to Web Push:', error);
+  }
 }
 
 export function clearReminders() {
-  reminderTimers.forEach(clearInterval);
-  reminderTimers = [];
+  // Not needed for server push, could implement unsub
 }

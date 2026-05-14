@@ -4,6 +4,7 @@ import { createServer as createViteServer } from "vite";
 import cors from "cors";
 import axios from "axios";
 import crypto from "crypto";
+import webpush from "web-push";
 
 function base64url(str: string | Buffer) {
   return (typeof str === 'string' ? Buffer.from(str) : str).toString('base64')
@@ -53,6 +54,14 @@ async function startServer() {
   const STRAVA_CLIENT_ID = process.env.STRAVA_CLIENT_ID;
   const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET;
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+  // Web Push VAPID Keys
+  const PUBLIC_VAPID_KEY = process.env.PUBLIC_VAPID_KEY || 'BABShjlcawk_xuXWZYcD9wqmt5_errjXlWQkLegoEqG-RVTASpC1UXwVxKWIHSaT2Z3peNtlL3tuvYhTpeUdYpg';
+  const PRIVATE_VAPID_KEY = process.env.PRIVATE_VAPID_KEY || 'FN6wz-f52AKsZ1u62pXvDy-gNYAeyNNEThyucpJVCpA';
+  webpush.setVapidDetails('mailto:admin@fitmetric.app', PUBLIC_VAPID_KEY, PRIVATE_VAPID_KEY);
+
+  // In-memory subscription store for demonstration
+  let pushSubscriptions: { sub: any; lastWater: number }[] = [];
   const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
   const REDIRECT_URI = `${APP_URL}/api/strava/callback`;
 
@@ -85,6 +94,66 @@ async function startServer() {
     next();
   }
   // ─────────────────────────────────────────────────────────────────────────
+
+  // 1. Subscribe to notifications
+  app.post("/api/push/subscribe", (req, res) => {
+    const subscription = req.body;
+    if (!subscription || !subscription.endpoint) {
+      return res.status(400).json({ error: "Invalid subscription" });
+    }
+    
+    // Check if exists
+    const existsIndex = pushSubscriptions.findIndex(s => s.sub.endpoint === subscription.endpoint);
+    if (existsIndex >= 0) {
+      pushSubscriptions[existsIndex].sub = subscription; // Update if changed
+    } else {
+      pushSubscriptions.push({ sub: subscription, lastWater: Date.now() });
+    }
+    
+    res.status(201).json({ success: true });
+  });
+
+  // 2. Cron endpoint to trigger pushes
+  // This endpoint should be called periodically by a service like cron-job.org
+  app.get("/api/push/cron", async (req, res) => {
+    const now = Date.now();
+    let sentCount = 0;
+    const promises = [];
+
+    // Filter valid subscriptions
+    const validSubs: { sub: any; lastWater: number }[] = [];
+
+    for (const entry of pushSubscriptions) {
+      // Nhắc uống nước mỗi 2 tiếng (2 * 60 * 60 * 1000)
+      if (now - entry.lastWater > 2 * 60 * 60 * 1000) {
+        const payload = JSON.stringify({
+          title: "💧 Nhắc nhở uống nước",
+          body: "Đã 2 tiếng rồi! Hãy bổ sung thêm nước để cơ thể luôn khỏe mạnh nhé.",
+        });
+
+        const p = webpush.sendNotification(entry.sub, payload)
+          .then(() => {
+            entry.lastWater = now;
+            sentCount++;
+            validSubs.push(entry);
+          })
+          .catch((err) => {
+            if (err.statusCode === 404 || err.statusCode === 410) {
+              console.log("Subscription has expired or is no longer valid:", err);
+            } else {
+              validSubs.push(entry); // keep if another error
+            }
+          });
+        promises.push(p);
+      } else {
+        validSubs.push(entry);
+      }
+    }
+
+    await Promise.all(promises);
+    pushSubscriptions = validSubs; // clean up expired subs
+    res.json({ success: true, sent: sentCount, totalSubs: pushSubscriptions.length });
+  });
 
   // Strava Auth Initializer
   app.get("/api/strava/auth", (req, res) => {

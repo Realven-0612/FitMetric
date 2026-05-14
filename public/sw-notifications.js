@@ -2,12 +2,14 @@
 // Lắng nghe sự kiện "push" từ server (nếu sau này dùng Web Push)
 self.addEventListener('push', (event) => {
   const data = event.data?.json() ?? {};
-  self.registration.showNotification(data.title || 'FitMetric', {
-    body: data.body || '',
-    icon: '/assets/app_icon.png',
-    badge: '/icon-192x192.svg',
-    vibrate: [200, 100, 200],
-  });
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'FitMetric', {
+      body: data.body || '',
+      icon: '/assets/app_icon.png',
+      badge: '/icon-192x192.svg',
+      vibrate: [200, 100, 200],
+    })
+  );
 });
 // Khi bấm vào notification → mở app
 self.addEventListener('notificationclick', (event) => {
