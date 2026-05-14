@@ -240,7 +240,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest pl-1">
-                      {language === 'vi' ? 'Ngày sinh *' : 'Date of Birth *'}
+                      {language === 'vi' ? 'Ngày tháng năm sinh *' : 'Date of Birth *'}
                     </label>
                     <input
                       type="date"

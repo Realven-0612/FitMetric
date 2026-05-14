@@ -10,7 +10,7 @@ import { useTranslation } from "../lib/i18n";
 import { MealScanner } from "../components/MealScanner";
 import { RecipeGenerator } from "../components/RecipeGenerator";
 import { toast } from "sonner";
-import { useStore } from "../lib/store";
+import { useStore, calculateAge } from "../lib/store";
 import { generateAIContent } from "../lib/ai";
 import { useNutritionStats } from "../hooks/useNutritionStats";
 import { calcNutritionStats } from "../lib/nutritionUtils";
@@ -35,7 +35,7 @@ export default function Nutrition() {
 
   const [calcWeight, setCalcWeight] = useState<number | "">(profile?.weight || "");
   const [calcHeight, setCalcHeight] = useState<number | "">(profile?.height || "");
-  const [calcAge, setCalcAge] = useState<number | "">(profile?.age || "");
+  const [calcDob, setCalcDob] = useState<string>(profile?.dateOfBirth || "");
   const [calcBodyFat, setCalcBodyFat] = useState<string>(profile?.bodyFat?.toString() || "");
   const [calcGender, setCalcGender] = useState<'male' | 'female'>(profile?.gender || "male");
   
@@ -132,7 +132,7 @@ export default function Nutrition() {
   const calcResults = calcNutritionStats(
     Number(calcWeight) || 0,
     Number(calcHeight) || 0,
-    Number(calcAge) || 0,
+    calcDob ? calculateAge(calcDob) : (Number(profile?.age) || 0),
     calcGender,
     calcActivity === 1.2 ? "Sedentary" : 
     calcActivity === 1.375 ? "Lightly Active" : 
@@ -465,7 +465,7 @@ export default function Nutrition() {
                    </div>
                    <div className="space-y-2">
                       <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('age_label')}</Label>
-                      <Input type="number" value={calcAge} onChange={(e) => setCalcAge(e.target.value === "" ? "" : Number(e.target.value))} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-lg px-6" />
+                      <Input type="date" value={calcDob} onChange={(e) => setCalcDob(e.target.value)} className="bg-black/50 border-white/10 h-14 rounded-2xl text-white font-black text-sm px-4 [color-scheme:dark]" />
                    </div>
                    <div className="space-y-2 sm:col-span-2">
                       <Label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest group relative flex items-center gap-1">
@@ -558,7 +558,8 @@ export default function Nutrition() {
                         ...profile,
                         weight: Number(calcWeight) || undefined,
                         height: Number(calcHeight) || undefined,
-                        age: Number(calcAge) || undefined,
+                        dateOfBirth: calcDob || undefined,
+                        age: calcDob ? calculateAge(calcDob) : undefined,
                         gender: calcGender,
                         bodyFat: calcBodyFat ? parseFloat(calcBodyFat) : undefined,
                         activityLevel: calcActivity === 1.2 ? "Sedentary" : 

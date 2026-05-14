@@ -537,7 +537,7 @@ const translations = {
     algorithms: 'Thuật toán: Katch-McArdle & Mifflin-St Jeor',
     weight_kg: 'Cân nặng (kg)',
     height_cm: 'Chiều cao (cm)',
-    age_label: 'Ngày sinh',
+    age_label: 'Ngày tháng năm sinh',
     body_fat_pct: '% Mỡ cơ thể',
     optional: 'Tùy chọn',
     mifflin_hint: 'Để trống nếu dùng Mifflin',
