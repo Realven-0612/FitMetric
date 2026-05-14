@@ -12,7 +12,7 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+        includeAssets: ['favicon.ico', 'assets/app_icon.png', 'icon-192x192.svg', 'icon-512x512.svg'],
         workbox: {
           maximumFileSizeToCacheInBytes: 5000000 // 5 MB
         },
@@ -20,10 +20,23 @@ export default defineConfig(({mode}) => {
           name: 'FitMetric',
           short_name: 'FitMetric',
           description: 'Your personal fitness and nutrition tracker',
-          theme_color: '#00f2ff',
+          theme_color: '#0a0a0c',
           background_color: '#0a0a0c',
           display: 'standalone',
+          start_url: '/',
           icons: [
+            {
+              src: '/assets/app_icon.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'any'
+            },
+            {
+              src: '/assets/app_icon.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any maskable'
+            },
             {
               src: '/icon-192x192.svg',
               sizes: '192x192',
