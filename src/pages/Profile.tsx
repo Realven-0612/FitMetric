@@ -24,6 +24,8 @@ export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
   const [scanHistory, setScanHistory] = useState<any[]>([]);
+  const [isStravaConnected, setIsStravaConnected] = useState(false);
+  const [isNotifEnabled, setIsNotifEnabled] = useState(false);
   const [profile, setProfile] = useState({
     name: "",
     weight: "",
@@ -36,6 +38,14 @@ export default function Profile() {
     gender: "male",
     activityLevel: "Sedentary"
   });
+
+  // Detect initial connection states on mount
+  useEffect(() => {
+    setIsStravaConnected(!!localStorage.getItem('strava_token'));
+    setIsNotifEnabled(
+      typeof Notification !== 'undefined' && Notification.permission === 'granted'
+    );
+  }, []);
 
   useEffect(() => {
     if (storeProfile) {
@@ -97,13 +107,26 @@ export default function Profile() {
   const handleConnectStrava = async () => {
     try {
       const response = await fetch(`${API_BASE}/api/strava/auth`);
-      if (!response.ok) {
-        throw new Error('API down');
-      }
+      if (!response.ok) throw new Error('API down');
       const data = await response.json();
       const authWindow = window.open(data.url, 'oauth_popup', 'width=600,height=700');
-      if (!authWindow) toast.error('Please allow popups to connect Strava');
-    } catch (e: any) {
+      if (!authWindow) {
+        toast.error('Please allow popups to connect Strava');
+        return;
+      }
+      // Listen for the OAuth callback result
+      const onMessage = (event: MessageEvent) => {
+        if (!event.origin.endsWith('.run.app') && !event.origin.includes('localhost')) return;
+        if (event.data?.type === 'STRAVA_AUTH_SUCCESS') {
+          setIsStravaConnected(true);
+          toast.success('Successfully connected to Strava!');
+        } else if (event.data?.type === 'STRAVA_AUTH_ERROR') {
+          toast.error('Strava connection failed.');
+        }
+        window.removeEventListener('message', onMessage);
+      };
+      window.addEventListener('message', onMessage);
+    } catch {
       toast.error('Strava credentials omitted in environment variables.');
     }
   };
@@ -111,6 +134,7 @@ export default function Profile() {
   const handleEnablePush = async () => {
     const success = await enableNotifications();
     if (success) {
+      setIsNotifEnabled(true);
       toast.success(t('toast_notif_enabled'));
       startReminders({ waterIntake: 0 });
     } else {
@@ -488,9 +512,17 @@ export default function Profile() {
                          <div className="text-[10px] text-slate-500">Sync Cardio & Runs</div>
                        </div>
                      </div>
-                     <button onClick={handleConnectStrava} className="text-[10px] font-black text-slate-400 border border-white/10 px-3 py-1.5 rounded-xl hover:bg-white/5 transition-colors">
-                       {t('connect')}
-                     </button>
+                      <button
+                        onClick={isStravaConnected ? undefined : handleConnectStrava}
+                        disabled={isStravaConnected}
+                        className={`text-[10px] font-black px-3 py-1.5 rounded-xl transition-all ${
+                          isStravaConnected
+                            ? 'text-emerald-400 border border-emerald-500/40 bg-emerald-500/10 cursor-default'
+                            : 'text-slate-400 border border-white/10 hover:bg-white/5'
+                        }`}
+                      >
+                        {isStravaConnected ? '✓ CONNECTED' : t('connect')}
+                      </button>
                    </div>
                    {!user && <p className="text-[10px] text-slate-600 mt-2">* Sign in first to connect integrations.</p>}
                  </div>
@@ -508,9 +540,17 @@ export default function Profile() {
                          <div className="text-[10px] text-slate-500">Hydration, Workouts, Meals</div>
                        </div>
                      </div>
-                     <button onClick={handleEnablePush} className="text-[10px] font-black text-purple-400 border border-purple-500/30 px-3 py-1.5 rounded-xl hover:bg-purple-500/10 transition-colors">
-                       {t('enable')}
-                     </button>
+                      <button
+                        onClick={isNotifEnabled ? undefined : handleEnablePush}
+                        disabled={isNotifEnabled}
+                        className={`text-[10px] font-black px-3 py-1.5 rounded-xl transition-all ${
+                          isNotifEnabled
+                            ? 'text-emerald-400 border border-emerald-500/40 bg-emerald-500/10 cursor-default'
+                            : 'text-purple-400 border border-purple-500/30 hover:bg-purple-500/10'
+                        }`}
+                      >
+                        {isNotifEnabled ? '✓ ENABLED' : t('enable')}
+                      </button>
                    </div>
                  </div>
               </CardContent>
