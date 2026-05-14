@@ -4,6 +4,7 @@ import { syncProfile, saveWorkoutPlan, logFoodItem, logWeightRecord, deleteFoodI
 
 interface UserProfile {
   name?: string;
+  dateOfBirth?: string;
   age?: number;
   weight?: number;
   height?: number;
@@ -240,3 +241,16 @@ export const useStore = create<AppState>()(
     }
   )
 );
+
+export const calculateAge = (dob: string | undefined): number | undefined => {
+  if (!dob) return undefined;
+  const birthDate = new Date(dob);
+  if (isNaN(birthDate.getTime())) return undefined;
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+  }
+  return age;
+};

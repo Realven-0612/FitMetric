@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useStore } from "../lib/store";
+import { useStore, calculateAge } from "../lib/store";
 import { useTranslation } from "../lib/i18n";
 import { useAuth } from "./AuthProvider";
 import BMIBar from "./BMIBar";
@@ -34,7 +34,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
   const [step, setStep] = useState(0);
   const [signingIn, setSigningIn] = useState(false);
   const [form, setForm] = useState({
-    name: "", age: "", gender: "male",
+    name: "", dateOfBirth: "", gender: "male",
     weight: "", height: "", bodyFat: "",
     primaryGoal: "Lose Fat",
     preferredStyle: "Gym",
@@ -45,7 +45,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
     setForm(prev => ({ ...prev, [key]: val }));
 
   const canNext = () => {
-    if (step === 1) return form.name.trim() !== "" && form.age.trim() !== "";
+    if (step === 1) return form.name.trim() !== "" && form.dateOfBirth.trim() !== "";
     if (step === 2) return form.weight.trim() !== "" && form.height.trim() !== "";
     return true;
   };
@@ -55,7 +55,8 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
       name: form.name,
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
-      age: form.age ? Number(form.age) : undefined,
+      dateOfBirth: form.dateOfBirth,
+      age: calculateAge(form.dateOfBirth),
       weight: form.weight ? Number(form.weight) : undefined,
       height: form.height ? Number(form.height) : undefined,
       bodyFat: form.bodyFat ? Number(form.bodyFat) : undefined,
@@ -239,14 +240,13 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest pl-1">
-                      {language === 'vi' ? 'Tuổi thật *' : 'Age *'}
+                      {language === 'vi' ? 'Ngày sinh *' : 'Date of Birth *'}
                     </label>
-                    <input 
-                      type="number" 
-                      value={form.age}
-                      onChange={(e) => update("age", e.target.value)}
-                      placeholder={language === 'vi' ? 'VD: 24 (Ko nhập năm sinh)' : 'e.g. 24'}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder-slate-500 text-xs md:text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-medium"
+                    <input
+                      type="date"
+                      value={form.dateOfBirth}
+                      onChange={(e) => update("dateOfBirth", e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder-slate-500 text-xs md:text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-medium [color-scheme:dark]"
                     />
                   </div>
                   

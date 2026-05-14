@@ -10,7 +10,7 @@ import { useAuth } from "../components/AuthProvider";
 import { db } from "../lib/firebase";
 import { doc, collection, getDocs, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { useTranslation } from "../lib/i18n";
-import { useStore } from "../lib/store";
+import { useStore, calculateAge } from '../lib/store';
 import { handleFirestoreError, OperationType } from "../services/firebaseService";
 import BMIBar from "../components/BMIBar";
 import { enableNotifications, startReminders, clearReminders } from '../lib/notifications';
@@ -32,7 +32,7 @@ export default function Profile() {
     height: "",
     bodyFat: "",
     preferredStyle: "Gym",
-    age: "",
+    dateOfBirth: "",
     level: "Beginner (0-1 y)",
     primaryGoal: "Lose Fat",
     gender: "male",
@@ -79,7 +79,7 @@ export default function Profile() {
         ...storeProfile,
         weight: storeProfile.weight?.toString() || prev.weight,
         height: storeProfile.height?.toString() || prev.height,
-        age: storeProfile.age?.toString() || prev.age,
+        dateOfBirth: storeProfile.dateOfBirth || prev.dateOfBirth,
         bodyFat: storeProfile.bodyFat?.toString() || prev.bodyFat,
         gender: (storeProfile.gender as string) || prev.gender,
       }));
@@ -208,7 +208,8 @@ export default function Profile() {
       ...profile,
       weight: Number(profile.weight),
       height: Number(profile.height),
-      age: Number(profile.age),
+      dateOfBirth: profile.dateOfBirth,
+      age: calculateAge(profile.dateOfBirth),
       bodyFat: Number(profile.bodyFat) || 0,
       gender: profile.gender as "male" | "female",
     };
@@ -338,7 +339,7 @@ export default function Profile() {
                      </div>
                      <div className="space-y-2 group">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-cyan-400 transition-colors">{t('age_label')}</label>
-                        <Input type="number" name="age" value={profile.age || ''} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-cyan-500/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 rounded-2xl text-white shadow-inner transition-all px-4" />
+                        <Input type="date" name="dateOfBirth" value={profile.dateOfBirth || ''} onChange={handleChange} className="h-14 bg-[#0a0a0c] border-white/10 hover:border-white/20 focus-visible:border-cyan-500/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 rounded-2xl text-white shadow-inner transition-all px-4 [color-scheme:dark]" />
                      </div>
                      <div className="space-y-2 group">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-focus-within:text-emerald-400 transition-colors">{t('level_label')}</label>
