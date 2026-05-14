@@ -15,6 +15,7 @@ export default defineConfig(({mode}) => {
         includeAssets: ['favicon.ico', 'assets/app_icon.png'],
         workbox: {
           maximumFileSizeToCacheInBytes: 5_000_000,
+          navigateFallbackDenylist: [/^\/api\//],
           // Cache strategies for different resource types
           runtimeCaching: [
             {
