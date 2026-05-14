@@ -45,6 +45,31 @@ export default function Profile() {
     setIsNotifEnabled(
       typeof Notification !== 'undefined' && Notification.permission === 'granted'
     );
+
+    // Mobile same-tab Strava OAuth flow:
+    // After redirect back from server, token is in sessionStorage and hash is #strava-connected
+    const hash = window.location.hash;
+    if (hash === '#strava-connected' || hash === '#strava-error') {
+      // Clean up the hash immediately
+      window.history.replaceState(null, '', window.location.pathname);
+
+      if (hash === '#strava-connected') {
+        const pending = sessionStorage.getItem('strava_pending_token');
+        if (pending) {
+          try {
+            const tokenData = JSON.parse(pending);
+            localStorage.setItem('strava_token', JSON.stringify(tokenData));
+            setIsStravaConnected(true);
+            toast.success('Successfully connected to Strava! 🏃');
+          } catch {
+            toast.error('Strava token parse error.');
+          }
+          sessionStorage.removeItem('strava_pending_token');
+        }
+      } else {
+        toast.error('Strava connection failed.');
+      }
+    }
   }, []);
 
   useEffect(() => {

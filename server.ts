@@ -109,23 +109,57 @@ async function startServer() {
         grant_type: "authorization_code",
       });
 
-      // Pass the token data to the parent window and close this popup
-      const script = `
-        <script>
-          window.opener.postMessage({ type: 'STRAVA_AUTH_SUCCESS', payload: ${JSON.stringify(response.data)} }, '*');
-          window.close();
-        </script>
-      `;
-      res.send(script);
+      const tokenPayload = JSON.stringify(response.data);
+      const appUrl = APP_URL;
+
+      // Works for both popup (desktop) and same-tab (mobile) flows:
+      // - If opened as popup: postMessage to parent then close.
+      // - If same tab (mobile): redirect back to the SPA with token in sessionStorage via a bridge page.
+      const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Connecting Strava...</title></head>
+<body style="background:#0a0a0c;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
+  <p style="opacity:0.5;font-size:13px">Connecting... please wait</p>
+  <script>
+    var token = ${tokenPayload};
+    try {
+      if (window.opener && !window.opener.closed) {
+        // Desktop popup flow
+        window.opener.postMessage({ type: 'STRAVA_AUTH_SUCCESS', payload: token }, '*');
+        window.close();
+      } else {
+        // Mobile same-tab flow — store token and redirect back to app
+        sessionStorage.setItem('strava_pending_token', JSON.stringify(token));
+        window.location.href = '${appUrl}/profile#strava-connected';
+      }
+    } catch(e) {
+      sessionStorage.setItem('strava_pending_token', JSON.stringify(token));
+      window.location.href = '${appUrl}/profile#strava-connected';
+    }
+  <\/script>
+</body></html>`;
+      res.send(html);
     } catch (error: any) {
       console.error("Strava Auth Error:", error.response?.data || error.message);
-      const script = `
-        <script>
-          window.opener.postMessage({ type: 'STRAVA_AUTH_ERROR', error: 'Failed to exchange token' }, '*');
-          window.close();
-        </script>
-      `;
-      res.send(script);
+      const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Strava Error</title></head>
+<body style="background:#0a0a0c;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
+  <p style="color:#f87171">Connection failed. Redirecting...</p>
+  <script>
+    try {
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({ type: 'STRAVA_AUTH_ERROR', error: 'Failed to exchange token' }, '*');
+        window.close();
+      } else {
+        window.location.href = '${appUrl}/profile#strava-error';
+      }
+    } catch(e) {
+      window.location.href = '${appUrl}/profile#strava-error';
+    }
+  <\/script>
+</body></html>`;
+      res.send(html);
     }
   });
 
