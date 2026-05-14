@@ -17,8 +17,8 @@ const updateSW = registerSW({
   },
 });
 
-// Initialize OneSignal for push notifications (no Service Account needed)
-initOneSignal();
+// OneSignal is initialized via script in index.html
+
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
