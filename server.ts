@@ -342,10 +342,54 @@ async function startServer() {
     res.json({ status: "unsubscribed" });
   });
 
-  // Test: send a push to all subscribers immediately
+  // ─── Protected send endpoint (called by cron-job.org) ───
+  app.post("/api/notifications/send", async (req, res) => {
+    const secret = req.headers["x-cron-secret"];
+    const expected = process.env.CRON_SECRET;
+
+    if (!expected || secret !== expected) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    if (subscriptions.length === 0) {
+      return res.json({ status: "skipped", reason: "no subscribers" });
+    }
+
+    // Dynamic message based on hour (UTC)
+    const hour = new Date().getUTCHours();
+    let title = "FitMetric 💪";
+    let body = "Time to check your goals!";
+    if (hour >= 0 && hour < 10) {
+      title = "Good Morning! 🌅";
+      body = "Start your day right — log your breakfast and plan your workout!";
+    } else if (hour >= 10 && hour < 14) {
+      title = "Lunchtime! 🥗";
+      body = "Don't forget to log your lunch and stay hydrated!";
+    } else {
+      title = "Evening Check-in! 🌙";
+      body = "How did you do today? Log your dinner and review your progress!";
+    }
+
+    const payload = JSON.stringify({ title, body });
+    const results = await Promise.allSettled(
+      subscriptions.map(sub =>
+        webpush.sendNotification(sub, payload).catch(err => {
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            subscriptions = subscriptions.filter(s => s.endpoint !== sub.endpoint);
+          }
+          throw err;
+        })
+      )
+    );
+    const sent = results.filter(r => r.status === "fulfilled").length;
+    console.log(`[Push] Cron triggered. Sent: ${sent}/${subscriptions.length}`);
+    res.json({ status: "done", sent, total: subscriptions.length, title, body });
+  });
+
+  // Dev-only test endpoint (no secret required)
   app.post("/api/notifications/test", async (_req, res) => {
     if (subscriptions.length === 0) {
-      return res.status(404).json({ error: "No subscribers. Enable notifications first." });
+      return res.status(404).json({ error: "No subscribers. Enable notifications in Profile first." });
     }
     const payload = JSON.stringify({
       title: "FitMetric Test 🏋️",
