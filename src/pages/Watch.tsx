@@ -73,10 +73,16 @@ export default function Watch() {
       const res = await fetch(`${API_BASE}/api/strava/activities`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessToken: tokenData.access_token }),
+        body: JSON.stringify({ 
+          accessToken: tokenData.access_token,
+          refreshToken: tokenData.refresh_token
+        }),
       });
       if (res.ok) {
         const data = await res.json();
+        if (data.newTokenData) {
+          localStorage.setItem("strava_token", JSON.stringify(data.newTokenData));
+        }
         setActivities(data.activities || []);
         setActivitiesLoaded(true);
       } else {

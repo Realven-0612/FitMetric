@@ -219,7 +219,7 @@ async function startServer() {
 
   // Fetch recent Strava Activities (last 10)
   app.post("/api/strava/activities", async (req, res) => {
-    const { accessToken, todayOnly } = req.body;
+    let { accessToken, refreshToken, todayOnly } = req.body;
     if (!accessToken) return res.status(401).json({ error: "No access token" });
 
     try {
@@ -232,10 +232,34 @@ async function startServer() {
         params.after = Math.floor(startOfDay.getTime() / 1000);
       }
 
-      const response = await axios.get(`https://www.strava.com/api/v3/athlete/activities`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        params
-      });
+      let response: any;
+      let newTokenData = null;
+
+      try {
+        response = await axios.get(`https://www.strava.com/api/v3/athlete/activities`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          params
+        });
+      } catch (err: any) {
+        if (err.response?.status === 401 && refreshToken) {
+          console.log("[Strava] Access token expired, attempting refresh...");
+          const refreshRes = await axios.post("https://www.strava.com/oauth/token", {
+            client_id: STRAVA_CLIENT_ID,
+            client_secret: STRAVA_CLIENT_SECRET,
+            grant_type: "refresh_token",
+            refresh_token: refreshToken
+          });
+          newTokenData = refreshRes.data;
+          accessToken = newTokenData.access_token;
+          
+          response = await axios.get(`https://www.strava.com/api/v3/athlete/activities`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            params
+          });
+        } else {
+          throw err;
+        }
+      }
 
       const activities = response.data.map((act: any) => ({
         id: act.id,
@@ -252,7 +276,7 @@ async function startServer() {
         strava_url: `https://www.strava.com/activities/${act.id}`
       }));
 
-      res.json({ activities });
+      res.json({ activities, newTokenData });
     } catch (error: any) {
       console.error("Strava Fetch Error:", error.response?.data || error.message);
       res.status(500).json({ error: "Failed to fetch activities" });

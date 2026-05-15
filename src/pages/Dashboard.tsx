@@ -61,13 +61,22 @@ export default function Dashboard() {
         const response = await fetch(`${API_BASE}/api/strava/activities`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accessToken: tokenData.access_token, todayOnly: true })
+          body: JSON.stringify({ 
+            accessToken: tokenData.access_token, 
+            refreshToken: tokenData.refresh_token,
+            todayOnly: true 
+          })
         });
         
         if (response.ok) {
           const data = await response.json();
+          if (data.newTokenData) {
+            localStorage.setItem("strava_token", JSON.stringify(data.newTokenData));
+          }
           const totalCals = (data.activities || []).reduce((acc: number, curr: any) => acc + (curr.calories || 0), 0);
           setStravaCalories(totalCals);
+        } else if (response.status === 401 || response.status === 500) {
+          console.warn("Strava token expired or invalid");
         }
       } catch (err) {
         console.error("Failed to fetch Strava activities:", err);
