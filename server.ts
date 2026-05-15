@@ -283,70 +283,46 @@ async function startServer() {
     }
   });
 
-  // AI Proxy Route with Google AI Studio & Groq support
+  // AI Proxy Route with Cerebras, Groq & Google AI Studio fallback support
   app.post("/api/ai", aiRateLimiter, async (req, res) => {
     const { model, messages, response_format, temperature } = req.body;
     
-    const isGemini = model?.includes('gemini');
+    const cerebrasKey = process.env.CEREBRAS_API_KEY;
+    const groqKey = process.env.GROQ_API_KEY;
     const googleKey = process.env.GOOGLE_API_KEY;
 
-    // ─── GOOGLE AI STUDIO (Gemini) ───
-    if (isGemini && googleKey) {
-      try {
-        console.log(`[AI Proxy] Routing to Google AI Studio: ${model}`);
-        
-        // Convert OpenAI messages to Gemini format
-        const contents = messages.filter((m: any) => m.role !== 'system').map((m: any) => {
-          const parts: any[] = [];
-          if (typeof m.content === 'string') {
-            parts.push({ text: m.content });
-          } else if (Array.isArray(m.content)) {
-            m.content.forEach((part: any) => {
-              if (part.type === 'text') parts.push({ text: part.text });
-              else if (part.type === 'image_url') {
-                const base64 = part.image_url.url.split(',')[1];
-                const mimeType = part.image_url.url.split(';')[0].split(':')[1];
-                parts.push({ inlineData: { mimeType, data: base64 } });
-              }
-            });
-          }
-          return { role: m.role === 'assistant' ? 'model' : 'user', parts };
-        });
+    // Helper to detect if messages contain images (Cerebras doesn't support vision yet)
+    const hasImage = messages.some((m: any) => 
+      Array.isArray(m.content) && m.content.some((part: any) => part.type === 'image_url')
+    );
 
-        const systemMessage = messages.find((m: any) => m.role === 'system');
-        const systemInstruction = systemMessage ? { parts: [{ text: systemMessage.content }] } : undefined;
+    async function tryCerebras() {
+      if (!cerebrasKey) throw new Error("No Cerebras key");
+      if (hasImage) throw new Error("Cerebras doesn't support vision");
+      
+      const targetModel = model?.includes('llama') ? model : "llama3.1-8b"; // Cerebras supports llama3.1-8b and 70b
+      console.log(`[AI Proxy] Routing to Cerebras: ${targetModel}`);
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleKey}`;
-
-        const response = await axios.post(url, {
-          contents,
-          systemInstruction,
-          generationConfig: {
-            temperature: temperature || 0.3,
-            responseMimeType: response_format?.type === 'json_object' ? 'application/json' : 'text/plain'
-          }
-        }, {
-          headers: { 'Content-Type': 'application/json' }
-        });
-
-        const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
-        return res.json({
-          choices: [{ message: { role: 'assistant', content: text } }]
-        });
-      } catch (error: any) {
-        console.error(`[AI Proxy] Gemini AI Studio Error:`, error.response?.data || error.message);
-        // Fallback to Groq if Gemini fails
-      }
+      const response = await axios.post("https://api.cerebras.ai/v1/chat/completions", {
+        model: targetModel,
+        messages,
+        response_format,
+        temperature: temperature || 0.3
+      }, {
+        headers: { 
+          'Authorization': `Bearer ${cerebrasKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response.data;
     }
 
-    // ─── GROQ (Fallback or Direct) ───
-    const groqKey = process.env.GROQ_API_KEY;
-    if (!groqKey) return res.status(500).json({ error: "No AI provider keys configured (GROQ or GOOGLE)" });
+    async function tryGroq() {
+      if (!groqKey) throw new Error("No Groq key");
+      
+      const groqModel = hasImage ? 'llama-3.2-90b-vision-preview' : 'llama-3.3-70b-versatile';
+      console.log(`[AI Proxy] Routing to Groq: ${groqModel}`);
 
-    const groqModel = model?.includes('gemini') ? 'llama-3.3-70b-versatile' : (model || 'llama-3.3-70b-versatile');
-    console.log(`[AI Proxy] Routing to Groq: ${groqModel}`);
-
-    try {
       const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
         model: groqModel,
         messages,
@@ -358,12 +334,85 @@ async function startServer() {
           'Content-Type': 'application/json'
         }
       });
-      res.json(response.data);
-    } catch (error: any) {
-      const errData = error.response?.data;
-      const status = error.response?.status || 500;
-      console.error(`[AI Proxy] Groq Error: status=${status}`, JSON.stringify(errData)?.substring(0, 500));
-      res.status(status).json(errData || { error: "AI request failed", details: error.message });
+      return response.data;
+    }
+
+    async function tryGemini() {
+      if (!googleKey) throw new Error("No Google key");
+      console.log(`[AI Proxy] Routing to Gemini`);
+
+      const targetModel = model?.includes('gemini') ? model : 'gemini-3.1-flash-lite';
+
+      const contents = messages.filter((m: any) => m.role !== 'system').map((m: any) => {
+        const parts: any[] = [];
+        if (typeof m.content === 'string') {
+          parts.push({ text: m.content });
+        } else if (Array.isArray(m.content)) {
+          m.content.forEach((part: any) => {
+            if (part.type === 'text') parts.push({ text: part.text });
+            else if (part.type === 'image_url') {
+              const base64 = part.image_url.url.split(',')[1];
+              const mimeType = part.image_url.url.split(';')[0].split(':')[1];
+              parts.push({ inlineData: { mimeType, data: base64 } });
+            }
+          });
+        }
+        return { role: m.role === 'assistant' ? 'model' : 'user', parts };
+      });
+
+      const systemMessage = messages.find((m: any) => m.role === 'system');
+      const systemInstruction = systemMessage ? { parts: [{ text: systemMessage.content }] } : undefined;
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${googleKey}`;
+
+      const response = await axios.post(url, {
+        contents,
+        systemInstruction,
+        generationConfig: {
+          temperature: temperature || 0.3,
+          responseMimeType: response_format?.type === 'json_object' ? 'application/json' : 'text/plain'
+        }
+      }, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
+      return {
+        choices: [{ message: { role: 'assistant', content: text } }]
+      };
+    }
+
+    // --- WATERFALL EXECUTION ---
+    try {
+      try {
+        const data = await tryCerebras();
+        return res.json(data);
+      } catch (err: any) {
+        if (err.response?.status === 429 || err.message.includes("vision") || err.message.includes("Cerebras key")) {
+          console.warn(`[AI Proxy] Cerebras skipped/failed (Status ${err.response?.status || err.message}). Fallback to Groq.`);
+        } else {
+          // If it's a bad request, don't throw immediately, maybe Groq can handle it.
+          console.warn(`[AI Proxy] Cerebras error: ${err.message}. Fallback to Groq.`);
+        }
+      }
+
+      try {
+        const data = await tryGroq();
+        return res.json(data);
+      } catch (err: any) {
+        if (err.response?.status === 429 || err.message.includes("Groq key")) {
+          console.warn(`[AI Proxy] Groq skipped/failed (Status ${err.response?.status || err.message}). Fallback to Gemini.`);
+        } else {
+          console.warn(`[AI Proxy] Groq error: ${err.message}. Fallback to Gemini.`);
+        }
+      }
+
+      const data = await tryGemini();
+      return res.json(data);
+
+    } catch (finalError: any) {
+      console.error("[AI Proxy] All AI providers failed.", finalError.response?.data || finalError.message);
+      return res.status(500).json({ error: "All AI providers failed", details: finalError.message });
     }
   });
 

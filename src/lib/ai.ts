@@ -86,7 +86,7 @@ async function postWithRetry(url: string, payload: any): Promise<any> {
 export async function generateAIContent(
   prompt: string,
   schema?: any,
-  modelName: string = AI_MODELS.GEMINI_FLASH_LITE,
+  modelName: string = AI_MODELS.CEREBRAS_TEXT,
 ) {
   console.log(">>> [AI] generateAIContent model:", modelName);
 

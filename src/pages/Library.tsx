@@ -185,20 +185,44 @@ export default function Library() {
           return (
             <Card key={i} className="bg-[#111111]/80 backdrop-blur-md border border-white/5 hover:border-cyan-500/30 hover:shadow-[0_0_20px_rgba(34,211,238,0.1)] transition-all overflow-hidden flex flex-col group shadow-none p-0 rounded-3xl">
               <div 
-                className="h-44 bg-[#0a0a0a] relative flex items-center justify-center border-b border-white/5 overflow-hidden rounded-t-3xl cursor-pointer group/vid"
+                className={`bg-[#0a0a0a] relative flex items-center justify-center border-b border-white/5 overflow-hidden rounded-t-3xl cursor-pointer group/vid transition-all duration-300 ${
+                  isPlaying ? 'h-52 sm:h-64' : 'h-44'
+                }`}
                 onClick={() => !isPlaying && setPlayingVideo(videoId)}
               >
                 {isPlaying && videoId ? (
-                  <iframe 
-                    width="100%" 
-                    height="100%" 
-                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1`} 
-                    title={ex.n} 
-                    frameBorder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowFullScreen
-                    className="absolute inset-0 z-10"
-                  ></iframe>
+                  <>
+                    <iframe 
+                      width="100%" 
+                      height="100%" 
+                      src={`https://www.youtube.com/embed/${videoId}?autoplay=1`} 
+                      title={ex.n} 
+                      frameBorder="0" 
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                      allowFullScreen
+                      className="absolute inset-0 z-10"
+                    ></iframe>
+                    {/* Controls overlay */}
+                    <div className="absolute top-2 right-2 z-20 flex gap-1.5">
+                      <a
+                        href={`https://www.youtube.com/watch?v=${videoId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="w-8 h-8 rounded-lg bg-black/70 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-black/90 transition-colors"
+                        title="Mở fullscreen trên YouTube"
+                      >
+                        <Youtube className="w-4 h-4 text-red-400" />
+                      </a>
+                      <button
+                        onClick={e => { e.stopPropagation(); setPlayingVideo(null); }}
+                        className="w-8 h-8 rounded-lg bg-black/70 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-red-500/30 transition-colors"
+                        title="Đóng video"
+                      >
+                        <span className="text-white text-xs font-black">✕</span>
+                      </button>
+                    </div>
+                  </>
                 ) : (
                   <>
                     <img 
@@ -208,8 +232,8 @@ export default function Library() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent pointer-events-none opacity-80" />
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/vid:opacity-100 transition-opacity pointer-events-none">
-                      <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center">
-                        <PlayCircle className="w-6 h-6 text-white" />
+                      <div className="w-14 h-14 rounded-full bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center">
+                        <PlayCircle className="w-7 h-7 text-white" />
                       </div>
                     </div>
                   </>

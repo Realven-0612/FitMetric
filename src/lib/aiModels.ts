@@ -7,7 +7,10 @@
  * Change model names here only — all callers import from this file.
  */
 export const AI_MODELS = {
-  /** Default text generation (workout plans, nutrition, chat) */
+  /** Cerebras ultra-fast inference */
+  CEREBRAS_TEXT: "llama3.3-70b",
+
+  /** Default text generation (fallback) */
   GROQ_TEXT: "llama-3.3-70b-versatile",
 
   /** Vision / image analysis (food scanner, 3D body scanner) */
@@ -18,6 +21,7 @@ export const AI_MODELS = {
 } as const;
 
 export const AI_PROVIDERS = {
+  CEREBRAS: "cerebras",
   GROQ: "groq",
   GOOGLE: "google",
 } as const;

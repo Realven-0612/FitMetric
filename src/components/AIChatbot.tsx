@@ -37,7 +37,7 @@ interface Message {
 
 export default function AIChatbot() {
   const navigate = useNavigate();
-  const { profile, setProfile, addNutritionEntry } = useStore();
+  const { profile, setProfile, addNutritionEntry, removeNutritionEntry, addWater, workoutPlan, nutritionDiary, waterIntake } = useStore();
   const { t, language } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -138,51 +138,84 @@ export default function AIChatbot() {
   };
 
   const processWithAI = async (userInput: string, imageBase64?: string | null) => {
+    // Build today's context snapshot for the AI
+    const todayCalories = nutritionDiary.reduce((s, e) => s + (e.kcal || 0), 0);
+    const todayProtein  = nutritionDiary.reduce((s, e) => s + (e.protein || 0), 0);
+    const todayFoodLog  = nutritionDiary.slice(0, 8).map(e => `${e.name} (${e.kcal}kcal)`).join(', ') || 'Chưa có';
+
+    const todayDayIdx   = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+    const todayWorkout  = workoutPlan?.days?.[todayDayIdx];
+    const todayFocus    = todayWorkout?.focusName || 'Nghỉ';
+    const todayExNames  = todayWorkout?.exercises?.map((e: any) => e.name).join(', ') || 'Không có';
+
     const systemPrompt = `Bạn là FitMetric AI — trợ lý sức khỏe thông minh, thân thiện và am hiểu sâu về ứng dụng FitMetric.
 
-Thông tin người dùng hiện tại: ${JSON.stringify(profile)}
+=== THÔNG TIN NGƯỜI DÙNG ===
+Hồ sơ: ${JSON.stringify(profile)}
+
+=== HÔM NAY (cập nhật real-time) ===
+- Tổng calories nạp: ${todayCalories} kcal
+- Protein: ${todayProtein}g
+- Nước: ${waterIntake}ml
+- Đã ăn: ${todayFoodLog}
+- Bài tập hôm nay: ${todayFocus} — ${todayExNames}
+
+=== LỊCH TẬP HIỆN TẠI ===
+${workoutPlan ? workoutPlan.days?.map((d: any, i: number) => `${d.dayName || 'Ngày ' + (i+1)}: ${d.focusName} (${(d.exercises || []).map((e: any) => e.name).join(', ') || 'Nghỉ'})`).join('\n') : 'Chưa có lịch tập'}
 
 === CẤU TRÚC ỨNG DỤNG FITMETRIC ===
 - Dashboard: Tổng quan sức khỏe, calories, nước, protein, cân nặng, nhịp tim, bài tập hôm nay.
 - Training: Lịch tập AI cá nhân hóa (7 ngày), set logger, ghi chú hiệp tập.
 - Nutrition: Nhật ký ăn uống, scan đồ ăn bằng ảnh, công thức nấu ăn AI.
 - Watch/Wearables: Kết nối Strava, hướng dẫn đồng hồ thông minh.
-- Profile: Cập nhật chỉ số cơ thể, mục tiêu, ngôn ngữ (Tiếng Việt/English).
+- Profile: Cập nhật chỉ số cơ thể, mục tiêu, ngôn ngữ.
 
 === KHẢ NĂNG ĐẶC BIỆT ===
-Khi người dùng muốn cập nhật chỉ số (cân nặng, chiều cao...), hãy trả lời kèm JSON ở cuối:
+Khi người dùng muốn cập nhật chỉ số (cân nặng, chiều cao...):
 ACTION:UPDATE_PROFILE:{"weight": 75}
 
-Khi người dùng muốn thêm thức ăn, hãy trả lời kèm:
+Khi người dùng muốn thêm thức ăn:
 ACTION:ADD_FOOD:{"name": "Phở bò", "kcal": 450, "protein": 25, "carbs": 60, "fat": 8}
 
-Khi người dùng muốn tạo lịch tập mới, hãy trả lời kèm:
+Khi người dùng muốn xóa một món ăn khỏi nhật ký hôm nay (chỉ xóa món khớp tên):
+ACTION:REMOVE_FOOD:{"name": "Phở bò"}
+
+Khi người dùng muốn ghi nhận nước đã uống:
+ACTION:LOG_WATER:{"amount": 300}
+
+Khi người dùng muốn tạo lịch tập mới hoàn toàn:
 ACTION:REQUEST_WORKOUT:{"focus": "chest"}
 
+Khi người dùng muốn ĐỔI / THAY THẾ MỘT bài tập cụ thể:
+ACTION:REPLACE_EXERCISE:{"dayIndex": 0, "oldName": "Bench Press", "newName": "Dumbbell Press", "muscle": "Chest", "sets": "3x10", "rest": "90s"}
+- dayIndex: 0=Thứ 2, 1=Thứ 3, ..., 6=Chủ nhật
+- Nếu user chỉ muốn đổi 1 bài → dùng REPLACE_EXERCISE, KHÔNG dùng REQUEST_WORKOUT
+
 === QUY TẮC TRẢ LỜI ===
-- NGÔN NGỮ QUAN TRỌNG: ${language === 'en' ? 'BẠN BẮT BUỘC PHẢI TRẢ LỜI HOÀN TOÀN BẰNG TIẾNG ANH (ENGLISH) do user đang chọn ngôn ngữ tiếng Anh.' : 'Luôn trả lời bằng tiếng Việt (trừ khi user hỏi bằng tiếng Anh).'}
+- NGÔN NGỮ: ${language === 'en' ? 'BẠN BẮT BUỘC PHẢI TRẢ LỜI HOÀN TOÀN BẰNG TIẾNG ANH.' : 'Luôn trả lời bằng tiếng Việt (trừ khi user hỏi bằng tiếng Anh).'}
 - Súc tích, có cấu trúc, dùng emoji nhẹ nhàng khi phù hợp.
-- KHÔNG dùng dấu ** để in đậm, KHÔNG dùng ### hay ## để làm tiêu đề.
+- KHÔNG dùng dấu ** để in đậm, KHÔNG dùng ### hay ## làm tiêu đề.
 - Dùng số thứ tự (1. 2. 3.) hoặc dấu gạch đầu dòng (-) khi cần liệt kê.
 - Viết tự nhiên như đang nhắn tin, mỗi câu trả lời gọn trong 3-5 dòng nếu có thể.`;
 
-    const messages: any[] = [
+    // Build API payload (different var name to avoid shadowing React state)
+    const apiMessages: any[] = [
       { role: "system", content: systemPrompt }
     ];
 
-    // Thêm lịch sử chat gần nhất (tối đa 6 tin nhắn)
-    const recentMessages = messages.slice(-6);
-    for (const m of recentMessages) {
-      if (m.role !== 'system') {
-        messages.push({ role: m.role, content: m.content });
+    // Add conversation history (last 8 messages from React state)
+    const history = messages.slice(-8);
+    for (const m of history) {
+      if (m.id !== 'welcome' && m.id !== 'welcome-back') {
+        apiMessages.push({ role: m.role, content: m.content });
       }
     }
 
-    // Thêm tin nhắn hiện tại
+    // Add current message
     if (imageBase64) {
       const base64Data = imageBase64.split(',')[1];
       const mimeType = imageBase64.split(';')[0].replace('data:', '');
-      messages.push({
+      apiMessages.push({
         role: "user",
         content: [
           { type: "text", text: userInput || "Phân tích ảnh này giúp tôi." },
@@ -190,12 +223,12 @@ ACTION:REQUEST_WORKOUT:{"focus": "chest"}
         ]
       });
     } else {
-      messages.push({ role: "user", content: userInput });
+      apiMessages.push({ role: "user", content: userInput });
     }
 
     const response = await axios.post("/api/ai", {
-      model: AI_MODELS.GEMINI_FLASH_LITE,
-      messages,
+      model: AI_MODELS.CEREBRAS_TEXT,
+      messages: apiMessages,
     });
 
     const fullText: string = response.data.choices?.[0]?.message?.content || '';
@@ -213,8 +246,14 @@ ACTION:REQUEST_WORKOUT:{"focus": "chest"}
         handleUpdateProfile(actionData);
       } else if (actionType === 'ADD_FOOD') {
         handleAddFood(actionData);
+      } else if (actionType === 'REMOVE_FOOD') {
+        handleRemoveFood(actionData);
+      } else if (actionType === 'LOG_WATER') {
+        handleLogWater(actionData);
       } else if (actionType === 'REQUEST_WORKOUT') {
         handleRequestWorkout(actionData);
+      } else if (actionType === 'REPLACE_EXERCISE') {
+        handleReplaceExercise(actionData);
       }
     }
 
@@ -253,6 +292,25 @@ ACTION:REQUEST_WORKOUT:{"focus": "chest"}
     toast.success(t('toast_food_logged').replace('{name}', args.name));
   };
 
+  const handleRemoveFood = (args: any) => {
+    const { nutritionDiary } = useStore.getState();
+    const idx = nutritionDiary.findIndex(
+      (e) => e.name.toLowerCase().includes(args.name?.toLowerCase())
+    );
+    if (idx !== -1) {
+      removeNutritionEntry(idx);
+      toast.success(`ọRemoving "${nutritionDiary[idx].name}" khỏi nhật ký.`);
+    } else {
+      toast.error(`Không tìm thấy món "${args.name}" trong nhật ký hôm nay.`);
+    }
+  };
+
+  const handleLogWater = (args: any) => {
+    const amount = Number(args.amount) || 200;
+    addWater(amount);
+    toast.success(`💧 Đã ghi ${amount}ml nước`);
+  };
+
   const handleRequestWorkout = (args: any) => {
     localStorage.setItem('workout_request_intent', args.focus || 'updated');
     navigate('/training');
@@ -263,10 +321,47 @@ ACTION:REQUEST_WORKOUT:{"focus": "chest"}
     toast.info(t('toast_redirecting_training'));
   };
 
+  const handleReplaceExercise = (args: any) => {
+    const { workoutPlan, setWorkoutPlan } = useStore.getState();
+    if (!workoutPlan?.days) {
+      toast.error('Chưa có lịch tập để chỉnh sửa.');
+      return;
+    }
+
+    const { dayIndex, oldName, newName, muscle, sets, rest } = args;
+    const targetDayIdx = typeof dayIndex === 'number' ? dayIndex : 0;
+
+    const updatedDays = workoutPlan.days.map((day: any, i: number) => {
+      if (i !== targetDayIdx) return day;
+      const updatedExercises = day.exercises.map((ex: any) => {
+        const isMatch =
+          ex.name?.toLowerCase().includes(oldName?.toLowerCase()) ||
+          oldName?.toLowerCase().includes(ex.name?.toLowerCase());
+        if (!isMatch) return ex;
+        return {
+          ...ex,
+          name: newName,
+          muscle: muscle || ex.muscle,
+          sets: sets || ex.sets,
+          rest: rest || ex.rest,
+        };
+      });
+      return { ...day, exercises: updatedExercises };
+    });
+
+    setWorkoutPlan({ ...workoutPlan, days: updatedDays });
+    toast.success(`✅ Đã thay "${oldName}" → "${newName}"`);
+  };
+
+  const todayDayIdx = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+  const todayFocus  = workoutPlan?.days?.[todayDayIdx]?.focusName;
+  const totalKcal   = nutritionDiary.reduce((s, e) => s + (e.kcal || 0), 0);
+
   const quickActions = [
-    { label: 'Cập nhật cân nặng', icon: Activity },
-    { label: 'Thêm bữa ăn', icon: Apple },
-    { label: 'Tạo bài tập mới', icon: Dumbbell },
+    { label: language === 'en' ? 'Log water 300ml' : 'Uống nước 300ml', icon: Activity },
+    { label: language === 'en' ? 'Add meal' : 'Thêm bữa ăn', icon: Apple },
+    { label: language === 'en' ? 'Today\'s workout' : `Hôm nay: ${todayFocus || 'Xem lịch tập'}`, icon: Dumbbell },
+    { label: language === 'en' ? `Calories: ${totalKcal} kcal` : `Đã nạp: ${totalKcal} kcal`, icon: TrendingDown },
   ];
 
   return (
@@ -462,7 +557,7 @@ ACTION:REQUEST_WORKOUT:{"focus": "chest"}
                 </div>
               </div>
               <p className="text-[10px] text-center text-slate-600 font-bold uppercase tracking-widest mt-3 flex items-center justify-center gap-2">
-                <Sparkles className="w-3 h-3 text-purple-400" /> Powered by Groq AI
+                <Sparkles className="w-3 h-3 text-purple-400" /> Powered by Gemini
               </p>
             </div>
           </motion.div>

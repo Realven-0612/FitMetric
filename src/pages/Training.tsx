@@ -34,7 +34,8 @@ import {
   Unlink,
   RotateCcw,
   Video,
-  Trash2
+  Trash2,
+  Youtube
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "../lib/i18n";
@@ -1549,14 +1550,46 @@ export default function Training() {
 
                         {/* Video Embed Section */}
                         {activeVideoIndex === idx && (
-                          <div className="border-t border-white/5 bg-black/80 px-5 md:px-6 py-4 animate-in slide-in-from-top-2 fade-in duration-200">
-                            <div className="flex items-center gap-2 mb-3">
-                              <PlayCircle className="w-4 h-4 text-cyan-400" />
-                              <span className="text-xs font-bold text-slate-300 uppercase tracking-widest">
-                                {t('demonstration')}
-                              </span>
+                          <div className="border-t border-white/5 bg-black/90 animate-in slide-in-from-top-2 fade-in duration-200">
+                            <div className="flex items-center justify-between px-4 md:px-5 py-3">
+                              <div className="flex items-center gap-2">
+                                <PlayCircle className="w-4 h-4 text-cyan-400" />
+                                <span className="text-xs font-bold text-slate-300 uppercase tracking-widest">
+                                  {t('demonstration')}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                {/* Mở trên YouTube → mobile có thể full screen dễ dàng */}
+                                {(() => {
+                                  const lowerName = ex.name.toLowerCase().trim();
+                                  const mergedLibrary = { ...VIDEO_LIBRARY, ...customVideoLibrary };
+                                  let vid = mergedLibrary[lowerName] || null;
+                                  if (!vid) {
+                                    const sortedKeys = Object.keys(mergedLibrary).sort((a,b) => b.length - a.length);
+                                    for (const key of sortedKeys) { if (lowerName.includes(key)) { vid = mergedLibrary[key]; break; } }
+                                  }
+                                  return vid ? (
+                                    <a
+                                      href={`https://www.youtube.com/watch?v=${vid}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-1.5 text-[10px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-lg hover:bg-red-500/20 transition-colors"
+                                    >
+                                      <Youtube className="w-3.5 h-3.5" />
+                                      YouTube
+                                    </a>
+                                  ) : null;
+                                })()}
+                                <button
+                                  onClick={() => setActiveVideoIndex(null)}
+                                  className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-red-500/20 hover:border-red-500/30 transition-colors"
+                                >
+                                  <span className="text-slate-400 text-xs font-black">✕</span>
+                                </button>
+                              </div>
                             </div>
-                            <div className="relative w-full max-w-2xl mx-auto rounded-xl overflow-hidden bg-black aspect-video border border-white/10 shadow-lg">
+                            {/* Video: full-width, no side padding on mobile */}
+                            <div className="w-full aspect-video bg-black">
                               {getEmbeddedVideo(ex.name)}
                             </div>
                           </div>
