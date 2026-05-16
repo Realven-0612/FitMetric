@@ -97,7 +97,8 @@ export async function generateAIContent(
           content:
             "You are a helpful assistant. You must respond ONLY with a valid JSON object. " +
             "Do NOT use markdown, code blocks, or bullet points. " +
-            "All list items must be proper quoted strings in JSON arrays.",
+            "All list items must be proper quoted strings in JSON arrays. " +
+            `\n\nREQUIRED JSON SCHEMA:\n${JSON.stringify(schema, null, 2)}`,
         },
         { role: "user", content: prompt },
       ]
@@ -151,7 +152,8 @@ export async function analyzeAIImage(
           content:
             "You are a helpful assistant. You must respond ONLY with a valid JSON object or array. " +
             "Do NOT use markdown lists or bullet points (like '*') inside JSON arrays. " +
-            "All list items must be proper quoted strings.",
+            "All list items must be proper quoted strings. " +
+            `\n\nREQUIRED JSON SCHEMA:\n${JSON.stringify(schema, null, 2)}`,
         },
         { role: "user", content: userContent },
       ]
