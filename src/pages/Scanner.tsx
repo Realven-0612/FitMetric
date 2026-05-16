@@ -83,6 +83,7 @@ export default function Scanner() {
           console.log("[Scanner] Storage upload OK, URL:", imageUrl);
           
           await addDoc(collection(db, "users", user.uid, "scans"), {
+            userId: user.uid,
             date: new Date().toISOString(),
             image: imageUrl,
             isDeleted: false,
