@@ -5,6 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Fingerprint, Camera, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { analyzeAIImage } from "../lib/ai";
+import { useAuth } from "../components/AuthProvider";
+import { db, storage } from "../lib/firebase";
+import { collection, addDoc } from "firebase/firestore";
+import { ref, uploadString, getDownloadURL } from "firebase/storage";
 
 export default function Scanner() {
   const [image, setImage] = useState<string | null>(null);
@@ -13,6 +17,7 @@ export default function Scanner() {
   const [useWebcam, setUseWebcam] = useState(false);
   const webcamRef = useRef<Webcam>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
 
   const capture = () => {
     const imageSrc = webcamRef.current?.getScreenshot();
@@ -62,8 +67,27 @@ export default function Scanner() {
       const data = await analyzeAIImage(prompt, base64Data, mimeType, schema);
       setAnalysis(data);
       
+      let imageUrl = image;
+      
+      if (user) {
+        try {
+          const imageRef = ref(storage, `users/${user.uid}/scans/${Date.now()}.${mimeType === 'jpeg' ? 'jpg' : mimeType}`);
+          await uploadString(imageRef, base64Data, 'base64');
+          imageUrl = await getDownloadURL(imageRef);
+          
+          await addDoc(collection(db, "users", user.uid, "scans"), {
+            date: new Date().toISOString(),
+            image: imageUrl,
+            ...data
+          });
+        } catch (err) {
+          console.error("Firebase upload failed:", err);
+          toast.warning("Saved locally, but failed to sync to cloud.");
+        }
+      }
+
       const history = JSON.parse(localStorage.getItem('scan_history') || '[]');
-      history.unshift({ date: new Date().toISOString(), image: image, ...data });
+      history.unshift({ date: new Date().toISOString(), image: imageUrl, ...data });
       localStorage.setItem('scan_history', JSON.stringify(history));
       toast.success("Analysis complete!");
     } catch (err) {
