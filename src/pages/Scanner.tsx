@@ -69,27 +69,37 @@ export default function Scanner() {
       
       let imageUrl = image;
       
+      console.log("[Scanner] user:", user?.uid ?? "NOT LOGGED IN");
+
       if (user) {
         try {
-          const imageRef = ref(storage, `users/${user.uid}/scans/${Date.now()}.${mimeType === 'jpeg' ? 'jpg' : mimeType}`);
+          console.log("[Scanner] Uploading to Firebase Storage...");
+          const ext = mimeType.split('/')[1] || 'jpg';
+          const imageRef = ref(storage, `users/${user.uid}/scans/${Date.now()}.${ext}`);
           await uploadString(imageRef, image, 'data_url');
           imageUrl = await getDownloadURL(imageRef);
+          console.log("[Scanner] Storage upload OK, URL:", imageUrl);
           
           await addDoc(collection(db, "users", user.uid, "scans"), {
             date: new Date().toISOString(),
             image: imageUrl,
+            isDeleted: false,
             ...data
           });
-        } catch (err) {
-          console.error("Firebase upload failed:", err);
-          toast.warning("Saved locally, but failed to sync to cloud.");
+          console.log("[Scanner] Firestore doc saved OK");
+          toast.success("Analysis complete & synced to cloud!");
+        } catch (err: any) {
+          console.error("[Scanner] Firebase save FAILED:", err?.code, err?.message);
+          toast.warning(`Cloud sync failed: ${err?.message || 'unknown error'}`);
         }
+      } else {
+        console.warn("[Scanner] User not logged in – saving to localStorage only.");
+        toast.success("Analysis complete! (Sign in to save to cloud)");
       }
 
       const history = JSON.parse(localStorage.getItem('scan_history') || '[]');
       history.unshift({ date: new Date().toISOString(), image: imageUrl, ...data });
       localStorage.setItem('scan_history', JSON.stringify(history));
-      toast.success("Analysis complete!");
     } catch (err) {
       console.error(err);
       toast.error("Failed to analyze image.");
