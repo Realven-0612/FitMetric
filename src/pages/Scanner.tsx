@@ -72,7 +72,7 @@ export default function Scanner() {
       if (user) {
         try {
           const imageRef = ref(storage, `users/${user.uid}/scans/${Date.now()}.${mimeType === 'jpeg' ? 'jpg' : mimeType}`);
-          await uploadString(imageRef, base64Data, 'base64');
+          await uploadString(imageRef, image, 'data_url');
           imageUrl = await getDownloadURL(imageRef);
           
           await addDoc(collection(db, "users", user.uid, "scans"), {
