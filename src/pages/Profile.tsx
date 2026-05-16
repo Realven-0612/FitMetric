@@ -468,7 +468,7 @@ export default function Profile() {
                                <div className="flex gap-4 sm:gap-6 bg-black/40 px-4 py-3 rounded-2xl border border-white/5 shadow-inner">
                                   <div>
                                      <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">{t('body_fat_label')}</div>
-                                     <div className="text-xl font-black text-cyan-400">{scan.bodyFatEstimate}%</div>
+                                     <div className="text-xl font-black text-cyan-400">{String(scan.bodyFatEstimate).replace('%', '')}%</div>
                                   </div>
                                   <div>
                                      <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">{t('aesthetics_label')}</div>
