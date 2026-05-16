@@ -42,7 +42,8 @@ export default function Scanner() {
       const mimeType = image.split(";")[0].split(":")[1];
 
       const prompt = `You are a professional fitness coach and AI body analyst. 
-      Analyze the person in this image. Provide a detailed assessment of their current physique.`;
+      Analyze the person in this image. Provide a detailed assessment of their current physique.
+      Be encouraging but objective. Score their fitness level strictly on a scale of 1 to 100.`;
 
       const schema = {
         type: "object",
@@ -53,7 +54,7 @@ export default function Scanner() {
           strengths: { type: "array", items: { type: "string" } },
           weaknesses: { type: "array", items: { type: "string" } },
           recommendation: { type: "string" },
-          score: { type: "number" }
+          score: { type: "number", description: "Fitness score strictly from 1 to 100." }
         },
         required: ["bodyFatEstimate", "physiqueType", "muscleMass", "strengths", "weaknesses", "recommendation", "score"]
       };
