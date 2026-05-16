@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthProvider";
 import { db } from "../lib/firebase";
-import { doc, collection, getDocs, deleteDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, collection, onSnapshot, deleteDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useTranslation } from "../lib/i18n";
 import { useStore, calculateAge } from '../lib/store';
 import { handleFirestoreError, OperationType } from "../services/firebaseService";
@@ -93,28 +93,24 @@ export default function Profile() {
       return;
     }
 
-    const loadScans = async () => {
-      setDataLoading(true);
-      try {
-        const scansRef = collection(db, "users", user.uid, "scans");
-        const querySnapshot = await getDocs(scansRef);
-        const scans: any[] = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          if (data.isDeleted !== true) {
-            scans.push({ id: doc.id, ...data });
-          }
-        });
-        scans.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setScanHistory(scans);
-      } catch (error) {
-        console.error("Error loading scans:", error);
-      } finally {
-        setDataLoading(false);
-      }
-    };
+    const scansRef = collection(db, "users", user.uid, "scans");
+    const unsubscribe = onSnapshot(scansRef, (snapshot) => {
+      const scans: any[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.isDeleted !== true) {
+          scans.push({ id: doc.id, ...data });
+        }
+      });
+      scans.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setScanHistory(scans);
+      setDataLoading(false);
+    }, (error) => {
+      console.error("Error listening to scans:", error);
+      setDataLoading(false);
+    });
 
-    loadScans();
+    return () => unsubscribe();
   }, [user]);
 
   useEffect(() => {
