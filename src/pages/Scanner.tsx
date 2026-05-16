@@ -73,9 +73,11 @@ export default function Scanner() {
 
       if (user) {
         try {
-          console.log("[Scanner] Uploading to Firebase Storage...");
-          const ext = mimeType.split('/')[1] || 'jpg';
+          console.log("[Scanner] Uploading to Firebase Storage. Bucket:", storage.app.options.storageBucket);
+          const ext = mimeType.split('/')[1]?.split(';')[0] || 'jpg';
           const imageRef = ref(storage, `users/${user.uid}/scans/${Date.now()}.${ext}`);
+          
+          console.log("[Scanner] Target path:", imageRef.fullPath);
           await uploadString(imageRef, image, 'data_url');
           imageUrl = await getDownloadURL(imageRef);
           console.log("[Scanner] Storage upload OK, URL:", imageUrl);
