@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthProvider";
 import { db } from "../lib/firebase";
-import { doc, collection, getDocs, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { doc, collection, getDocs, deleteDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useTranslation } from "../lib/i18n";
 import { useStore, calculateAge } from '../lib/store';
 import { handleFirestoreError, OperationType } from "../services/firebaseService";
@@ -100,7 +100,10 @@ export default function Profile() {
         const querySnapshot = await getDocs(scansRef);
         const scans: any[] = [];
         querySnapshot.forEach((doc) => {
-          scans.push({ id: doc.id, ...doc.data() });
+          const data = doc.data();
+          if (data.isDeleted !== true) {
+            scans.push({ id: doc.id, ...data });
+          }
         });
         scans.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setScanHistory(scans);
@@ -227,7 +230,10 @@ export default function Profile() {
 
     if (id) {
       try {
-        await deleteDoc(doc(db, "users", user.uid, "scans", id));
+        await setDoc(doc(db, "users", user.uid, "scans", id), {
+          isDeleted: true,
+          deletedAt: serverTimestamp()
+        }, { merge: true });
         setScanHistory(prev => prev.filter(s => s.id !== id));
       } catch (error) {
         handleFirestoreError(error, OperationType.DELETE, `users/${user.uid}/scans/${id}`);
