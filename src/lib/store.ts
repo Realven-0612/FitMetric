@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { syncProfile, saveWorkoutPlan, logFoodItem, logWeightRecord, deleteFoodItem, saveExerciseWeights } from '../services/firebaseService';
+import { toast } from 'sonner';
 
 interface UserProfile {
   name?: string;
@@ -198,6 +199,10 @@ export const useStore = create<AppState>()(
 
       nutritionDiary: [],
       addNutritionEntry: (entry) => {
+        if (entry.kcal > 5000 || entry.protein > 300 || entry.carbs > 600 || entry.fat > 300) {
+          toast.warning("Lượng dinh dưỡng của món này có vẻ cao bất thường. Hãy kiểm tra lại số liệu!");
+        }
+        
         const enhancedEntry = {
           ...entry,
           id: entry.id || crypto.randomUUID(),
@@ -220,7 +225,13 @@ export const useStore = create<AppState>()(
       clearNutritionDiary: () => set({ nutritionDiary: [] }),
       waterIntake: 0,
       addWater: (amount) => {
-        set((state) => ({ waterIntake: state.waterIntake + amount }));
+        set((state) => {
+          const newIntake = state.waterIntake + amount;
+          if (newIntake > 8000) {
+            toast.warning("Bạn đã uống hơn 8 lít nước hôm nay. Cẩn thận nguy cơ ngộ độc nước (Water Intoxication)!");
+          }
+          return { waterIntake: newIntake };
+        });
         // Log water to firestore via nutrition entry hack
         logFoodItem({
           name: 'WaterLoggedByApp',

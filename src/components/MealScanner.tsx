@@ -14,6 +14,7 @@ export function MealScanner({ onFoodDetected, onClose }: MealScannerProps) {
   const [image, setImage] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [useWebcam, setUseWebcam] = useState(false);
+  const [additionalContext, setAdditionalContext] = useState("");
   const webcamRef = useRef<Webcam>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -44,32 +45,39 @@ export function MealScanner({ onFoodDetected, onClose }: MealScannerProps) {
       const mimeType = image.split(";")[0].split(":")[1];
 
       const prompt = `
-        Analyze this food image. Estimate the nutrition facts for the entire portion shown.
-        Return a JSON object with:
-        - name: A descriptive name of the dish.
-        - kcal: Total calories (number).
-        - protein: Total protein in grams (number).
-        - carbs: Total carbohydrates in grams (number).
-        - fat: Total fat in grams (number).
-        - confidence: 1-100 score of your estimation.
+        Analyze this image. First, determine if it contains food or beverages.
+        If it does NOT contain food/beverages, set isFood to false and return 0 for macros.
+        If it contains food, estimate the nutrition facts for the ENTIRE portion shown. 
+        Context: The user is likely in Vietnam, so prioritize Vietnamese cuisine (Phở, Bún, Cơm tấm, etc.) if applicable.
+        ${additionalContext.trim() ? `\nIMPORTANT USER INPUT: "${additionalContext}". Use this information to accurately determine the weight or composition of the dish.\n` : ""}
+        Pay very close attention to the portion size (bowl size, amount of rice/meat/soup).
       `;
 
       const schema = {
         type: "object",
         properties: {
-          name: { type: "string" },
+          isFood: { type: "boolean", description: "True if the image actually contains edible food or drinks." },
+          name: { type: "string", description: "Descriptive name of the dish (in Vietnamese if applicable)." },
+          details: { type: "string", description: "Brief breakdown of the ingredients and portion size seen." },
           kcal: { type: "number" },
           protein: { type: "number" },
           carbs: { type: "number" },
           fat: { type: "number" },
           confidence: { type: "number" }
         },
-        required: ["name", "kcal", "protein", "carbs", "fat"]
+        required: ["isFood", "name", "kcal", "protein", "carbs", "fat"]
       };
 
       const result = await analyzeAIImage(prompt, base64Data, mimeType, schema);
+      
+      if (!result.isFood) {
+        toast.error("Không nhận diện được thức ăn trong ảnh. Vui lòng chụp rõ hơn!");
+        setImage(null);
+        return;
+      }
+
       onFoodDetected(result);
-      toast.success(`Logged ${result.name}! (AI Confidence: ${result.confidence}%)`);
+      toast.success(`Đã quét: ${result.name} (${result.kcal} kcal)`);
       onClose();
     } catch (err) {
       console.error(err);
@@ -162,7 +170,16 @@ export function MealScanner({ onFoodDetected, onClose }: MealScannerProps) {
           )}
         </div>
 
-        <div className="p-8 pt-0">
+        <div className="p-8 pt-0 flex flex-col gap-4">
+          {image && !useWebcam && !isScanning && (
+            <input 
+              type="text" 
+              placeholder="Ghi chú thêm (vd: 300g bò, 1 tô lớn...)" 
+              value={additionalContext}
+              onChange={(e) => setAdditionalContext(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-2xl h-12 px-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 transition-colors"
+            />
+          )}
           <Button 
             onClick={scanMeal} 
             disabled={!image || isScanning}
