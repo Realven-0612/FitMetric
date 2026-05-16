@@ -161,7 +161,7 @@ export default function Scanner() {
                   <div className="grid grid-cols-2 gap-4">
                      <Card className="bg-white/5 p-4 rounded-2xl border-white/10">
                         <p className="text-[10px] text-slate-500 uppercase font-black">Body Fat</p>
-                        <p className="text-3xl font-black text-primary">{analysis.bodyFatEstimate}%</p>
+                        <p className="text-3xl font-black text-primary">{String(analysis.bodyFatEstimate).replace('%', '')}%</p>
                      </Card>
                      <Card className="bg-white/5 p-4 rounded-2xl border-white/10">
                         <p className="text-[10px] text-slate-500 uppercase font-black">Fitness Score</p>
