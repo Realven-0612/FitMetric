@@ -167,7 +167,13 @@ export default function Dashboard() {
   const currentHour = new Date().getHours();
   const showProteinAlert = currentHour >= 16 && consumedPro < (targetPro * 0.8);
   const showWaterAlert = (currentHour >= 14 && waterIntake < (waterTarget * 0.5)) || (currentHour >= 18 && waterIntake < waterTarget);
-  const showWorkoutAlert = currentHour >= 17 && nextOperation !== "Rest" && Object.keys(sessionLogs || {}).length === 0;
+  
+  const isRestDayToday = 
+    nextOperation.toLowerCase().includes("rest") || 
+    nextOperation.toLowerCase().includes("nghỉ") ||
+    nextOperation.toLowerCase().includes("recovery");
+
+  const showWorkoutAlert = currentHour >= 17 && !isRestDayToday && Object.keys(sessionLogs || {}).length === 0;
 
   if (authLoading) return <SkeletonDashboard />;
 
@@ -239,9 +245,13 @@ export default function Dashboard() {
                     <div className="text-lg sm:text-xl font-bold text-white leading-tight mb-1 truncate">
                       {nextOperation}
                     </div>
-                    <div className="text-xs text-slate-500 font-medium font-mono uppercase">
-                      {nextWeightHint ? `${t('suggested')}: ${nextWeightHint}` : t('ready_to_engage')}
-                    </div>
+                     <div className="text-xs text-slate-500 font-medium font-mono uppercase">
+                       {nextWeightHint 
+                         ? `${t('suggested')}: ${nextWeightHint}` 
+                         : isRestDayToday 
+                           ? t('rest_recovery') 
+                           : t('ready_to_engage')}
+                     </div>
                  </div>
 
                  {/* CURRENT WEIGHT */}
