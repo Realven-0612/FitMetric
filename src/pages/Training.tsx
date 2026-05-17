@@ -35,7 +35,8 @@ import {
   RotateCcw,
   Video,
   Trash2,
-  Youtube
+  Youtube,
+  Pause
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "../lib/i18n";
@@ -89,6 +90,43 @@ export interface WorkoutPlan {
   completedSessions?: number;
   currentCycle?: number;
 }
+
+const getExerciseRest = (ex: Exercise, lang: string) => {
+  if (ex.rest && ex.rest !== '—') return ex.rest;
+  const name = ex.name.toLowerCase();
+  const isHeavy = name.includes('squat') || name.includes('deadlift') || name.includes('bench') || name.includes('overhead press') || name.includes('military press');
+  if (isHeavy) {
+    return lang === 'vi' ? '3 phút' : '3 min';
+  }
+  return lang === 'vi' ? '90s' : '90s';
+};
+
+const parseRestToSeconds = (restStr?: string): number => {
+  if (!restStr) return 90;
+  const cleaned = restStr.toLowerCase().trim();
+  
+  if (/^\d+$/.test(cleaned)) {
+    return parseInt(cleaned, 10);
+  }
+  
+  const minMatch = cleaned.match(/(\d+(\.\d+)?)\s*(min|m|phút|phut)/);
+  if (minMatch) {
+    return Math.round(parseFloat(minMatch[1]) * 60);
+  }
+  
+  const secMatch = cleaned.match(/(\d+)\s*(s|sec|giây|giay)/);
+  if (secMatch) {
+    return parseInt(secMatch[1], 10);
+  }
+  
+  const numMatch = cleaned.match(/(\d+)/);
+  if (numMatch) {
+    const num = parseInt(numMatch[1], 10);
+    return num < 10 ? num * 60 : num;
+  }
+  
+  return 90;
+};
 
 // A fallback mapping to ensure the most common exercises have beautiful embedded videos
 const VIDEO_LIBRARY: Record<string, string> = {
@@ -542,9 +580,10 @@ export default function Training() {
       5. Provide an accurate youtubeQuery string (e.g. "Barbell Bench Press tutorial form") for each exercise. Always keep this string in English.
       6. Provide a list of dynamic warm-up exercises in the 'warmup' array and a list of static cool-down stretches in the 'cooldown' array based on the day's focus. Write them in ${language === 'vi' ? 'Vietnamese' : 'English'}.
       7. Provide a 'recommendedWeight' (e.g. "20kg", "Bodyweight", "15kg per dumbbell") for each exercise. Always provide a single specific number, not a range.
-         IMPORTANT: If an exercise exists in "Current Personal Best Weights", recommend a weight that is 2.5% to 5% higher (Progressive Overload). 
+         IMPORTANT: If an exercise exists in "Current Personal Best Weights", recommend a weight that is 2.5% to 5% higher (Progressive Overload).
          If it's a new exercise, estimate based on the user's weight (e.g. Bench Press often starts around 40-50% bodyweight for beginners, Squat 60-70%).
-      8. If Output Language is Vietnamese, MUST translate "to failure" as "đến ngưỡng thất bại" (do NOT use "đến khi không thực hiện được nữa").`;
+      8. If Output Language is Vietnamese, MUST translate "to failure" as "đến ngưỡng thất bại" (do NOT use "đến khi không thực hiện được nữa").
+      9. Provide a 'rest' time (e.g. "90s", "2 phút" / "2 min") for each exercise in the 'rest' property based on its intensity. Recommend "3 phút" / "3 min" for heavy compounds, and "90s" or "60s" for isolation lifts.`;
 
       const schema = {
         type: "object",
@@ -579,7 +618,7 @@ export default function Training() {
                       youtubeQuery: { type: "string" },
                       recommendedWeight: { type: "string" },
                     },
-                    required: ["name", "muscle", "sets"],
+                    required: ["name", "muscle", "sets", "rest"],
                   },
                 },
               },
@@ -1523,7 +1562,7 @@ export default function Training() {
                             {/* Nghỉ */}
                             <div className="bg-black/60 border border-white/5 rounded-lg px-2 py-1.5 flex flex-col gap-0.5 min-w-0">
                               <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{t('rest_label')}</span>
-                              <span className="text-slate-300 font-black text-[10px] leading-tight">{ex.rest || '—'}</span>
+                              <span className="text-slate-300 font-black text-[10px] leading-tight">{getExerciseRest(ex, language)}</span>
                             </div>
                             {/* Gợi ý — bấm để apply */}
                             <button
@@ -1541,8 +1580,9 @@ export default function Training() {
                             currentWeight={exerciseWeights[ex.name] || 0}
                             logs={sessionLogs[ex.name] || []}
                             onLog={(w, r) => {
-                              const isHeavy = ex.name.toLowerCase().includes('squat') || ex.name.toLowerCase().includes('deadlift') || ex.name.toLowerCase().includes('bench');
-                              logSet(ex.name, w, r, isHeavy ? 180 : 90);
+                              const restStr = getExerciseRest(ex, language);
+                              const seconds = parseRestToSeconds(restStr);
+                              logSet(ex.name, w, r, seconds);
                             }}
                             onDelete={(idx) => removeLogSet(ex.name, idx)}
                           />
@@ -1718,7 +1758,16 @@ export default function Training() {
           </div>
         </div>
       )}
-      {plan && <RestTimerUI />}
+      {plan && (
+        <RestTimerUI 
+          active={timerActive}
+          setActive={setTimerActive}
+          seconds={timerSeconds}
+          setSeconds={setTimerSeconds}
+          total={timerTotal}
+          setTotal={setTimerTotal}
+        />
+      )}
       
       {/* Personal Bests Edit Modal */}
       {showPBModal && (
@@ -1852,40 +1901,108 @@ function SetLogger({ exercise, currentWeight, logs, onLog, onDelete }: {
   );
 }
 
-function RestTimerUI() {
+function RestTimerUI({
+  active,
+  setActive,
+  seconds,
+  setSeconds,
+  total,
+  setTotal
+}: {
+  active: boolean;
+  setActive: (a: boolean) => void;
+  seconds: number;
+  setSeconds: React.Dispatch<React.SetStateAction<number>>;
+  total: number;
+  setTotal: React.Dispatch<React.SetStateAction<number>>;
+}) {
   const { t } = useTranslation();
-  const [seconds, setSeconds] = useState(0);
-  const [active, setActive] = useState(false);
 
-  useEffect(() => {
-    let interval: any;
-    if (active) {
-      interval = setInterval(() => setSeconds(s => s + 1), 1000);
-    }
-    return () => clearInterval(interval);
-  }, [active]);
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
 
-  if (!active && seconds === 0) return (
-    <Button 
-      onClick={() => setActive(true)}
-      className="fixed bottom-24 right-6 bg-cyan-600 text-white rounded-full p-4 shadow-xl z-50 overflow-hidden group hover:scale-110 transition-all border border-cyan-400/50"
-    >
-      <Zap className="w-6 h-6" />
-    </Button>
-  );
+  const handleAdd30s = () => {
+    setSeconds(prev => prev + 30);
+    setTotal(prev => prev + 30);
+  };
+
+  const handleReset = () => {
+    setActive(false);
+    setSeconds(0);
+    setTotal(0);
+  };
+
+  const startQuickTimer = () => {
+    setTotal(90);
+    setSeconds(90);
+    setActive(true);
+  };
+
+  if (!active && seconds === 0) {
+    return (
+      <Button 
+        onClick={startQuickTimer}
+        className="fixed bottom-24 right-6 bg-cyan-500 hover:bg-cyan-400 text-black rounded-full w-14 h-14 flex items-center justify-center shadow-[0_0_20px_rgba(34,211,238,0.4)] z-50 transition-all border border-cyan-300/30 hover:scale-110 active:scale-95"
+        title={t('rest_timer') || "Start Rest"}
+      >
+        <Zap className="w-6 h-6 fill-current" />
+      </Button>
+    );
+  }
+
+  const progress = total > 0 ? (seconds / total) * 100 : 0;
+  const isUrgent = seconds <= 10;
 
   return (
-    <div className="fixed bottom-24 right-6 bg-[#0a0a0c] border border-cyan-500/30 rounded-3xl p-4 shadow-2xl z-50 flex items-center gap-4 animate-in slide-in-from-right-4">
-      <div className="text-2xl font-black text-cyan-400 font-mono w-16 text-center">
-        {Math.floor(seconds / 60)}:{(seconds % 60).toString().padStart(2, '0')}
+    <div className={`fixed bottom-24 right-6 bg-black/85 backdrop-blur-xl border ${isUrgent ? 'border-red-500/40 shadow-[0_0_30px_rgba(239,68,68,0.15)] animate-pulse' : 'border-cyan-500/30 shadow-[0_0_30px_rgba(34,211,238,0.15)]'} rounded-3xl p-4 z-50 flex items-center gap-4 animate-in slide-in-from-right-4 transition-all duration-300`}>
+      <div className="relative flex items-center justify-center w-16 h-16 rounded-full border border-white/5 bg-black/60 overflow-hidden">
+        <div 
+          className={`absolute inset-0 transition-all duration-1000 opacity-20 ${isUrgent ? 'bg-red-500' : 'bg-cyan-500'}`}
+          style={{ clipPath: `inset(${100 - progress}% 0px 0px 0px)` }}
+        />
+        <div className={`relative z-10 text-xl font-black font-mono tracking-wider ${isUrgent ? 'text-red-400' : 'text-cyan-400'}`}>
+          {formatTime(seconds)}
+        </div>
       </div>
-      <div className="flex gap-2">
-        <Button size="icon" onClick={() => setActive(!active)} variant="ghost" className="text-white hover:bg-white/10">
-          <Play className="w-4 h-4" />
-        </Button>
-        <Button size="icon" onClick={() => { setActive(false); setSeconds(0); }} variant="ghost" className="text-red-400 hover:bg-red-500/10">
-          <RotateCcw className="w-4 h-4" />
-        </Button>
+
+      <div className="flex flex-col gap-1.5">
+        <div className="flex gap-1.5">
+          <Button 
+            size="icon" 
+            variant="ghost"
+            onClick={() => setActive(!active)} 
+            className="w-8 h-8 rounded-xl hover:bg-white/10 text-white active:scale-95 transition-transform"
+          >
+            {active ? <Pause className="w-4 h-4 fill-current text-white" /> : <Play className="w-4 h-4 fill-current text-cyan-400" />}
+          </Button>
+
+          <Button 
+            size="icon" 
+            variant="ghost"
+            onClick={handleAdd30s} 
+            className="w-8 h-8 rounded-xl hover:bg-white/10 text-slate-300 font-black text-xs"
+            title="+30 seconds"
+          >
+            +30s
+          </Button>
+
+          <Button 
+            size="icon" 
+            variant="ghost"
+            onClick={handleReset} 
+            className="w-8 h-8 rounded-xl hover:bg-red-500/10 text-slate-400 hover:text-red-400 active:scale-95 transition-transform"
+            title="Cancel"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+        
+        <span className={`text-[8px] font-black uppercase tracking-widest text-center ${isUrgent ? 'text-red-400' : 'text-slate-500'}`}>
+          {isUrgent ? (t('next_set_ready') || 'Hurry Up') : (t('rest_timer') || 'RESTING')}
+        </span>
       </div>
     </div>
   );
