@@ -52,18 +52,53 @@ export default function AIChatbot() {
     const userId = profile?.name || 'guest';
     const welcomeKey = `ai_welcome_${userId}`;
     const hasSeenWelcome = localStorage.getItem(welcomeKey);
+    const justFinishedOnboarding = localStorage.getItem("just_finished_onboarding") === "true";
     
-    if (!hasSeenWelcome && profile) {
+    if ((justFinishedOnboarding || !hasSeenWelcome) && profile) {
+      // Clear the onboarding flag
+      localStorage.removeItem("just_finished_onboarding");
+
+      // Construct a highly personalized and beautifully guided welcome message
+      const goalText = profile.primaryGoal === 'Lose Fat' ? (language === 'vi' ? 'Giảm mỡ' : 'Lose Fat')
+                     : profile.primaryGoal === 'Build Muscle' ? (language === 'vi' ? 'Tăng cơ' : 'Build Muscle')
+                     : profile.primaryGoal === 'Strength' ? (language === 'vi' ? 'Tăng sức mạnh' : 'Strength')
+                     : profile.primaryGoal === 'Endurance' ? (language === 'vi' ? 'Tăng sức bền' : 'Endurance')
+                     : (language === 'vi' ? 'Cải thiện sức khỏe' : 'Improve health');
+
+      const styleText = profile.preferredStyle === 'Gym' ? (language === 'vi' ? 'Tập ở phòng Gym' : 'Gym training')
+                      : profile.preferredStyle === 'Calisthenics' ? (language === 'vi' ? 'Tập Calisthenics' : 'Calisthenics')
+                      : profile.preferredStyle === 'Home' ? (language === 'vi' ? 'Tập tại Nhà' : 'Home workout')
+                      : (language === 'vi' ? 'Tập luyện' : 'Training');
+
+      const welcomeContent = language === 'en'
+        ? `Welcome to FitMetric, ${profile.name}! 🎉 I am your dedicated AI Health & Fitness assistant. Since your goal is **${goalText}** with **${styleText}**, here is your step-by-step roadmap to get started:
+
+1️⃣ **Generate AI Workout**: Go to "Training" tab, press "Customize Plan" to design your highly optimized 7-day routine. You can log sets & weights here!
+2️⃣ **Log Meals & Nutrition**: Go to "Nutrition" tab, press "Quét bữa ăn qua ảnh" to scan food with AI, or ask me (e.g., "Add 1 bowl of Pho beef").
+3️⃣ **Log Water**: Click the quick suggestions below, or type "Log 300ml water".
+4️⃣ **Scan Body & Posture**: Go to "Body Scanner" tab, upload a pose photo to estimate your body fat % and posture analysis.
+
+Let's crush your goals together! What would you like to start with? 💪`
+        : `Chào mừng bạn đến với FitMetric, ${profile.name}! 🎉 Tôi là trợ lý sức khỏe FitMetric AI của bạn. Với mục tiêu **${goalText}** bằng phương pháp **${styleText}**, tôi xin hướng dẫn bạn lộ trình từng bước để bắt đầu:
+
+1️⃣ **Tạo lịch tập luyện AI**: Vào tab "Tập luyện", nhấn "Thiết lập giáo án" để AI thiết kế lịch tập 7 ngày. Bạn có thể ghi nhận mức tạ, số rep và tích hoàn thành hiệp tập trực tiếp!
+2️⃣ **Nhật ký ăn uống & Quét bữa ăn**: Vào tab "Dinh dưỡng", nhấn "Quét bữa ăn qua ảnh" để AI tự động phân tích kcal/macros đĩa ăn, hoặc ra lệnh cho tôi (ví dụ: "Thêm 1 bát phở bò").
+3️⃣ **Ghi lượng nước uống**: Bấm phím tắt nhanh bên dưới, hoặc nhắn tôi "Uống nước 300ml".
+4️⃣ **Phân tích vóc dáng**: Vào tab "Body Scanner", tải ảnh toàn thân đứng thẳng để AI ước lượng tỉ lệ mỡ và phân tích tư thế đứng.
+
+Hãy nhắn bất cứ câu hỏi nào để bắt đầu hành trình nâng tầm vóc dáng cùng nhau nhé! 💪`;
+
       setMessages([{
         id: 'welcome',
         role: 'assistant',
-        content: language === 'en' 
-          ? `Hello ${profile.name || 'there'}! 👋 I am FitMetric AI. I can help you track nutrition, update body metrics, or design personalized workouts. Where would you like to start?`
-          : `Xin chào ${profile.name || 'bạn'}! 👋 Tôi là FitMetric AI. Tôi có thể giúp bạn theo dõi dinh dưỡng, cập nhật chỉ số cơ thể hoặc thiết kế bài tập cá nhân hóa. Bạn muốn bắt đầu từ đâu?`,
+        content: welcomeContent,
         timestamp: Date.now(),
       }]);
+      
       localStorage.setItem(welcomeKey, 'true');
-      setTimeout(() => setIsOpen(true), 1500);
+      
+      // Auto open chatbot with a smooth premium delay
+      setTimeout(() => setIsOpen(true), 2000);
     } else if (messages.length === 0) {
       setMessages([
         {

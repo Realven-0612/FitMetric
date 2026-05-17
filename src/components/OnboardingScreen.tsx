@@ -66,6 +66,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
       activityLevel: form.activityLevel,
     });
     localStorage.setItem("fitmetric_onboarding_done", "true");
+    localStorage.setItem("just_finished_onboarding", "true");
     onComplete();
   };
 
