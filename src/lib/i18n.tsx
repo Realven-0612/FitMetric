@@ -81,6 +81,15 @@ const translations = {
     personal_best: 'Personal Best',
     update_pb: 'Update your PB weight',
     close: 'Close',
+    breakfast: 'Breakfast',
+    lunch: 'Lunch',
+    dinner: 'Dinner',
+    snack: 'Snacks',
+    meal_type: 'Meal Type',
+    add_to_diary: 'Log to Diary',
+    recipe_logged: 'Recipe added to diary!',
+    water_custom: 'Custom Water',
+    ml: 'ml',
     nutrition_system: 'NUTRITION SYSTEM',
     calculator: 'Calculator',
     smart_nutrition: 'SMART NUTRITION',
@@ -489,6 +498,15 @@ const translations = {
     personal_best: 'Kỷ lục cá nhân',
     update_pb: 'Cập nhật mức tạ PB của bạn',
     close: 'Đóng',
+    breakfast: 'Bữa sáng',
+    lunch: 'Bữa trưa',
+    dinner: 'Bữa tối',
+    snack: 'Bữa phụ',
+    meal_type: 'Bữa ăn',
+    add_to_diary: 'Thêm vào nhật ký',
+    recipe_logged: 'Đã thêm công thức vào nhật ký!',
+    water_custom: 'Tùy chỉnh nước',
+    ml: 'ml',
     nutrition_system: 'HỆ THỐNG DINH DƯỠNG',
     calculator: 'Công cụ tính toán',
     smart_nutrition: 'DINH DƯỠNG THÔNG MINH',
@@ -646,7 +664,7 @@ const translations = {
     dynamic_warmup: 'Khởi động linh hoạt',
     static_cooldown: 'Thả lỏng tĩnh',
     demonstration: 'Video hướng dẫn',
-    volume_label: 'Khối lượng',
+    volume_label: 'Số hiệp',
     strava_sync_desc: 'Đồng bộ hóa các buổi chạy và đạp xe của bạn để cung cấp dữ liệu cho AI.',
     strava_connected_status: 'Trạng thái: Đã kết nối',
     strava_syncing: 'Dữ liệu đang được đồng bộ theo thời gian thực',
@@ -856,4 +874,18 @@ export function useTranslation() {
     throw new Error('useTranslation must be used within a TranslationProvider');
   }
   return context;
+}
+
+export function translateExercise(name: string, language: Language): string {
+  if (!name) return name;
+  const keys = Object.keys(translations.en) as (keyof typeof translations['en'])[];
+  const matchKey = keys.find(k => 
+    k.startsWith('ex_') && 
+    (String(translations.en[k]).toLowerCase() === name.toLowerCase() || 
+     String(translations.vi[k]).toLowerCase() === name.toLowerCase())
+  );
+  if (matchKey) {
+    return translations[language][matchKey] || name;
+  }
+  return name;
 }

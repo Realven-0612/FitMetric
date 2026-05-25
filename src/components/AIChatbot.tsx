@@ -265,6 +265,10 @@ ACTION:REQUEST_WORKOUT:{"focus": "chest"}
 ACTION:REPLACE_EXERCISE:{"dayIndex": 0, "oldName": "Bench Press", "newName": "Dumbbell Press", "muscle": "Chest", "sets": "3x10", "rest": "90s"}
 (dayIndex: 0 = Thứ 2, 1 = Thứ 3, ..., 6 = Chủ Nhật. Chỉ dùng REPLACE_EXERCISE khi họ muốn thay thế cụ thể một bài tập nào đó thay vì tạo lại cả lịch).
 
+7. Thay thế/Cập nhật toàn bộ bài tập của một ngày cụ thể (Ví dụ khi họ muốn đổi ngày thứ 2 thành ngày tập chân):
+ACTION:REPLACE_DAY_WORKOUT:{"dayIndex": 0, "focusName": "Tập chân (Legs)", "exercises": [{"name": "Squat", "muscle": "Legs", "sets": "4x10", "rest": "3 phút"}, {"name": "Lunges", "muscle": "Legs", "sets": "3x12", "rest": "90s"}]}
+(dayIndex: 0 = Thứ 2, 1 = Thứ 3, ..., 6 = Chủ Nhật. BẮT BUỘC dùng REPLACE_DAY_WORKOUT khi người dùng muốn thay thế cả buổi tập của một ngày, không được hướng dẫn họ tự đi xóa hay thêm thủ công từng bài vì app không hỗ trợ việc đó).
+
 === QUY TẮC PHẢN HỒI QUAN TRỌNG ===
 - NGÔN NGỮ: ${language === 'en' ? 'BẠN BẮT BUỘC PHẢI TRẢ LỜI HOÀN TOÀN BẰNG TIẾNG ANH.' : 'Luôn trả lời bằng tiếng Việt lịch sự, thân thiện và tràn đầy năng lượng tích cực.'}
 - Khi giải thích cách dùng tính năng, hãy viết cực kỳ rõ ràng, chia bước rõ ràng (Bước 1, Bước 2...), chỉ rõ đường dẫn trang (ví dụ: Menu -> Chọn tab "Tập luyện").
@@ -329,6 +333,8 @@ ACTION:REPLACE_EXERCISE:{"dayIndex": 0, "oldName": "Bench Press", "newName": "Du
         handleRequestWorkout(actionData);
       } else if (actionType === 'REPLACE_EXERCISE') {
         handleReplaceExercise(actionData);
+      } else if (actionType === 'REPLACE_DAY_WORKOUT') {
+        handleReplaceDayWorkout(actionData);
       }
     }
 
@@ -426,6 +432,36 @@ ACTION:REPLACE_EXERCISE:{"dayIndex": 0, "oldName": "Bench Press", "newName": "Du
 
     setWorkoutPlan({ ...workoutPlan, days: updatedDays });
     toast.success(`✅ Đã thay "${oldName}" → "${newName}"`);
+  };
+
+  const handleReplaceDayWorkout = (args: any) => {
+    const { workoutPlan, setWorkoutPlan } = useStore.getState();
+    if (!workoutPlan?.days) {
+      toast.error('Chưa có lịch tập để chỉnh sửa.');
+      return;
+    }
+
+    const { dayIndex, focusName, exercises } = args;
+    const targetDayIdx = typeof dayIndex === 'number' ? dayIndex : 0;
+
+    const updatedDays = workoutPlan.days.map((day: any, i: number) => {
+      if (i !== targetDayIdx) return day;
+      return {
+        ...day,
+        focusName: focusName || day.focusName,
+        exercises: Array.isArray(exercises) ? exercises.map((ex: any) => ({
+          name: ex.name,
+          muscle: ex.muscle || 'Unknown',
+          sets: ex.sets || '3x10',
+          rest: ex.rest || '90s',
+          recommendedWeight: ex.recommendedWeight || undefined,
+          youtubeQuery: ex.youtubeQuery || `${ex.name} tutorial form`,
+        })) : []
+      };
+    });
+
+    setWorkoutPlan({ ...workoutPlan, days: updatedDays });
+    toast.success(`✅ Đã cập nhật buổi tập ngày ${workoutPlan.days[targetDayIdx]?.dayName || 'được chọn'} thành "${focusName}"`);
   };
 
   const todayDayIdx = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;

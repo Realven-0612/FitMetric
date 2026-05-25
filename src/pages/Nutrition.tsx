@@ -26,10 +26,37 @@ export default function Nutrition() {
     clearNutritionDiary,
     waterIntake: waterLiter,
     addWater,
+    resetWater,
     setProfile
   } = useStore();
 
   const dailyQuote = getDailyQuote(language);
+
+  const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 11) return 'breakfast';
+    if (hour >= 11 && hour < 16) return 'lunch';
+    if (hour >= 16 && hour < 22) return 'dinner';
+    return 'snack';
+  });
+  const [customWaterVal, setCustomWaterVal] = useState("");
+
+  const getMealCategory = (food: any) => {
+    if (food.mealType) return food.mealType;
+    if (!food.timestamp) return 'snack';
+    const hour = new Date(food.timestamp).getHours();
+    if (hour >= 5 && hour < 11) return 'breakfast';
+    if (hour >= 11 && hour < 16) return 'lunch';
+    if (hour >= 16 && hour < 22) return 'dinner';
+    return 'snack';
+  };
+
+  const groupedDiary = {
+    breakfast: diary.filter(f => getMealCategory(f) === 'breakfast'),
+    lunch: diary.filter(f => getMealCategory(f) === 'lunch'),
+    dinner: diary.filter(f => getMealCategory(f) === 'dinner'),
+    snack: diary.filter(f => getMealCategory(f) === 'snack'),
+  };
 
   const { targetKcal, targetPro, targetCarbs, targetFat, waterTarget, consumedKcal, consumedPro, consumedCarbs, consumedFat, remainingKcal, remainingPro, remainingCarbs, remainingFat } = useNutritionStats();
 
@@ -68,9 +95,10 @@ export default function Nutrition() {
   const [manualFat, setManualFat] = useState("");
   const [manualKcal, setManualKcal] = useState("");
 
-  const addToDiary = (food: {name: string, kcal: number, protein: number, carbs: number, fat: number}) => {
+  const addToDiary = (food: {name: string, kcal: number, protein: number, carbs: number, fat: number, mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack'}) => {
     storeAddEntry({
       ...food,
+      mealType: food.mealType || selectedMealType,
       timestamp: new Date().toISOString()
     });
   };
@@ -83,6 +111,7 @@ export default function Nutrition() {
       protein: Number(manualPro) || 0,
       carbs: Number(manualCarb) || 0,
       fat: Number(manualFat) || 0,
+      mealType: selectedMealType
     };
     addToDiary(food);
     setManualName("");
@@ -285,12 +314,13 @@ export default function Nutrition() {
                        <Button onClick={() => { 
                            const multiplier = (Number(consumedGram) || 0) / 100;
                            addToDiary({
-                             name: searchResult.name,
-                             kcal: Math.round(searchResult.kcal * multiplier),
-                             protein: Math.round(searchResult.protein * multiplier),
-                             carbs: Math.round(searchResult.carbs * multiplier),
-                             fat: Math.round(searchResult.fat * multiplier)
-                           }); 
+                              name: searchResult.name,
+                              kcal: Math.round(searchResult.kcal * multiplier),
+                              protein: Math.round(searchResult.protein * multiplier),
+                              carbs: Math.round(searchResult.carbs * multiplier),
+                              fat: Math.round(searchResult.fat * multiplier),
+                              mealType: selectedMealType
+                            }); 
                            setSearchResult(null); 
                            setSearchQuery(""); 
                          }} className="mt-4 w-full h-10 bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 font-bold uppercase tracking-widest text-xs rounded-xl">
@@ -323,29 +353,70 @@ export default function Nutrition() {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto pr-2 space-y-4 mb-4 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto pr-2 space-y-6 mb-4 custom-scrollbar">
                 {diary.length === 0 ? (
                   <div className="text-center text-slate-500 text-xs font-bold uppercase tracking-widest mt-10">{t('no_entries_today')}</div>
                 ) : (
-                  diary.map((food, idx) => (
-                    <div key={idx} className="bg-black/40 border border-white/5 rounded-2xl p-4 flex justify-between items-center group">
-                       <div>
-                          <div className="text-sm font-black text-white capitalize">{food.name}</div>
-                          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
-                             P: {food.protein}g • C: {food.carbs}g • F: {food.fat}g
-                          </div>
-                       </div>
-                       <div className="flex items-center gap-3">
-                          <div className="text-right">
-                             <div className="text-lg font-black text-cyan-400">{food.kcal}</div>
-                             <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Kcal</div>
-                          </div>
-                          <button onClick={() => removeFromDiary(idx)} className="opacity-0 group-hover:opacity-100 p-2 rounded-xl text-slate-500 hover:bg-red-500/20 hover:text-red-400 transition-all">
-                             <Trash2 className="w-4 h-4" />
-                          </button>
-                       </div>
-                    </div>
-                  ))
+                  (['breakfast', 'lunch', 'dinner', 'snack'] as const).map(mType => {
+                    const foods = groupedDiary[mType];
+                    const label = t(mType) || mType;
+                    const totalKcalForMeal = foods.reduce((s, f) => s + (f.kcal || 0), 0);
+                    const icon = mType === 'breakfast' ? '🌅' : mType === 'lunch' ? '☀️' : mType === 'dinner' ? '🌙' : '🍎';
+                    
+                    return (
+                      <div key={mType} className="space-y-2">
+                        <div className="flex justify-between items-center bg-white/5 border border-white/5 rounded-2xl px-4 py-2">
+                          <span className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                            <span>{icon}</span>
+                            <span>{label}</span>
+                            <span className="text-[10px] font-bold text-slate-500 bg-white/5 px-2 py-0.5 rounded-full">{foods.length} món</span>
+                          </span>
+                          <span className="text-xs font-black text-cyan-400 uppercase tracking-widest">{totalKcalForMeal} Kcal</span>
+                        </div>
+                        
+                        <div className="space-y-2 pl-2">
+                          {foods.length === 0 ? (
+                            <div 
+                              onClick={() => {
+                                setSelectedMealType(mType);
+                                toast.info(`Đã chọn ${label}. Hãy nhập thủ công hoặc tìm kiếm ở các ô tương ứng!`);
+                              }}
+                              className="text-[10px] text-slate-500/80 font-bold uppercase tracking-widest py-2 px-4 border border-dashed border-white/5 rounded-xl hover:border-cyan-500/20 hover:bg-cyan-500/5 cursor-pointer transition-all flex items-center justify-between"
+                            >
+                              <span>Chưa nạp {label}</span>
+                              <span className="text-cyan-400/80 hover:text-cyan-400">+ Ghi nhanh</span>
+                            </div>
+                          ) : (
+                            foods.map((food) => {
+                              const diaryIdx = diary.findIndex(x => x.id === food.id);
+                              return (
+                                <div key={food.id} className="bg-black/30 border border-white/5 rounded-2xl p-3 flex justify-between items-center group transition-colors hover:bg-black/50">
+                                   <div>
+                                      <div className="text-xs font-black text-white capitalize">{food.name}</div>
+                                      <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                                         P: {food.protein}g • C: {food.carbs}g • F: {food.fat}g
+                                      </div>
+                                   </div>
+                                   <div className="flex items-center gap-3">
+                                      <div className="text-right">
+                                         <div className="text-sm font-black text-cyan-400">{food.kcal}</div>
+                                         <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Kcal</div>
+                                      </div>
+                                      <button 
+                                        onClick={() => removeFromDiary(diaryIdx)} 
+                                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-500 hover:bg-red-500/20 hover:text-red-400 transition-all"
+                                      >
+                                         <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                   </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
               </div>
 
@@ -356,13 +427,36 @@ export default function Nutrition() {
                   </div>
                   <span className="relative bg-[#111111] px-4 text-[10px] text-slate-500 font-bold uppercase tracking-widest">{t('manual_entry')}</span>
                 </div>
+                
+                {/* Meal Type Selector for Manual Entry */}
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  {[
+                    { id: 'breakfast', label: t('breakfast') || 'Sáng' },
+                    { id: 'lunch', label: t('lunch') || 'Trưa' },
+                    { id: 'dinner', label: t('dinner') || 'Tối' },
+                    { id: 'snack', label: t('snack') || 'Phụ' }
+                  ].map(m => (
+                    <button
+                      key={m.id}
+                      onClick={() => setSelectedMealType(m.id as any)}
+                      className={`h-9 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all ${
+                        selectedMealType === m.id 
+                        ? 'bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.1)]' 
+                        : 'bg-black/20 text-slate-500 border-white/5 hover:border-white/10'
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+
                 <div className="space-y-3">
-                  <Input value={manualName} onChange={e=>setManualName(e.target.value)} placeholder={t('food_item_placeholder')} className="bg-black/30 border-white/5 h-10 rounded-xl text-xs font-medium text-center placeholder:text-slate-600" />
+                  <Input value={manualName} onChange={e=>setManualName(e.target.value)} placeholder={t('food_item_placeholder')} className="bg-black/30 border-white/5 h-10 rounded-xl text-xs font-medium text-center placeholder:text-slate-600 focus-visible:ring-purple-500/30" />
                   <div className="grid grid-cols-4 gap-2">
-                    <Input value={manualPro} onChange={e=>setManualPro(e.target.value)} placeholder={t('protein') + " (g)"} type="number" className="bg-black/30 border-white/5 h-10 rounded-xl text-[10px] font-medium text-center placeholder:text-slate-600 px-1" />
-                    <Input value={manualCarb} onChange={e=>setManualCarb(e.target.value)} placeholder={t('carbs') + " (g)"} type="number" className="bg-black/30 border-white/5 h-10 rounded-xl text-[10px] font-medium text-center placeholder:text-slate-600 px-1" />
-                    <Input value={manualFat} onChange={e=>setManualFat(e.target.value)} placeholder={t('fats') + " (g)"} type="number" className="bg-black/30 border-white/5 h-10 rounded-xl text-[10px] font-medium text-center placeholder:text-slate-600 px-1" />
-                    <Input value={manualKcal} onChange={e=>setManualKcal(e.target.value)} placeholder="Kcal" type="number" className="bg-black/30 border-white/5 h-10 rounded-xl text-[10px] font-medium text-center placeholder:text-slate-600 px-1" />
+                    <Input value={manualPro} onChange={e=>setManualPro(e.target.value)} placeholder={t('protein') + " (g)"} type="number" className="bg-black/30 border-white/5 h-10 rounded-xl text-[10px] font-medium text-center placeholder:text-slate-600 px-1 focus-visible:ring-purple-500/30" />
+                    <Input value={manualCarb} onChange={e=>setManualCarb(e.target.value)} placeholder={t('carbs') + " (g)"} type="number" className="bg-black/30 border-white/5 h-10 rounded-xl text-[10px] font-medium text-center placeholder:text-slate-600 px-1 focus-visible:ring-purple-500/30" />
+                    <Input value={manualFat} onChange={e=>setManualFat(e.target.value)} placeholder={t('fats') + " (g)"} type="number" className="bg-black/30 border-white/5 h-10 rounded-xl text-[10px] font-medium text-center placeholder:text-slate-600 px-1 focus-visible:ring-purple-500/30" />
+                    <Input value={manualKcal} onChange={e=>setManualKcal(e.target.value)} placeholder="Kcal" type="number" className="bg-black/30 border-white/5 h-10 rounded-xl text-[10px] font-medium text-center placeholder:text-slate-600 px-1 focus-visible:ring-purple-500/30" />
                   </div>
                 </div>
 
@@ -387,12 +481,20 @@ export default function Nutrition() {
               </div>
 
               <div className="bg-[#111111]/80 backdrop-blur-md rounded-3xl p-6 border border-white/5 flex flex-col">
-                <div className="flex items-center gap-3 mb-6">
-                   <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-                      <Droplet className="w-5 h-5 text-blue-400" />
+                <div className="flex items-center justify-between w-full relative mb-6">
+                   <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                         <Droplet className="w-5 h-5 text-blue-400" />
+                      </div>
+                      <h2 className="text-sm font-black text-white uppercase tracking-wider">{t('hydration_tracker')}</h2>
                    </div>
-                   <h2 className="text-sm font-black text-white uppercase tracking-wider">{t('hydration_tracker')}</h2>
+                   {waterLiter > 0 && (
+                     <Button variant="ghost" size="sm" onClick={resetWater} className="text-red-400 hover:text-red-300 hover:bg-red-500/10 text-[9px] uppercase font-bold tracking-widest rounded-lg h-7 px-2 border border-red-500/10">
+                       Reset
+                     </Button>
+                   )}
                 </div>
+                
                 <div className="flex items-center justify-center mb-6">
                    <div className="w-32 h-32 rounded-full border-4 border-slate-800 flex items-center justify-center relative overflow-hidden bg-black/30">
                      <div className="absolute bottom-0 w-full bg-blue-500/30 transition-all duration-1000" style={{ height: `${waterTarget > 0 ? Math.min(100, (waterLiter / waterTarget) * 100) : 0}%` }}>
@@ -404,9 +506,39 @@ export default function Nutrition() {
                      </div>
                    </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <Button onClick={() => addWater(-0.25)} className="h-10 bg-black/40 text-slate-300 border border-white/5 hover:bg-white/10 rounded-xl text-xs">- 250ml</Button>
-                  <Button onClick={() => addWater(0.25)} className="h-10 bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 rounded-xl text-xs">+ 250ml</Button>
+
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <Button onClick={() => addWater(0.25)} className="h-12 bg-black/40 text-slate-300 border border-white/5 hover:bg-white/10 rounded-xl text-[10px] flex flex-col items-center justify-center gap-0.5 font-bold transition-all hover:border-blue-500/30 hover:bg-blue-500/5">
+                    <span>🥛 250ml</span>
+                  </Button>
+                  <Button onClick={() => addWater(0.50)} className="h-12 bg-black/40 text-slate-300 border border-white/5 hover:bg-white/10 rounded-xl text-[10px] flex flex-col items-center justify-center gap-0.5 font-bold transition-all hover:border-blue-500/30 hover:bg-blue-500/5">
+                    <span>🧴 500ml</span>
+                  </Button>
+                  <Button onClick={() => addWater(0.75)} className="h-12 bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 rounded-xl text-[10px] flex flex-col items-center justify-center gap-0.5 font-bold transition-all">
+                    <span>🥤 750ml</span>
+                  </Button>
+                </div>
+
+                <div className="flex gap-2 pt-3 border-t border-white/5">
+                  <Input 
+                    type="number" 
+                    placeholder={t('water_custom') || "Tùy chỉnh (ml)"} 
+                    value={customWaterVal}
+                    onChange={e => setCustomWaterVal(e.target.value)}
+                    className="bg-black/30 border-white/10 h-10 rounded-xl text-xs text-center focus-visible:ring-blue-500/50 focus-visible:border-blue-500/30 text-white font-bold"
+                  />
+                  <Button 
+                    onClick={() => {
+                      if (!customWaterVal) return;
+                      const liters = Number(customWaterVal) / 1000;
+                      addWater(liters);
+                      setCustomWaterVal("");
+                      toast.success(`💧 Đã ghi thêm ${customWaterVal}ml nước`);
+                    }}
+                    className="bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 h-10 rounded-xl px-4 text-xs font-black uppercase tracking-widest whitespace-nowrap"
+                  >
+                    + Nạp
+                  </Button>
                 </div>
               </div>
               

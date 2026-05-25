@@ -39,7 +39,7 @@ import {
   Pause
 } from "lucide-react";
 import { toast } from "sonner";
-import { useTranslation } from "../lib/i18n";
+import { useTranslation, translateExercise } from "../lib/i18n";
 import { heartRateService } from "../services/heartRateService";
 import {
   Select,
@@ -90,6 +90,16 @@ export interface WorkoutPlan {
   completedSessions?: number;
   currentCycle?: number;
 }
+
+const formatSets = (sets: string) => {
+  if (typeof sets !== 'string') return sets;
+  return sets
+    .replace(/đến khi không thực hiện được nữa/gi, 'thất bại')
+    .replace(/đến ngưỡng thất bại/gi, 'thất bại')
+    .replace(/sets to failure/gi, 'to failure')
+    .replace(/sets/gi, 'hiệp')
+    .replace(/hiệp tập/gi, 'hiệp');
+};
 
 const getExerciseRest = (ex: Exercise, lang: string) => {
   if (ex.rest && ex.rest !== '—') return ex.rest;
@@ -562,11 +572,28 @@ export default function Training() {
 
       const allowedExercises = Object.keys({ ...VIDEO_LIBRARY, ...customVideoLibrary }).join(', ');
 
+      const currentPlanContext = plan 
+        ? `- Current Weekly Workout Plan (use as reference to modify or shift rather than creating new): ${JSON.stringify({
+            days: plan.days.map(d => ({
+              dayName: d.dayName,
+              focusName: d.focusName,
+              exercises: d.exercises.map(ex => ({
+                name: ex.name,
+                muscle: ex.muscle,
+                sets: ex.sets,
+                rest: ex.rest,
+                recommendedWeight: ex.recommendedWeight
+              }))
+            }))
+          })}`
+        : "- Current Weekly Workout Plan: None (generate from scratch)";
+
       const prompt = `As an elite strength and conditioning coach, generate a highly optimized weekly workout plan.
       ${promptContext}
       - Equipment: ${equipment}
       - Frequency: ${frequency} days per week
       - Focus/Custom: ${customRules}
+      ${currentPlanContext}
       - Current Personal Best Weights: ${JSON.stringify(exerciseWeights)}
       - Output Language: ${language === 'vi' ? 'Vietnamese' : 'English'}
       - Allowed Exercises List: ${allowedExercises}
@@ -575,6 +602,10 @@ export default function Training() {
       1. Use science-based splits (e.g., Full Body for 3 days, Upper/Lower for 4 days, PPL for 6 days).
       2. You MUST ONLY select exercises from the "Allowed Exercises List". Do not invent new exercises. Be exact with names.
       3. Output EXACTLY 7 days, Monday to Sunday. If a day is for rest, set focusName to ${language === 'vi' ? '"Ngày nghỉ"' : '"Rest Day"'} and leave exercises empty.
+         CRITICAL FOR FLEXIBILITY, DAY SWITCHING & EXCLUSIONS:
+         - If the user's Focus/Custom request asks to exclude/skip specific days (e.g., "chừa thứ 2 ra" / "không tập thứ 2" / "exclude Monday"), you MUST mark those specific days as Rest Day ("Ngày nghỉ" / "Rest Day") with zero exercises. Move any exercises originally scheduled for those days to other days to maintain total volume.
+         - If the user's Focus/Custom request asks to shift, move, or swap days (e.g., "đổi thứ 2 qua ngày khác" / "move Monday to Tuesday"), you MUST shift Monday's exact exercises and focus name to the target day (e.g. Tuesday), swapping their schedules while leaving other days unchanged.
+         - If there is a Current Weekly Workout Plan, do NOT generate a brand new workout routine or invent new exercises from scratch unless explicitly requested! Instead, perform incremental modifications to the Current Weekly Workout Plan (such as changing a single exercise, shifting days, or excluding a day) while keeping the remaining days and exercises exactly as they are.
       4. progressionGuide must be a single plain string (no arrays, no bullet markdown) with each week separated by a newline character. Must be written in ${language === 'vi' ? 'Vietnamese' : 'English'}. Include 'Week 1', 'Week 2' etc.
       CRITICAL: Your ENTIRE response must be ONLY a valid JSON object. Start your response with '{' and end with '}'. No extra text, no markdown, no code blocks.
       5. Provide an accurate youtubeQuery string (e.g. "Barbell Bench Press tutorial form") for each exercise. Always keep this string in English.
@@ -800,7 +831,7 @@ export default function Training() {
           width="100%"
           height="100%"
           src={`https://www.youtube.com/embed/${matchedId}`}
-          title={exerciseName}
+          title={translateExercise(exerciseName, language)}
           frameBorder="0"
           className="rounded-xl absolute inset-0 w-full h-full"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -814,7 +845,7 @@ export default function Training() {
       <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center p-6 text-center bg-black/60 rounded-xl">
         <Video className="w-10 h-10 text-slate-500 mb-3" />
         <p className="text-slate-300 text-sm mb-4">
-          Video chưa có sẵn cho bài tập <span className="font-bold text-cyan-400">{exerciseName}</span>.
+          Video chưa có sẵn cho bài tập <span className="font-bold text-cyan-400">{translateExercise(exerciseName, language)}</span>.
         </p>
         
         {addingVideoEx === lowerName ? (
@@ -1541,12 +1572,12 @@ export default function Training() {
                               <span className="text-slate-500 font-black text-sm group-hover:text-cyan-400 transition-colors">{idx + 1}</span>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h3 className="text-white font-black text-base leading-tight mb-1.5">{ex.name}</h3>
+                              <h3 className="text-white font-black text-base leading-tight mb-1.5">{translateExercise(ex.name, language)}</h3>
                               <div className="flex flex-wrap items-center gap-1.5">
                                 <span className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md">{ex.muscle}</span>
                                 {ex.load && (
-                                  <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded-md">
-                                    <TrendingUp className="w-2.5 h-2.5" />{ex.load}
+                                  <span className="text-[10px] text-slate-300 font-medium flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded-md">
+                                    <TrendingUp className="w-2.5 h-2.5 text-cyan-400" />{ex.load}
                                   </span>
                                 )}
                               </div>
@@ -1554,15 +1585,15 @@ export default function Training() {
                           </div>
                           {/* Info grid — luôn 3 cột đều nhau */}
                           <div className="grid grid-cols-3 gap-1.5 mb-3">
-                            {/* Khối lượng */}
+                            {/* Khối lượng / Số hiệp */}
                             <div className="bg-black/60 border border-white/5 rounded-lg px-2 py-1.5 flex flex-col gap-0.5 min-w-0">
-                              <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{t('volume_label')}</span>
-                              <span className="text-white font-black text-[10px] leading-tight break-words">{typeof ex.sets === 'string' ? ex.sets.replace(/đến khi không thực hiện được nữa/gi, 'đến ngưỡng thất bại') : ex.sets}</span>
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{t('volume_label')}</span>
+                              <span className="text-white font-black text-[11px] sm:text-xs leading-tight break-words">{formatSets(ex.sets)}</span>
                             </div>
                             {/* Nghỉ */}
                             <div className="bg-black/60 border border-white/5 rounded-lg px-2 py-1.5 flex flex-col gap-0.5 min-w-0">
-                              <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{t('rest_label')}</span>
-                              <span className="text-slate-300 font-black text-[10px] leading-tight">{getExerciseRest(ex, language)}</span>
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{t('rest_label')}</span>
+                              <span className="text-slate-300 font-black text-[11px] sm:text-xs leading-tight">{getExerciseRest(ex, language)}</span>
                             </div>
                             {/* Gợi ý — bấm để apply */}
                             <button
@@ -1570,8 +1601,8 @@ export default function Training() {
                               disabled={!ex.recommendedWeight}
                               className="bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 disabled:opacity-30 disabled:cursor-default rounded-lg px-2 py-1.5 flex flex-col gap-0.5 text-left transition-all min-w-0"
                             >
-                              <span className="text-[8px] font-black text-cyan-500 uppercase tracking-widest">{t('suggested')}</span>
-                              <span className="text-cyan-300 font-black text-[10px] leading-tight">{ex.recommendedWeight || '—'}</span>
+                              <span className="text-[9px] font-black text-cyan-500 uppercase tracking-widest">{t('suggested')}</span>
+                              <span className="text-cyan-300 font-black text-[11px] sm:text-xs leading-tight">{ex.recommendedWeight || '—'}</span>
                             </button>
                           </div>
                           
@@ -1629,7 +1660,7 @@ export default function Training() {
                               </div>
                             </div>
                             {/* Video: full-width, no side padding on mobile */}
-                            <div className="w-full aspect-video bg-black">
+                            <div className="w-full aspect-video bg-black relative">
                               {getEmbeddedVideo(ex.name)}
                             </div>
                           </div>

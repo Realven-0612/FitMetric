@@ -3,6 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sparkles, Utensils, Loader2, X, Clock, Flame, Beef, Wheat, Droplets, ChefHat } from "lucide-react";
 import { generateAIContent } from "../lib/ai";
+import { useStore } from "../lib/store";
+import { useTranslation } from "../lib/i18n";
+import { toast } from "sonner";
 
 interface RecipeGeneratorProps {
   remainingMacros: { kcal: number; protein: number; carbs: number; fat: number };
@@ -22,6 +25,24 @@ export function RecipeGenerator({ remainingMacros, onClose }: RecipeGeneratorPro
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const { addNutritionEntry } = useStore();
+  const { t } = useTranslation();
+  const [isLogged, setIsLogged] = useState(false);
+
+  const handleLogRecipe = () => {
+    if (!recipe) return;
+    addNutritionEntry({
+      name: recipe.name,
+      kcal: recipe.macros.kcal,
+      protein: recipe.macros.protein,
+      carbs: recipe.macros.carbs,
+      fat: recipe.macros.fat,
+      timestamp: new Date().toISOString(),
+      mealType: 'dinner'
+    });
+    setIsLogged(true);
+    toast.success(t('recipe_logged') || "Đã thêm công thức vào nhật ký!");
+  };
 
   const generateRecipe = async () => {
     setLoading(true);
@@ -163,11 +184,19 @@ export function RecipeGenerator({ remainingMacros, onClose }: RecipeGeneratorPro
         {/* Footer */}
         {recipe && (
           <div className="p-4 border-t border-white/5 flex gap-3 shrink-0">
-            <Button onClick={() => setRecipe(null)} variant="outline" className="flex-1 rounded-2xl h-11 border-white/10 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-white/5">
+            <Button onClick={() => { setRecipe(null); setIsLogged(false); }} variant="outline" className="flex-1 rounded-2xl h-11 border-white/10 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-white/5">
               Ý tưởng khác
             </Button>
-            <Button onClick={onClose} className="flex-1 rounded-2xl h-11 bg-purple-500 hover:bg-purple-400 text-white font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(112,0,255,0.3)]">
-              Xong
+            <Button 
+              onClick={handleLogRecipe} 
+              disabled={isLogged}
+              className={`flex-1 rounded-2xl h-11 font-black uppercase text-[10px] tracking-widest transition-all ${
+                isLogged 
+                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                : 'bg-purple-500 hover:bg-purple-400 text-white shadow-[0_0_15px_rgba(112,0,255,0.3)]'
+              }`}
+            >
+              {isLogged ? "Đã lưu ✓" : (t('add_to_diary') || "Thêm vào nhật ký")}
             </Button>
           </div>
         )}

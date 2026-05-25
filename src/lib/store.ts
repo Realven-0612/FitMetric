@@ -33,6 +33,7 @@ interface NutritionEntry {
   carbs: number;
   fat: number;
   timestamp: string;
+  mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
 }
 
 // Giá trị mặc định - dùng để reset khi đăng xuất / user mới đăng nhập
@@ -203,10 +204,20 @@ export const useStore = create<AppState>()(
           toast.warning("Lượng dinh dưỡng của món này có vẻ cao bất thường. Hãy kiểm tra lại số liệu!");
         }
         
+        let inferredMealType = entry.mealType;
+        if (!inferredMealType && entry.name !== 'WaterLoggedByApp') {
+          const hour = new Date().getHours();
+          if (hour >= 5 && hour < 11) inferredMealType = 'breakfast';
+          else if (hour >= 11 && hour < 16) inferredMealType = 'lunch';
+          else if (hour >= 16 && hour < 22) inferredMealType = 'dinner';
+          else inferredMealType = 'snack';
+        }
+
         const enhancedEntry = {
           ...entry,
           id: entry.id || crypto.randomUUID(),
-          timestamp: entry.timestamp || new Date().toISOString()
+          timestamp: entry.timestamp || new Date().toISOString(),
+          mealType: inferredMealType
         };
         set((state) => ({
           nutritionDiary: [enhancedEntry, ...state.nutritionDiary]
