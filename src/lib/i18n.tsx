@@ -420,6 +420,7 @@ const translations = {
     toast_body_updated: 'Body metrics updated!',
     toast_food_logged: 'Added {name} to the diary!',
     toast_redirecting_training: 'Redirecting to training page...',
+    mealprep: 'Meal Prep',
   },
   vi: {
     dashboard: 'Bảng điều khiển',
@@ -837,6 +838,7 @@ const translations = {
     toast_body_updated: 'Chỉ số cơ thể đã được cập nhật!',
     toast_food_logged: 'Đã thêm {name} vào nhật ký!',
     toast_redirecting_training: 'Đang chuyển hướng đến trang bài tập...',
+    mealprep: 'Meal Prep',
   }
 };
 
@@ -876,16 +878,250 @@ export function useTranslation() {
   return context;
 }
 
+const exerciseTranslationMap: Record<string, { en: string; vi: string }> = {
+  "bench press": { en: "Barbell Bench Press", vi: "Đẩy ngực ngang với thanh đòn" },
+  "barbell bench press": { en: "Barbell Bench Press", vi: "Đẩy ngực ngang với thanh đòn" },
+  "incline db press": { en: "Incline DB Press", vi: "Đẩy ngực dốc lên với tạ đơn" },
+  "incline dumbbell press": { en: "Incline DB Press", vi: "Đẩy ngực dốc lên với tạ đơn" },
+  "dumbbell bench press": { en: "Dumbbell Bench Press", vi: "Đẩy ngực ngang với tạ đơn" },
+  "db bench press": { en: "Dumbbell Bench Press", vi: "Đẩy ngực ngang với tạ đơn" },
+  "dumbbell press": { en: "Dumbbell Bench Press", vi: "Đẩy ngực ngang với tạ đơn" },
+  "weighted pushups": { en: "Push-ups (weighted)", vi: "Chống đẩy (thêm tạ)" },
+  "weighted push-ups": { en: "Push-ups (weighted)", vi: "Chống đẩy (thêm tạ)" },
+  "push-ups (weighted)": { en: "Push-ups (weighted)", vi: "Chống đẩy (thêm tạ)" },
+  "decline pushups": { en: "Decline Push-ups", vi: "Chống đẩy dốc xuống" },
+  "decline push-ups": { en: "Decline Push-ups", vi: "Chống đẩy dốc xuống" },
+  "push-ups": { en: "Push-ups", vi: "Chống đẩy" },
+  "pushups": { en: "Push-ups", vi: "Chống đẩy" },
+  "push up": { en: "Push-ups", vi: "Chống đẩy" },
+  "push-up": { en: "Push-ups", vi: "Chống đẩy" },
+  "barbell rows": { en: "Barbell Rows", vi: "Gập người chèo tạ đòn" },
+  "barbell row": { en: "Barbell Rows", vi: "Gập người chèo tạ đòn" },
+  "inverted rows": { en: "Inverted Rows", vi: "Chèo người ngược" },
+  "inverted row": { en: "Inverted Rows", vi: "Chèo người ngược" },
+  "lat pulldown": { en: "Lat Pulldown", vi: "Kéo xà với cáp (Lat Pulldown)" },
+  "lat pull down": { en: "Lat Pulldown", vi: "Kéo xà với cáp (Lat Pulldown)" },
+  "seated cable row": { en: "Seated Cable Row", vi: "Chèo cáp ngồi" },
+  "cable row": { en: "Seated Cable Row", vi: "Chèo cáp ngồi" },
+  "back squat": { en: "Back Squat", vi: "Gánh tạ đòn" },
+  "barbell squat": { en: "Back Squat", vi: "Gánh tạ đòn" },
+  "squat": { en: "Back Squat", vi: "Gánh tạ đòn" },
+  "pistol squat": { en: "Pistol Squat", vi: "Squat một chân" },
+  "pistol squats": { en: "Pistol Squat", vi: "Squat một chân" },
+  "leg press": { en: "Leg Press", vi: "Đạp đùi với máy" },
+  "bulgarian split squat": { en: "Bulgarian Split Squat", vi: "Squat kiểu Bulgarian" },
+  "bulgarian split squats": { en: "Bulgarian Split Squat", vi: "Squat kiểu Bulgarian" },
+  "deadlift": { en: "Deadlift", vi: "Kéo tạ đòn (Deadlift)" },
+  "barbell deadlift": { en: "Deadlift", vi: "Kéo tạ đòn (Deadlift)" },
+  "single-leg rdl": { en: "Single-Leg RDL", vi: "RDL một chân" },
+  "single leg rdl": { en: "Single-Leg RDL", vi: "RDL một chân" },
+  "romanian deadlift": { en: "Romanian Deadlift", vi: "Romanian Deadlift" },
+  "rdl": { en: "Romanian Deadlift", vi: "Romanian Deadlift" },
+  "overhead press": { en: "Overhead Press", vi: "Đẩy tạ qua đầu" },
+  "military press": { en: "Overhead Press", vi: "Đẩy tạ qua đầu" },
+  "shoulder press": { en: "Overhead Press", vi: "Đẩy tạ qua đầu" },
+  "ohp": { en: "Overhead Press", vi: "Đẩy tạ qua đầu" },
+  "pike push-ups": { en: "Pike Push-ups", vi: "Chống đẩy kiểu Pike" },
+  "pike pushups": { en: "Pike Push-ups", vi: "Chống đẩy kiểu Pike" },
+  "lateral raises": { en: "Lateral Raises", vi: "Dang tạ đơn sang hai bên" },
+  "lateral raise": { en: "Lateral Raises", vi: "Dang tạ đơn sang hai bên" },
+  "barbell curls": { en: "Barbell Curls", vi: "Cuốn tạ đòn tập tay trước" },
+  "barbell curl": { en: "Barbell Curls", vi: "Cuốn tạ đòn tập tay trước" },
+  "bicep curl": { en: "Barbell Curls", vi: "Cuốn tạ đòn tập tay trước" },
+  "bicep curls": { en: "Barbell Curls", vi: "Cuốn tạ đòn tập tay trước" },
+  "tricep pushdowns": { en: "Tricep Pushdowns", vi: "Nhấn cáp tập tay sau" },
+  "tricep pushdown": { en: "Tricep Pushdowns", vi: "Nhấn cáp tập tay sau" },
+  "calf raises": { en: "Calf Raises", vi: "Nhón bắp chân" },
+  "calf raise": { en: "Calf Raises", vi: "Nhón bắp chân" },
+  "kettlebell swings": { en: "Kettlebell Swings", vi: "Vung tạ ấm" },
+  "kettlebell swing": { en: "Kettlebell Swings", vi: "Vung tạ ấm" },
+  "dumbbell swings": { en: "Dumbbell Swings", vi: "Vung tạ đơn" },
+  "dumbbell swing": { en: "Dumbbell Swings", vi: "Vung tạ đơn" },
+  "dumbbell thrusters": { en: "Dumbbell Thrusters", vi: "Đẩy tạ đơn kết hợp squat" },
+  "thrusters": { en: "Dumbbell Thrusters", vi: "Đẩy tạ đơn kết hợp squat" },
+  "diamond push-ups": { en: "Diamond Push-ups", vi: "Chống đẩy kim cương" },
+  "diamond pushups": { en: "Diamond Push-ups", vi: "Chống đẩy kim cương" },
+  "chest dips": { en: "Chest Dips", vi: "Xà kép tập ngực" },
+  "dips": { en: "Chest Dips", vi: "Xà kép tập ngực" },
+  "chair dips": { en: "Chair Dips", vi: "Chống tay trên ghế tập tay sau" },
+  "pull-ups": { en: "Pull-Ups", vi: "Hít xà đơn" },
+  "pullups": { en: "Pull-Ups", vi: "Hít xà đơn" },
+  "pull up": { en: "Pull-Ups", vi: "Hít xà đơn" },
+  "pull-up": { en: "Pull-Ups", vi: "Hít xà đơn" },
+  "chin-ups": { en: "Chin-Ups", vi: "Hít xà đơn ngửa tay" },
+  "chinups": { en: "Chin-Ups", vi: "Hít xà đơn ngửa tay" },
+  "chin up": { en: "Chin-Ups", vi: "Hít xà đơn ngửa tay" },
+  "chin-up": { en: "Chin-Ups", vi: "Hít xà đơn ngửa tay" },
+  "table rows": { en: "Table Rows", vi: "Chèo người với bàn" },
+  "table row": { en: "Table Rows", vi: "Chèo người với bàn" },
+  "handstand push-ups": { en: "Handstand Push-ups", vi: "Chống đẩy bằng tay" },
+  "handstand pushups": { en: "Handstand Push-ups", vi: "Chống đẩy bằng tay" },
+  "hspu": { en: "Handstand Push-ups", vi: "Chống đẩy bằng tay" },
+  "bodyweight squats": { en: "Bodyweight Squats", vi: "Squat trọng lượng cơ thể" },
+  "bodyweight squat": { en: "Bodyweight Squats", vi: "Squat trọng lượng cơ thể" },
+  "assisted pistol": { en: "Assisted Pistol", vi: "Squat một chân có hỗ trợ" },
+  "assisted pistol squat": { en: "Assisted Pistol", vi: "Squat một chân có hỗ trợ" },
+  "walking lunges": { en: "Walking Lunges", vi: "Chùng chân bước đi" },
+  "walking lunge": { en: "Walking Lunges", vi: "Chùng chân bước đi" },
+  "plank": { en: "Plank", vi: "Tư thế Plank" },
+  "l-sit": { en: "L-Sit", vi: "Tư thế L-Sit" },
+  "l sit": { en: "L-Sit", vi: "Tư thế L-Sit" },
+  "hanging leg raises": { en: "Hanging Leg Raises", vi: "Đu xà nâng chân" },
+  "hanging leg raise": { en: "Hanging Leg Raises", vi: "Đu xà nâng chân" },
+  "lying leg raises": { en: "Lying Leg Raises", vi: "Nằm nâng chân" },
+  "lying leg raise": { en: "Lying Leg Raises", vi: "Nằm nâng chân" },
+  "dragon flags": { en: "Dragon Flags", vi: "Tư thế Dragon Flag" },
+  "dragon flag": { en: "Dragon Flags", vi: "Tư thế Dragon Flag" },
+  "burpees": { en: "Burpees", vi: "Phóng người nhảy (Burpees)" },
+  "burpee": { en: "Burpees", vi: "Phóng người nhảy (Burpees)" },
+  "mountain climbers": { en: "Mountain Climbers", vi: "Leo núi tại chỗ" },
+  "mountain climber": { en: "Mountain Climbers", vi: "Leo núi tại chỗ" },
+  "band chest press": { en: "Band Chest Press", vi: "Đẩy ngực với dây kháng lực" },
+  "band flyes": { en: "Band Flyes", vi: "Ép ngực với dây kháng lực" },
+  "band fly": { en: "Band Flyes", vi: "Ép ngực với dây kháng lực" },
+  "band seated row": { en: "Band Seated Row", vi: "Chèo dây kháng lực ngồi" },
+  "band lat pulldown": { en: "Band Lat Pulldown", vi: "Kéo xà với dây kháng lực" },
+  "band squat": { en: "Band Squat", vi: "Squat với dây kháng lực" },
+  "banded glute bridges": { en: "Banded Glute Bridges", vi: "Cầu mông với dây kháng lực" },
+  "band glute bridge": { en: "Banded Glute Bridges", vi: "Cầu mông với dây kháng lực" },
+  "band overhead press": { en: "Band Overhead Press", vi: "Đẩy tạ qua đầu với dây kháng lực" },
+  "band ohp": { en: "Band Overhead Press", vi: "Đẩy tạ qua đầu với dây kháng lực" },
+  "band bicep curls": { en: "Band Bicep Curls", vi: "Cuốn dây kháng lực tập tay trước" },
+  "band bicep curl": { en: "Band Bicep Curls", vi: "Cuốn dây kháng lực tập tay trước" },
+  "band tricep pushdown": { en: "Band Tricep Pushdown", vi: "Nhấn dây kháng lực tập tay sau" },
+  "banded woodchoppers": { en: "Banded Woodchoppers", vi: "Chặt gỗ với dây kháng lực" },
+  "band woodchopper": { en: "Banded Woodchoppers", vi: "Chặt gỗ với dây kháng lực" },
+};
+
 export function translateExercise(name: string, language: Language): string {
   if (!name) return name;
+  const cleanName = name.trim().toLowerCase();
+  
+  // 1. Check custom translation map
+  if (cleanName in exerciseTranslationMap) {
+    return exerciseTranslationMap[cleanName][language];
+  }
+  
+  // 2. Fallback to standard translations keys
   const keys = Object.keys(translations.en) as (keyof typeof translations['en'])[];
   const matchKey = keys.find(k => 
     k.startsWith('ex_') && 
-    (String(translations.en[k]).toLowerCase() === name.toLowerCase() || 
-     String(translations.vi[k]).toLowerCase() === name.toLowerCase())
+    (String(translations.en[k]).toLowerCase() === cleanName || 
+     String(translations.vi[k]).toLowerCase() === cleanName)
   );
   if (matchKey) {
     return translations[language][matchKey] || name;
   }
+  
   return name;
 }
+
+const workoutTranslations: Record<string, { vi: string; en: string }> = {
+  // Focuses
+  "lưng và mông": { vi: "Lưng và mông", en: "Back & Glutes" },
+  "ngực và tay sau": { vi: "Ngực và tay sau", en: "Chest & Triceps" },
+  "vai và tay trước": { vi: "Vai và tay trước", en: "Shoulders & Biceps" },
+  "chân và bụng": { vi: "Chân và bụng", en: "Legs & Core" },
+  "toàn thân (full body)": { vi: "Toàn thân (Full Body)", en: "Full Body" },
+  "toàn thân": { vi: "Toàn thân", en: "Full Body" },
+  "ngày nghỉ": { vi: "Ngày nghỉ", en: "Rest Day" },
+  "ngày nghỉ phục hồi": { vi: "Ngày nghỉ phục hồi", en: "Active Recovery Day" },
+
+  // Descriptions
+  "tập trung vào các bài tập phát triển lưng và mông": { vi: "Tập trung vào các bài tập phát triển lưng và mông", en: "Focus on exercises to develop back and glutes" },
+  "tập trung vào cơ ngực và cơ tay sau": { vi: "Tập trung vào cơ ngực và cơ tay sau", en: "Focus on chest and triceps muscles" },
+  "tập trung vào cơ vai và cơ tay trước": { vi: "Tập trung vào cơ vai và cơ tay trước", en: "Focus on shoulders and biceps muscles" },
+  "tập trung vào đùi, mông và cơ bụng": { vi: "Tập trung vào đùi, mông và cơ bụng", en: "Focus on thighs, glutes, and core" },
+  "kích hoạt toàn bộ các nhóm cơ trên cơ thể": { vi: "Kích hoạt toàn bộ các nhóm cơ trên cơ thể", en: "Activate all muscle groups across the body" },
+
+  // Warmups
+  "chạy tại chỗ": { vi: "Chạy tại chỗ", en: "Jog in place" },
+  "động tác duỗi người": { vi: "Động tác duỗi người", en: "Full body stretch" },
+  "xoay khớp vai": { vi: "Xoay khớp vai", en: "Shoulder rotations" },
+  "xoay hông": { vi: "Xoay hông", en: "Hip rotations" },
+  "xoay cổ tay cổ chân": { vi: "Xoay cổ tay cổ chân", en: "Wrist & ankle rotations" },
+  "squat không tạ": { vi: "Squat không tạ", en: "Bodyweight squats" },
+  "lunge không tạ": { vi: "Lunge không tạ", en: "Bodyweight lunges" },
+  "jumping jacks": { vi: "Jumping Jacks", en: "Jumping Jacks" },
+  "chống đẩy nhẹ nhàng": { vi: "Chống đẩy nhẹ nhàng", en: "Light push-ups" },
+  "xoay cánh tay": { vi: "Xoay cánh tay", en: "Arm circles" },
+
+  // Cooldowns
+  "kéo giãn lưng": { vi: "Kéo giãn lưng", en: "Back stretch" },
+  "kéo giãn mông": { vi: "Kéo giãn mông", en: "Glute stretch" },
+  "kéo giãn ngực": { vi: "Kéo giãn ngực", en: "Chest stretch" },
+  "kéo giãn đùi trước": { vi: "Kéo giãn đùi trước", en: "Quad stretch" },
+  "kéo giãn đùi sau": { vi: "Kéo giãn đùi sau", en: "Hamstring stretch" },
+  "kéo giãn vai": { vi: "Kéo giãn vai", en: "Shoulder stretch" },
+  "kéo giãn tay sau": { vi: "Kéo giãn tay sau", en: "Triceps stretch" },
+  "tư thế đứa trẻ (child's pose)": { vi: "Tư thế đứa trẻ (Child's Pose)", en: "Child's Pose" },
+  "tư thế đứa trẻ": { vi: "Tư thế đứa trẻ", en: "Child's Pose" },
+  "tư thế rắn hổ mang": { vi: "Tư thế rắn hổ mang", en: "Cobra stretch" },
+  "căng giãn bắp chân": { vi: "Căng giãn bắp chân", en: "Calf stretch" },
+};
+
+export function translateWorkoutText(text: string | null | undefined, language: Language): string {
+  if (!text) return '';
+  const clean = text.trim().toLowerCase();
+  for (const key of Object.keys(workoutTranslations)) {
+    if (clean === key) {
+      return workoutTranslations[key][language];
+    }
+  }
+
+  let result = text;
+  
+  // Sentence & phrase translations
+  const replacements: [RegExp, string, string][] = [
+    [/tuần 1/gi, "Tuần 1", "Week 1"],
+    [/tuần 2/gi, "Tuần 2", "Week 2"],
+    [/tuần 3/gi, "Tuần 3", "Week 3"],
+    [/tuần 4/gi, "Tuần 4", "Week 4"],
+    
+    [/tăng cường sức mạnh cơ bản bằng cách thực hiện các bài tập cơ bản như squat, deadlift, bench press/gi, 
+     "Tăng cường sức mạnh cơ bản bằng cách thực hiện các bài tập cơ bản như Squat, Deadlift, Bench Press", 
+     "Build baseline strength using compound lifts like Squat, Deadlift, Bench Press"],
+     
+    [/tăng cường sức mạnh trên cơ thể bằng cách thực hiện các bài tập như incline dumbbell press, barbell rows/gi,
+     "Tăng cường sức mạnh trên cơ thể bằng cách thực hiện các bài tập như Incline Dumbbell Press, Barbell Rows",
+     "Focus on upper body strength with lifts like Incline Dumbbell Press, Barbell Rows"],
+     
+    [/tăng cường sức mạnh trên cơ thể dưới bằng cách thực hiện các bài tập như leg press, calf raises/gi,
+     "Tăng cường sức mạnh trên cơ thể dưới bằng cách thực hiện các bài tập như Leg Press, Calf Raises",
+     "Focus on lower body strength with lifts like Leg Press, Calf Raises"],
+     
+    [/kết hợp các bài tập trên để tăng cường sức mạnh tổng thể/gi,
+     "Kết hợp các bài tập trên để tăng cường sức mạnh tổng thể",
+     "Combine the protocols to maximize total body strength output"],
+
+    [/chạy tại chỗ/gi, "Chạy tại chỗ", "Jog in place"],
+    [/động tác duỗi người/gi, "Động tác duỗi người", "Full body stretch"],
+    [/xoay khớp vai/gi, "Xoay khớp vai", "Shoulder rotations"],
+    [/xoay hông/gi, "Xoay hông", "Hip rotations"],
+    [/xoay cổ tay cổ chân/gi, "Xoay cổ tay cổ chân", "Wrist & ankle rotations"],
+    [/squat không tạ/gi, "Squat không tạ", "Bodyweight squats"],
+    [/lunge không tạ/gi, "Lunge không tạ", "Bodyweight lunges"],
+    [/chống đẩy nhẹ nhàng/gi, "Chống đẩy nhẹ nhàng", "Light push-ups"],
+    
+    [/kéo giãn lưng/gi, "Kéo giãn lưng", "Back stretch"],
+    [/kéo giãn mông/gi, "Kéo giãn mông", "Glute stretch"],
+    [/kéo giãn ngực/gi, "Kéo giãn ngực", "Chest stretch"],
+    [/kéo giãn đùi trước/gi, "Kéo giãn đùi trước", "Quad stretch"],
+    [/kéo giãn đùi sau/gi, "Kéo giãn đùi sau", "Hamstring stretch"],
+    [/kéo giãn vai/gi, "Kéo giãn vai", "Shoulder stretch"],
+    [/kéo giãn tay sau/gi, "Kéo giãn tay sau", "Triceps stretch"],
+    [/tư thế đứa trẻ/gi, "Tư thế đứa trẻ", "Child's Pose"],
+    [/tư thế rắn hổ mang/gi, "Tư thế rắn hổ mang", "Cobra stretch"],
+    [/căng giãn bắp chân/gi, "Căng giãn bắp chân", "Calf stretch"],
+  ];
+
+  for (const [regex, viVal, enVal] of replacements) {
+    if (regex.test(result)) {
+      const replaceWith = language === 'vi' ? viVal : enVal;
+      result = result.replace(regex, replaceWith);
+    }
+  }
+
+  return result;
+}
+

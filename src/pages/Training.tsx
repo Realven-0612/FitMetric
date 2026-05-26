@@ -426,6 +426,9 @@ export default function Training() {
         setTimerSeconds((prev) => {
           if (prev <= 1) {
             setTimerActive(false);
+            if (typeof navigator !== 'undefined' && navigator.vibrate) {
+              navigator.vibrate(200);
+            }
             toast.info(t('next_set_ready'), {
               icon: <Zap className="w-4 h-4 text-cyan-400" />,
               duration: 5000

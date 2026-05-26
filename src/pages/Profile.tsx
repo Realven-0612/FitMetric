@@ -119,6 +119,10 @@ export default function Profile() {
         return;
       }
       if (event.data?.type === 'STRAVA_AUTH_SUCCESS') {
+        if (event.data.payload) {
+          localStorage.setItem('strava_token', JSON.stringify(event.data.payload));
+          setIsStravaConnected(true);
+        }
         toast.success("Successfully connected to Strava!");
       } else if (event.data?.type === 'STRAVA_AUTH_ERROR') {
         toast.error("Strava connection failed.");
@@ -142,6 +146,9 @@ export default function Profile() {
       const onMessage = (event: MessageEvent) => {
         if (!event.origin.endsWith('.run.app') && !event.origin.includes('localhost')) return;
         if (event.data?.type === 'STRAVA_AUTH_SUCCESS') {
+          if (event.data.payload) {
+            localStorage.setItem('strava_token', JSON.stringify(event.data.payload));
+          }
           setIsStravaConnected(true);
           toast.success('Successfully connected to Strava!');
         } else if (event.data?.type === 'STRAVA_AUTH_ERROR') {

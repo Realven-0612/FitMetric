@@ -9,6 +9,7 @@ import { Flame, Utensils, FileText, Info, Calculator, Target, Droplet, Apple, Lo
 import { useTranslation } from "../lib/i18n";
 import { MealScanner } from "../components/MealScanner";
 import { RecipeGenerator } from "../components/RecipeGenerator";
+import { MealPrepPlanner } from "../components/MealPrepPlanner";
 import { toast } from "sonner";
 import { useStore, calculateAge } from "../lib/store";
 import { generateAIContent } from "../lib/ai";
@@ -181,6 +182,7 @@ export default function Nutrition() {
            <TabsList className="bg-[#111111]/80 border border-white/5 p-1 rounded-xl">
              <TabsTrigger value="dashboard" className="rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-widest px-3 sm:px-4 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">{t('dashboard')}</TabsTrigger>
              <TabsTrigger value="calculator" className="rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-widest px-3 sm:px-4 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">{t('calculator')}</TabsTrigger>
+             <TabsTrigger value="mealprep" className="rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-widest px-3 sm:px-4 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">{t('mealprep') || 'Meal Prep'}</TabsTrigger>
            </TabsList>
         </div>
 
@@ -707,6 +709,10 @@ export default function Nutrition() {
                 </div>
              </div>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="mealprep" className="space-y-6">
+          <MealPrepPlanner />
         </TabsContent>
       </Tabs>
 

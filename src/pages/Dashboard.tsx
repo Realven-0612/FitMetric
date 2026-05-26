@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "../components/AuthProvider";
 import { db } from "../lib/firebase";
 import { doc, deleteDoc, collection, getDocs } from "firebase/firestore";
-import { handleFirestoreError, OperationType } from "../services/firebaseService";
+import { handleFirestoreError, OperationType, getSessionHistory } from "../services/firebaseService";
 import { useTranslation } from "../lib/i18n";
 import { useStore } from "../lib/store";
 import { useNutritionStats } from "../hooks/useNutritionStats";
@@ -38,6 +38,7 @@ export default function Dashboard() {
   const [consumptionData, setConsumptionData] = useState(defaultConsumptionData);
   const [weightHistoryData, setWeightHistoryData] = useState<any[]>([]);
   const [rawWeightHistory, setRawWeightHistory] = useState<{date: string, value: number, id?: string}[]>([]);
+  const [sessionHistoryList, setSessionHistoryList] = useState<any[]>([]);
 
   const handleDeleteWeightRecord = async (dateStr: string, id?: string) => {
     if (user && id) {
@@ -112,11 +113,8 @@ export default function Dashboard() {
       }
     }
 
-    // Chart Data and Streak
+    // Chart Data
     if (nutritionDiary) {
-       // Compute streak (mock implementation based on diary presence for now, or improve later)
-       setStreak(nutritionDiary.length > 0 ? 1 : 0);
-
        // last 7 days chart
        const chartData = [];
        for (let i = 6; i >= 0; i--) {
@@ -162,6 +160,80 @@ export default function Dashboard() {
     
     loadWeightHistory();
   }, [user]);
+
+  // Load session history from Firestore
+  useEffect(() => {
+    const loadSessionHistory = async () => {
+      if (!user) return;
+      try {
+        const history = await getSessionHistory();
+        setSessionHistoryList(history);
+      } catch (e) {
+        console.error("Error loading session history:", e);
+      }
+    };
+    loadSessionHistory();
+  }, [user, sessionLogs]);
+
+  // Calculate streak based on completed sessions and rest days
+  useEffect(() => {
+    const calculateStreak = () => {
+      if (!sessionHistoryList || sessionHistoryList.length === 0) {
+        setStreak(0);
+        return;
+      }
+
+      const completedDates = new Set(sessionHistoryList.map(item => item.id));
+      let currentStreak = 0;
+      const dateCursor = new Date(); // Start from today
+      
+      const getDayIndex = (d: Date) => {
+        const day = d.getDay();
+        return day === 0 ? 6 : day - 1;
+      };
+
+      const isPlanRestDay = (dayIdx: number) => {
+        if (!workoutPlan) return true;
+        const days = workoutPlan.days || (Array.isArray(workoutPlan) ? workoutPlan : null);
+        if (!days || !Array.isArray(days)) return true;
+        const dayPlan = days[dayIdx];
+        if (!dayPlan) return true;
+        
+        const focus = (dayPlan.focusName || "").toLowerCase();
+        const hasRestKeyword = focus.includes("rest") || focus.includes("nghỉ") || focus.includes("recovery");
+        const hasNoExercises = !dayPlan.exercises || dayPlan.exercises.length === 0;
+        
+        return hasRestKeyword || hasNoExercises;
+      };
+
+      for (let i = 0; i < 365; i++) {
+        const dateStr = dateCursor.toISOString().split('T')[0];
+        const isCompleted = completedDates.has(dateStr);
+        const dayIdx = getDayIndex(dateCursor);
+        const isRest = isPlanRestDay(dayIdx);
+
+        if (isCompleted) {
+          currentStreak++;
+        } else {
+          const isToday = i === 0;
+          if (isToday) {
+            // Today not completed yet: don't break the streak, just skip counting today
+          } else if (isRest) {
+            // Rest day (not completed): doesn't break the streak, but doesn't count towards it
+          } else {
+            // Workout day and not completed: streak is broken!
+            break;
+          }
+        }
+
+        dateCursor.setDate(dateCursor.getDate() - 1);
+      }
+
+      setStreak(currentStreak);
+    };
+
+    calculateStreak();
+  }, [sessionHistoryList, workoutPlan]);
 
   const dailyQuote = getDailyQuote(language);
   const currentHour = new Date().getHours();
