@@ -616,6 +616,7 @@ export default function Training() {
       7. Provide a 'recommendedWeight' (e.g. "20kg", "Bodyweight", "15kg per dumbbell") for each exercise. Always provide a single specific number, not a range.
          IMPORTANT: If an exercise exists in "Current Personal Best Weights", recommend a weight that is 2.5% to 5% higher (Progressive Overload).
          If it's a new exercise, estimate based on the user's weight (e.g. Bench Press often starts around 40-50% bodyweight for beginners, Squat 60-70%).
+         If the exercise uses resistance bands (e.g., has "Band" or "Dây kháng lực" in the name), recommend a band tension level (e.g., "Light Band", "Medium Band", "Heavy Band" / "Dây nhẹ", "Dây vừa", "Dây nặng") instead of "Bodyweight".
       8. If Output Language is Vietnamese, MUST translate "to failure" as "đến ngưỡng thất bại" (do NOT use "đến khi không thực hiện được nữa").
       9. Provide a 'rest' time (e.g. "90s", "2 phút" / "2 min") for each exercise in the 'rest' property based on its intensity. Recommend "3 phút" / "3 min" for heavy compounds, and "90s" or "60s" for isolation lifts.`;
 
