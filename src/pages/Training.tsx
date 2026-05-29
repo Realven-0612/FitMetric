@@ -1597,16 +1597,16 @@ export default function Training() {
                             {/* Nghỉ */}
                             <div className="bg-black/60 border border-white/5 rounded-lg px-2 py-1.5 flex flex-col gap-0.5 min-w-0">
                               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{t('rest_label')}</span>
-                              <span className="text-slate-300 font-black text-[11px] sm:text-xs leading-tight">{getExerciseRest(ex, language)}</span>
+                              <span className="text-slate-300 font-black text-[11px] sm:text-xs leading-tight break-words">{getExerciseRest(ex, language)}</span>
                             </div>
                             {/* Gợi ý — bấm để apply */}
                             <button
                               onClick={() => applyRecommendedWeight(ex)}
                               disabled={!ex.recommendedWeight}
-                              className="bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 disabled:opacity-30 disabled:cursor-default rounded-lg px-2 py-1.5 flex flex-col gap-0.5 text-left transition-all min-w-0"
+                              className="bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 disabled:opacity-30 disabled:cursor-default rounded-lg px-2 py-1.5 flex flex-col gap-0.5 text-left transition-all min-w-0 overflow-hidden"
                             >
                               <span className="text-[9px] font-black text-cyan-500 uppercase tracking-widest">{t('suggested')}</span>
-                              <span className="text-cyan-300 font-black text-[11px] sm:text-xs leading-tight">{ex.recommendedWeight || '—'}</span>
+                              <span className="text-cyan-300 font-black text-[10px] sm:text-xs leading-tight break-words break-all">{ex.recommendedWeight || '—'}</span>
                             </button>
                           </div>
                           
