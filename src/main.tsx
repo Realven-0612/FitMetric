@@ -20,6 +20,13 @@ const updateSW = registerSW({
 // OneSignal is initialized via script in index.html
 
 
+// Prevent pinch-to-zoom gestures on mobile devices
+if (typeof document !== 'undefined') {
+  document.addEventListener('gesturestart', (e) => {
+    e.preventDefault();
+  });
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
