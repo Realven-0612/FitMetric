@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search, PlayCircle, Star, Dumbbell, Youtube } from "lucide-react";
+import { Search, PlayCircle, Star, Dumbbell, Youtube, SlidersHorizontal, Sparkles } from "lucide-react";
 import { useTranslation } from "../lib/i18n";
+import { useStore } from "../lib/store";
 
 export default function Library() {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState("");
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
+  const { customExercises } = useStore();
 
   const exerciseDb = [
+    ...customExercises,
     { n: t('ex_bench_press'), m: t('chest'), d: 3, e: 5, a: t('ex_weighted_pushups'), l: t('gym'), v: "https://www.youtube.com/watch?v=_FkbD0FhgVE" },
     { n: t('ex_incline_db_press'), m: t('chest'), d: 3, e: 5, a: t('ex_decline_pushups'), l: t('gym'), v: "https://www.youtube.com/watch?v=8fXfwG4ftaQ" },
     { n: t('ex_db_bench_press'), m: t('chest'), d: 2, e: 4, a: t('ex_pushups'), l: t('gym'), v: "https://www.youtube.com/watch?v=1V3vpcaxRYQ" },
@@ -84,16 +87,43 @@ export default function Library() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10 max-w-[1600px] mx-auto">
-      {/* Filters Bar */}
-      <div className="flex flex-wrap items-end gap-6 bg-[#111111]/80 backdrop-blur-md p-6 rounded-3xl border border-white/5">
-        <div className="flex-1 min-w-[200px] space-y-2">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">{t('search_label')}</label>
-          <div className="relative">
-            <Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10 max-w-[1600px] mx-auto">
+      
+      {/* Cybernetic Console Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 py-4 bg-[#111218]/80 backdrop-blur-md p-6 md:p-8 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden">
+         <div className="absolute top-0 left-0 w-36 h-36 bg-cyan-500/10 rounded-full blur-[60px] pointer-events-none" />
+         <div className="absolute bottom-0 right-0 w-36 h-36 bg-purple-500/10 rounded-full blur-[60px] pointer-events-none" />
+         <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-4 w-full justify-between">
+            <div>
+              <div className="flex items-center gap-3">
+                 <h1 className="text-3xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+                   <Dumbbell className="w-8 h-8 text-cyan-400 animate-pulse" />
+                   {t('exercise_library' as any) || "Exercise Library"}
+                 </h1>
+                 <div className="bg-cyan-500/10 text-cyan-400 text-[10px] font-black px-2.5 py-1 rounded-md border border-cyan-500/20 flex items-center gap-2 shadow-inner uppercase tracking-wider">
+                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></div>
+                    {filteredExercises.length} {t('exercises' as any) || "Exercises"}
+                 </div>
+              </div>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1.5">{t('library_subtitle' as any) || "CYBERNETIC EXERCISE DIRECTORY & VIDEO WORKOUTS"}</p>
+            </div>
+         </div>
+      </div>
+
+      {/* Advanced Filtering Deck */}
+      <div className="flex flex-wrap items-end gap-4 bg-[#111218]/90 backdrop-blur-xl p-6 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent" />
+        
+        <div className="flex-1 min-w-[240px] space-y-2">
+          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1 flex items-center gap-1.5">
+            <Search className="w-3 h-3 text-cyan-500" />
+            {t('search_label')}
+          </label>
+          <div className="relative group">
+            <Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
             <Input 
               placeholder={t('food_search_placeholder')} 
-              className="pl-11 h-12 rounded-2xl bg-black/40 border-white/5 text-white placeholder:text-slate-600 focus-visible:ring-cyan-500/50 shadow-none font-medium"
+              className="pl-11 h-12 rounded-2xl bg-black/40 border-white/5 text-white placeholder:text-slate-700 focus-visible:ring-1 focus-visible:ring-cyan-500/30 focus-visible:border-cyan-500/30 shadow-none font-semibold text-sm transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -101,91 +131,114 @@ export default function Library() {
         </div>
 
         <div className="space-y-2 w-full sm:w-auto">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">{t('muscle_group')}</label>
-          <select 
-            value={muscleFilter}
-            onChange={(e) => setMuscleFilter(e.target.value)}
-            className="w-full sm:w-36 h-12 rounded-2xl bg-black/40 border border-white/5 text-white px-4 text-sm font-bold focus:ring-cyan-500/50 outline-none appearance-none cursor-pointer"
-          >
-            <option value="all">{t('all' as any)}</option>
-            <option value="chest">{t('chest')}</option>
-            <option value="back">{t('back')}</option>
-            <option value="legs">{t('legs')}</option>
-            <option value="shoulders">{t('shoulders')}</option>
-            <option value="arms">{t('arms')}</option>
-            <option value="core">{t('core')}</option>
-          </select>
+          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">{t('muscle_group')}</label>
+          <div className="relative">
+            <select 
+              value={muscleFilter}
+              onChange={(e) => setMuscleFilter(e.target.value)}
+              className="w-full sm:w-40 h-12 rounded-2xl bg-black/40 border border-white/5 text-white px-4 text-sm font-semibold focus:ring-1 focus:ring-cyan-500/30 focus:border-cyan-500/30 outline-none appearance-none cursor-pointer hover:border-white/10 transition-all"
+            >
+              <option value="all" className="bg-[#111218]">{t('all' as any)}</option>
+              <option value="chest" className="bg-[#111218]">{t('chest')}</option>
+              <option value="back" className="bg-[#111218]">{t('back')}</option>
+              <option value="legs" className="bg-[#111218]">{t('legs')}</option>
+              <option value="shoulders" className="bg-[#111218]">{t('shoulders')}</option>
+              <option value="arms" className="bg-[#111218]">{t('arms')}</option>
+              <option value="core" className="bg-[#111218]">{t('core')}</option>
+            </select>
+            <div className="absolute right-4 top-4.5 pointer-events-none w-2 h-2 border-r-2 border-b-2 border-slate-500 rotate-45" />
+          </div>
         </div>
 
         <div className="space-y-2 w-full sm:w-auto">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">{t('environment')}</label>
-          <select 
-            value={styleFilter}
-            onChange={(e) => setStyleFilter(e.target.value)}
-            className="w-full sm:w-36 h-12 rounded-2xl bg-black/40 border border-white/5 text-white px-4 text-sm font-bold focus:ring-cyan-500/50 outline-none appearance-none cursor-pointer"
-          >
-            <option value="all">{t('all' as any)}</option>
-            <option value="gym">{t('gym')}</option>
-            <option value="calisthenics">{t('calisthenics')}</option>
-            <option value="band">{t('band')}</option>
-          </select>
+          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">{t('environment')}</label>
+          <div className="relative">
+            <select 
+              value={styleFilter}
+              onChange={(e) => setStyleFilter(e.target.value)}
+              className="w-full sm:w-40 h-12 rounded-2xl bg-black/40 border border-white/5 text-white px-4 text-sm font-semibold focus:ring-1 focus:ring-cyan-500/30 focus:border-cyan-500/30 outline-none appearance-none cursor-pointer hover:border-white/10 transition-all"
+            >
+              <option value="all" className="bg-[#111218]">{t('all' as any)}</option>
+              <option value="gym" className="bg-[#111218]">{t('gym')}</option>
+              <option value="calisthenics" className="bg-[#111218]">{t('calisthenics')}</option>
+              <option value="band" className="bg-[#111218]">{t('band')}</option>
+            </select>
+            <div className="absolute right-4 top-4.5 pointer-events-none w-2 h-2 border-r-2 border-b-2 border-slate-500 rotate-45" />
+          </div>
         </div>
 
         <div className="space-y-2 w-full sm:w-auto">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">{t('difficulty')}</label>
-          <select 
-            value={diffFilter}
-            onChange={(e) => setDiffFilter(e.target.value)}
-            className="w-full sm:w-28 h-12 rounded-2xl bg-black/40 border border-white/5 text-white px-4 text-sm font-bold focus:ring-cyan-500/50 outline-none appearance-none cursor-pointer"
-          >
-            <option value="all">{t('all' as any)}</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-          </select>
+          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">{t('difficulty')}</label>
+          <div className="relative">
+            <select 
+              value={diffFilter}
+              onChange={(e) => setDiffFilter(e.target.value)}
+              className="w-full sm:w-28 h-12 rounded-2xl bg-black/40 border border-white/5 text-white px-4 text-sm font-semibold focus:ring-1 focus:ring-cyan-500/30 focus:border-cyan-500/30 outline-none appearance-none cursor-pointer hover:border-white/10 transition-all"
+            >
+              <option value="all" className="bg-[#111218]">{t('all' as any)}</option>
+              <option value="1" className="bg-[#111218]">1 ★</option>
+              <option value="2" className="bg-[#111218]">2 ★★</option>
+              <option value="3" className="bg-[#111218]">3 ★★★</option>
+              <option value="4" className="bg-[#111218]">4 ★★★★</option>
+              <option value="5" className="bg-[#111218]">5 ★★★★★</option>
+            </select>
+            <div className="absolute right-4 top-4.5 pointer-events-none w-2 h-2 border-r-2 border-b-2 border-slate-500 rotate-45" />
+          </div>
         </div>
 
         <div className="space-y-2 w-full sm:w-auto">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">{t('effectiveness')}</label>
-          <select 
-            value={effFilter}
-            onChange={(e) => setEffFilter(e.target.value)}
-            className="w-full sm:w-28 h-12 rounded-2xl bg-black/40 border border-white/5 text-white px-4 text-sm font-bold focus:ring-cyan-500/50 outline-none appearance-none cursor-pointer"
-          >
-            <option value="all">{t('all' as any)}</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-          </select>
+          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">{t('effectiveness')}</label>
+          <div className="relative">
+            <select 
+              value={effFilter}
+              onChange={(e) => setEffFilter(e.target.value)}
+              className="w-full sm:w-28 h-12 rounded-2xl bg-black/40 border border-white/5 text-white px-4 text-sm font-semibold focus:ring-1 focus:ring-cyan-500/30 focus:border-cyan-500/30 outline-none appearance-none cursor-pointer hover:border-white/10 transition-all"
+            >
+              <option value="all" className="bg-[#111218]">{t('all' as any)}</option>
+              <option value="1" className="bg-[#111218]">1</option>
+              <option value="2" className="bg-[#111218]">2</option>
+              <option value="3" className="bg-[#111218]">3</option>
+              <option value="4" className="bg-[#111218]">4</option>
+              <option value="5" className="bg-[#111218]">5</option>
+            </select>
+            <div className="absolute right-4 top-4.5 pointer-events-none w-2 h-2 border-r-2 border-b-2 border-slate-500 rotate-45" />
+          </div>
         </div>
 
         <div className="space-y-2 w-full sm:w-auto">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">{t('sort_by')}</label>
-          <select 
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="w-full sm:w-40 h-12 rounded-2xl bg-black/40 border border-white/5 text-white px-4 text-sm font-bold focus:ring-cyan-500/50 outline-none appearance-none cursor-pointer"
-          >
-            <option value="effectiveness">{t('effectiveness')}</option>
-            <option value="difficulty">{t('difficulty')}</option>
-            <option value="name">{t('name_label')}</option>
-          </select>
+          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1 flex items-center gap-1">
+            <SlidersHorizontal className="w-3 h-3 text-cyan-400" />
+            {t('sort_by')}
+          </label>
+          <div className="relative">
+            <select 
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full sm:w-44 h-12 rounded-2xl bg-black/40 border border-white/5 text-white px-4 text-sm font-semibold focus:ring-1 focus:ring-cyan-500/30 focus:border-cyan-500/30 outline-none appearance-none cursor-pointer hover:border-white/10 transition-all"
+            >
+              <option value="effectiveness" className="bg-[#111218]">{t('effectiveness')}</option>
+              <option value="difficulty" className="bg-[#111218]">{t('difficulty')}</option>
+              <option value="name" className="bg-[#111218]">{t('name_label')}</option>
+            </select>
+            <div className="absolute right-4 top-4.5 pointer-events-none w-2 h-2 border-r-2 border-b-2 border-slate-500 rotate-45" />
+          </div>
         </div>
       </div>
 
+      {/* Cyberpunk Exercise Cards Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         {filteredExercises.map((ex, i) => {
           const videoId = getYoutubeId(ex.v);
           const isPlaying = playingVideo === videoId;
 
           return (
-            <Card key={i} className="bg-[#111111]/80 backdrop-blur-md border border-white/5 hover:border-cyan-500/30 hover:shadow-[0_0_20px_rgba(34,211,238,0.1)] transition-all overflow-hidden flex flex-col group shadow-none p-0 rounded-3xl">
+            <Card key={i} className="bg-[#111218]/90 backdrop-blur-xl border border-white/5 hover:border-cyan-500/30 hover:shadow-[0_0_25px_rgba(6,182,212,0.15)] transition-all duration-350 overflow-hidden flex flex-col group rounded-[2rem] relative shadow-2xl">
+              
+              {/* Laser Line Accent */}
+              <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
               <div 
-                className={`bg-[#0a0a0a] relative flex items-center justify-center border-b border-white/5 overflow-hidden rounded-t-3xl cursor-pointer group/vid transition-all duration-300 ${
+                className={`bg-black/40 relative flex items-center justify-center border-b border-white/5 overflow-hidden rounded-t-[2rem] cursor-pointer group/vid transition-all duration-550 ${
                   isPlaying ? 'h-52 sm:h-64' : 'h-44'
                 }`}
                 onClick={() => !isPlaying && setPlayingVideo(videoId)}
@@ -202,24 +255,25 @@ export default function Library() {
                       allowFullScreen
                       className="absolute inset-0 z-10"
                     ></iframe>
-                    {/* Controls overlay */}
-                    <div className="absolute top-2 right-2 z-20 flex gap-1.5">
+                    
+                    {/* Floating HUD controls */}
+                    <div className="absolute top-3 right-3 z-20 flex gap-2">
                       <a
                         href={`https://www.youtube.com/watch?v=${videoId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
-                        className="w-8 h-8 rounded-lg bg-black/70 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-black/90 transition-colors"
-                        title="Mở fullscreen trên YouTube"
+                        className="w-8 h-8 rounded-xl bg-black/80 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/90 transition-colors shadow-lg"
+                        title="Open on YouTube"
                       >
-                        <Youtube className="w-4 h-4 text-red-400" />
+                        <Youtube className="w-4 h-4 text-red-500" />
                       </a>
                       <button
                         onClick={e => { e.stopPropagation(); setPlayingVideo(null); }}
-                        className="w-8 h-8 rounded-lg bg-black/70 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-red-500/30 transition-colors"
-                        title="Đóng video"
+                        className="w-8 h-8 rounded-xl bg-black/80 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-red-500/20 hover:text-red-400 text-slate-400 transition-all shadow-lg"
+                        title="Close Player"
                       >
-                        <span className="text-white text-xs font-black">✕</span>
+                        <span className="text-xs font-black">✕</span>
                       </button>
                     </div>
                   </>
@@ -228,57 +282,86 @@ export default function Library() {
                     <img 
                       src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`} 
                       alt={ex.n}
-                      className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity duration-300"
+                      className="w-full h-full object-cover opacity-50 group-hover:opacity-75 group-hover:scale-105 transition-all duration-700"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent pointer-events-none opacity-80" />
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/vid:opacity-100 transition-opacity pointer-events-none">
-                      <div className="w-14 h-14 rounded-full bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center">
-                        <PlayCircle className="w-7 h-7 text-white" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#111218] via-transparent to-transparent pointer-events-none opacity-85" />
+                    
+                    {/* Glowing HUD play trigger */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-40 group-hover/vid:opacity-100 transition-all duration-300 pointer-events-none">
+                      <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 backdrop-blur-md flex items-center justify-center group-hover:shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all">
+                        <PlayCircle className="w-8 h-8 text-cyan-400 animate-pulse" />
                       </div>
                     </div>
                   </>
                 )}
                 
                 {!isPlaying && (
-                  <span className={`absolute top-4 left-4 px-3 py-1 text-[10px] uppercase font-black tracking-widest rounded-full shadow-lg ${
-                    ex.l === t('gym') ? 'bg-cyan-400 text-black' : 
-                    ex.l === t('band') ? 'bg-orange-400 text-black' :
-                    'bg-indigo-400 text-black'
+                  <span className={`absolute top-4 left-4 px-3 py-1.5 text-[9px] uppercase font-black tracking-widest rounded-xl shadow-lg border backdrop-blur-md ${
+                    ex.l === t('gym') ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400' : 
+                    ex.l === t('band') ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' :
+                    'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
                   }`}>
                     {ex.l}
                   </span>
                 )}
               </div>
+
               <CardContent className="p-6 flex-1 flex flex-col">
                 <div className="mb-4">
-                  <h3 className="font-extrabold text-xl text-white leading-tight mb-2 tracking-tight">{ex.n}</h3>
-                  <div className="inline-flex px-2 py-1 bg-white/5 border border-white/10 rounded text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                  <h3 className="font-extrabold text-lg text-white leading-snug mb-2 tracking-tight group-hover:text-cyan-400 transition-colors duration-300">{ex.n}</h3>
+                  <div className="inline-flex px-2.5 py-1 bg-white/5 border border-white/5 rounded-lg text-[9px] font-black text-slate-400 uppercase tracking-widest">
                     {ex.m}
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                {/* Visual Stats Gauges */}
+                <div className="grid grid-cols-2 gap-4 mb-5 bg-black/20 p-3 rounded-2xl border border-white/5 shadow-inner">
                   <div>
-                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{t('effectiveness')}:</div>
-                    <div className="text-sm font-black text-white">{ex.e}/5</div>
+                    <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">{t('effectiveness')}:</div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-black text-white">{ex.e}</span>
+                      <div className="flex gap-0.5">
+                        {Array.from({ length: 5 }).map((_, idx) => (
+                          <div 
+                            key={idx} 
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              idx < ex.e ? 'bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.5)]' : 'bg-white/10'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
                   </div>
                   <div>
-                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center justify-between mb-1">
+                    <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 flex items-center justify-between">
                       {t('difficulty')}:
-                      <Dumbbell className="w-3 h-3 text-cyan-400" />
+                      <Dumbbell className="w-2.5 h-2.5 text-cyan-400" />
                     </div>
-                    <div className="text-sm font-black text-white">{ex.d}/5</div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-black text-white">{ex.d}</span>
+                      <div className="flex gap-0.5">
+                        {Array.from({ length: 5 }).map((_, idx) => (
+                          <div 
+                            key={idx} 
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              idx < ex.d ? 'bg-purple-400 shadow-[0_0_4px_rgba(192,132,252,0.5)]' : 'bg-white/10'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
-                <div className="mt-auto space-y-4">
-                  <div className="bg-black/50 border border-white/5 rounded-2xl p-4 flex gap-3 items-center">
-                    <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center shrink-0">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-400"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                {/* Alternative Recommendation HUD Box */}
+                <div className="mt-auto pt-2">
+                  <div className="bg-gradient-to-br from-purple-950/10 to-purple-900/5 border border-purple-500/10 rounded-2xl p-3.5 flex gap-3 items-center">
+                    <div className="w-7 h-7 rounded-xl bg-purple-500/15 flex items-center justify-center shrink-0 border border-purple-500/20">
+                      <Sparkles className="w-3.5 h-3.5 text-purple-400" />
                     </div>
-                    <div>
-                      <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{t('home_alternative')}:</div>
-                      <div className="text-xs font-black text-white">{ex.a}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest leading-none mb-1">{t('home_alternative')}:</div>
+                      <div className="text-xs font-black text-white truncate">{ex.a}</div>
                     </div>
                   </div>
                 </div>

@@ -48,6 +48,7 @@ export const defaultState = {
   stravaCalories: 0,
   lastResetDate: new Date().toISOString().split('T')[0],
   lastActiveDate: new Date().toISOString().split('T')[0],
+  customExercises: [] as any[],
 };
 
 interface AppState {
@@ -86,6 +87,11 @@ interface AppState {
   // Strava
   stravaCalories: number;
   setStravaCalories: (calories: number) => void;
+
+  // Custom Exercises Library
+  customExercises: any[];
+  addCustomExercise: (exercise: any) => void;
+  addExerciseToLibraryIfMissing: (ex: any) => void;
 
   // Global UI
 }
@@ -165,6 +171,17 @@ export const useStore = create<AppState>()(
       setWorkoutPlan: (workoutPlan) => {
         set({ workoutPlan });
         saveWorkoutPlan(workoutPlan);
+        
+        // Auto add exercises to library if missing
+        if (workoutPlan?.days) {
+          workoutPlan.days.forEach((day: any) => {
+            if (day.exercises) {
+              day.exercises.forEach((ex: any) => {
+                get().addExerciseToLibraryIfMissing(ex);
+              });
+            }
+          });
+        }
       },
       updateExerciseWeight: (name, weight) => {
         set((state) => {
@@ -258,6 +275,51 @@ export const useStore = create<AppState>()(
       
       stravaCalories: 0,
       setStravaCalories: (calories) => set({ stravaCalories: calories }),
+      
+      customExercises: [],
+      addCustomExercise: (exercise) => set((state) => {
+        const exists = state.customExercises.some(
+          (e: any) => e.n.toLowerCase() === exercise.n.toLowerCase()
+        );
+        if (exists) return {};
+        return { customExercises: [...state.customExercises, exercise] };
+      }),
+      addExerciseToLibraryIfMissing: (ex) => {
+        if (!ex || !ex.name) return;
+        const name = ex.name.trim();
+        const defaultNames = [
+          "bench press", "incline dumbbell press", "dumbbell bench press", "barbell row",
+          "lat pulldown", "seated cable row", "back squat", "leg press", "deadlift",
+          "romanian deadlift", "overhead press", "lateral raise", "barbell curl",
+          "tricep pushdown", "calf raise", "kettlebell swings", "dumbbell thrusters",
+          "pushups", "diamond pushups", "chest dips", "pullups", "chinups",
+          "inverted row", "pike pushups", "handstand pushups", "bodyweight squat",
+          "bulgarian split squat", "pistol squat", "walking lunges", "plank",
+          "l-sit", "hanging leg raise", "dragon flag", "burpees", "mountain climber",
+          "band chest press", "band fly", "band seated row", "band lat pulldown",
+          "band squat", "band glute bridge", "band overhead press", "band bicep curl",
+          "band tricep pushdown", "band woodchopper"
+        ];
+        const cleanName = name.toLowerCase();
+        const isDefault = defaultNames.some(n => 
+          n === cleanName || 
+          cleanName.includes(n) || 
+          n.includes(cleanName)
+        );
+        if (isDefault) return;
+        const isCustom = get().customExercises.some((e: any) => e.n.toLowerCase() === cleanName);
+        if (isCustom) return;
+        
+        get().addCustomExercise({
+          n: name,
+          m: ex.muscle || "General",
+          d: 3,
+          e: 4,
+          a: "-",
+          l: ex.style || "Gym",
+          v: `https://www.youtube.com/results?search_query=${encodeURIComponent(name)}`
+        });
+      },
     }),
     {
       name: 'fitmetric-storage',

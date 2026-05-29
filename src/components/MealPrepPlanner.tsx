@@ -18,7 +18,9 @@ import {
   Droplets, 
   Heart, 
   ChefHat,
-  Apple
+  Apple,
+  Minus,
+  Plus
 } from "lucide-react";
 import { generateAIContent } from "../lib/ai";
 import { useTranslation } from "../lib/i18n";
@@ -68,6 +70,7 @@ export function MealPrepPlanner() {
   const [loading, setLoading] = useState<boolean>(false);
   const [selectedDayIdx, setSelectedDayIdx] = useState<number>(0);
   const [activeSubTab, setActiveSubTab] = useState<"menu" | "shopping" | "guide">("menu");
+  const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
 
   const totalPeople = adults + teens + children + seniors;
 
@@ -84,6 +87,7 @@ export function MealPrepPlanner() {
     }
     setLoading(true);
     setPlan(null);
+    setCheckedItems({});
 
     const dietNameMap: Record<string, string> = {
       standard: language === 'vi' ? "Bình thường / Cân bằng" : "Standard Balanced",
@@ -209,60 +213,112 @@ export function MealPrepPlanner() {
             </h4>
             
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+              <div className="space-y-1.5 bg-black/40 border border-white/5 p-3 rounded-2xl flex flex-col items-center justify-between">
+                <Label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider text-center">
                   {language === 'vi' ? "Người lớn" : "Adults"}
                 </Label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="15"
-                  value={adults}
-                  onChange={(e) => setAdults(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="bg-black/50 border-white/10 h-11 text-center font-black rounded-xl"
-                />
+                <div className="flex items-center justify-between w-full mt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setAdults(Math.max(0, adults - 1))}
+                    className="h-8 w-8 rounded-xl bg-black/60 border-white/10 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all shrink-0"
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </Button>
+                  <span className="text-sm font-black text-white px-2 select-none">{adults}</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setAdults(Math.min(15, adults + 1))}
+                    className="h-8 w-8 rounded-xl bg-black/60 border-white/10 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all shrink-0"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+              <div className="space-y-1.5 bg-black/40 border border-white/5 p-3 rounded-2xl flex flex-col items-center justify-between">
+                <Label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider text-center">
                   {language === 'vi' ? "Người trẻ/Teens" : "Teens"}
                 </Label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="15"
-                  value={teens}
-                  onChange={(e) => setTeens(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="bg-black/50 border-white/10 h-11 text-center font-black rounded-xl"
-                />
+                <div className="flex items-center justify-between w-full mt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setTeens(Math.max(0, teens - 1))}
+                    className="h-8 w-8 rounded-xl bg-black/60 border-white/10 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all shrink-0"
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </Button>
+                  <span className="text-sm font-black text-white px-2 select-none">{teens}</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setTeens(Math.min(15, teens + 1))}
+                    className="h-8 w-8 rounded-xl bg-black/60 border-white/10 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all shrink-0"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+              <div className="space-y-1.5 bg-black/40 border border-white/5 p-3 rounded-2xl flex flex-col items-center justify-between">
+                <Label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider text-center">
                   {language === 'vi' ? "Trẻ em" : "Children"}
                 </Label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="15"
-                  value={children}
-                  onChange={(e) => setChildren(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="bg-black/50 border-white/10 h-11 text-center font-black rounded-xl"
-                />
+                <div className="flex items-center justify-between w-full mt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setChildren(Math.max(0, children - 1))}
+                    className="h-8 w-8 rounded-xl bg-black/60 border-white/10 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all shrink-0"
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </Button>
+                  <span className="text-sm font-black text-white px-2 select-none">{children}</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setChildren(Math.min(15, children + 1))}
+                    className="h-8 w-8 rounded-xl bg-black/60 border-white/10 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all shrink-0"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+              <div className="space-y-1.5 bg-black/40 border border-white/5 p-3 rounded-2xl flex flex-col items-center justify-between">
+                <Label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider text-center">
                   {language === 'vi' ? "Cao tuổi" : "Seniors"}
                 </Label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="15"
-                  value={seniors}
-                  onChange={(e) => setSeniors(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="bg-black/50 border-white/10 h-11 text-center font-black rounded-xl"
-                />
+                <div className="flex items-center justify-between w-full mt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setSeniors(Math.max(0, seniors - 1))}
+                    className="h-8 w-8 rounded-xl bg-black/60 border-white/10 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all shrink-0"
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </Button>
+                  <span className="text-sm font-black text-white px-2 select-none">{seniors}</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setSeniors(Math.min(15, seniors + 1))}
+                    className="h-8 w-8 rounded-xl bg-black/60 border-white/10 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all shrink-0"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -332,33 +388,33 @@ export function MealPrepPlanner() {
           <div className="space-y-6">
             
             {/* Sub-tab selection */}
-            <div className="flex gap-2 bg-black/40 border border-white/5 p-1 rounded-2xl w-fit">
+            <div className="flex gap-1.5 bg-[#161622]/80 border border-white/5 p-1.5 rounded-2xl w-full sm:w-auto shadow-inner">
               <button 
                 onClick={() => setActiveSubTab("menu")}
-                className={`px-5 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${
+                className={`flex-1 sm:flex-none px-6 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 ${
                   activeSubTab === "menu" 
-                  ? "bg-purple-500/20 text-purple-400 border border-purple-500/30" 
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-gradient-to-r from-purple-500/20 to-indigo-500/20 text-purple-300 border border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.15)]" 
+                  : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.02]"
                 }`}
               >
                 {language === 'vi' ? "Thực đơn hàng ngày" : "Daily Menu"}
               </button>
               <button 
                 onClick={() => setActiveSubTab("shopping")}
-                className={`px-5 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${
+                className={`flex-1 sm:flex-none px-6 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 ${
                   activeSubTab === "shopping" 
-                  ? "bg-purple-500/20 text-purple-400 border border-purple-500/30" 
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-gradient-to-r from-purple-500/20 to-indigo-500/20 text-purple-300 border border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.15)]" 
+                  : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.02]"
                 }`}
               >
                 {language === 'vi' ? "Danh sách đi chợ" : "Shopping List"}
               </button>
               <button 
                 onClick={() => setActiveSubTab("guide")}
-                className={`px-5 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${
+                className={`flex-1 sm:flex-none px-6 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 ${
                   activeSubTab === "guide" 
-                  ? "bg-purple-500/20 text-purple-400 border border-purple-500/30" 
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-gradient-to-r from-purple-500/20 to-indigo-500/20 text-purple-300 border border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.15)]" 
+                  : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.02]"
                 }`}
               >
                 {language === 'vi' ? "Hướng dẫn sơ chế" : "Prep Guide"}
@@ -368,18 +424,21 @@ export function MealPrepPlanner() {
             {activeSubTab === "menu" && (
               <div className="space-y-6">
                 {/* 7 Day selector buttons */}
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x">
+                <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide snap-x scroll-smooth">
                   {plan.weeklyPlan.map((d, idx) => (
                     <button
                       key={idx}
                       onClick={() => setSelectedDayIdx(idx)}
-                      className={`px-5 h-11 rounded-xl font-bold text-xs uppercase tracking-wider border shrink-0 transition-all ${
+                      className={`relative px-6 h-12 rounded-xl font-black text-xs uppercase tracking-widest shrink-0 transition-all duration-300 ${
                         selectedDayIdx === idx
-                        ? "bg-purple-500 text-black border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.2)]"
-                        : "bg-[#111]/80 text-slate-400 border-white/5 hover:bg-white/5 hover:text-white"
+                        ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-[0_4px_20px_rgba(168,85,247,0.4)] border border-purple-400/30"
+                        : "bg-white/[0.02] text-slate-400 border border-white/5 hover:bg-white/[0.06] hover:text-white"
                       }`}
                     >
                       {d.dayName}
+                      {selectedDayIdx === idx && (
+                        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_8px_#a855f7]" />
+                      )}
                     </button>
                   ))}
                 </div>
@@ -408,32 +467,52 @@ export function MealPrepPlanner() {
                       };
                       const mealIcon = mealType === 'breakfast' ? '🌅' : mealType === 'lunch' ? '☀️' : mealType === 'dinner' ? '🌙' : '🍎';
                       
+                      const totalMacros = meal.macros.protein + meal.macros.carbs + meal.macros.fat;
+                      const proPct = totalMacros > 0 ? (meal.macros.protein / totalMacros) * 100 : 0;
+                      const carbPct = totalMacros > 0 ? (meal.macros.carbs / totalMacros) * 100 : 0;
+                      const fatPct = totalMacros > 0 ? (meal.macros.fat / totalMacros) * 100 : 0;
+
                       return (
-                        <div key={mealType} className="bg-black/30 border border-white/5 rounded-2xl p-5 hover:border-white/10 transition-colors">
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5 mb-2">
-                            <span>{mealIcon}</span>
-                            <span>{mealLabels[mealType] || mealType}</span>
-                          </span>
-                          <h5 className="text-sm font-black text-white capitalize mb-1">{meal.name}</h5>
-                          <p className="text-xs text-slate-400 font-medium mb-4 leading-relaxed italic">{meal.portion}</p>
+                        <div key={mealType} className="group relative bg-gradient-to-br from-[#1a1a2e]/60 to-[#0e0e1a]/80 backdrop-blur-md border border-white/5 rounded-3xl p-6 hover:border-purple-500/30 hover:shadow-[0_10px_30px_rgba(168,85,247,0.06)] transition-all duration-300 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-[10px] font-bold text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-full uppercase tracking-widest flex items-center gap-1.5">
+                                <span>{mealIcon}</span>
+                                <span>{mealLabels[mealType] || mealType}</span>
+                              </span>
+                            </div>
+                            <h5 className="text-base font-black text-white capitalize mb-1 group-hover:text-purple-300 transition-colors">{meal.name}</h5>
+                            <p className="text-xs text-slate-400 font-medium mb-4 leading-relaxed italic">{meal.portion}</p>
+                          </div>
                           
-                          {/* Macro items */}
-                          <div className="grid grid-cols-4 gap-1.5 pt-3 border-t border-white/5">
-                            <div className="text-center">
-                              <span className="text-[11px] font-black text-white">{meal.macros.kcal}</span>
-                              <span className="text-[8px] text-slate-500 uppercase font-black block mt-0.5">Kcal</span>
-                            </div>
-                            <div className="text-center border-l border-white/5">
-                              <span className="text-[11px] font-black text-cyan-400">{meal.macros.protein}g</span>
-                              <span className="text-[8px] text-slate-500 uppercase font-black block mt-0.5">Pro</span>
-                            </div>
-                            <div className="text-center border-l border-white/5">
-                              <span className="text-[11px] font-black text-yellow-400">{meal.macros.carbs}g</span>
-                              <span className="text-[8px] text-slate-500 uppercase font-black block mt-0.5">Carb</span>
-                            </div>
-                            <div className="text-center border-l border-white/5">
-                              <span className="text-[11px] font-black text-pink-400">{meal.macros.fat}g</span>
-                              <span className="text-[8px] text-slate-500 uppercase font-black block mt-0.5">Fat</span>
+                          <div>
+                            {/* Visual ratio bar */}
+                            {totalMacros > 0 && (
+                              <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden flex gap-0.5 mb-4">
+                                <div style={{ width: `${proPct}%` }} className="h-full bg-cyan-400" title={`Protein: ${proPct.toFixed(0)}%`} />
+                                <div style={{ width: `${carbPct}%` }} className="h-full bg-yellow-400" title={`Carbs: ${carbPct.toFixed(0)}%`} />
+                                <div style={{ width: `${fatPct}%` }} className="h-full bg-pink-400" title={`Fat: ${fatPct.toFixed(0)}%`} />
+                              </div>
+                            )}
+
+                            {/* Macro items */}
+                            <div className="grid grid-cols-4 gap-2 pt-3 border-t border-white/5">
+                              <div className="text-center bg-white/[0.02] p-1.5 rounded-lg border border-white/[0.02]">
+                                <span className="text-xs font-black text-white block">{meal.macros.kcal}</span>
+                                <span className="text-[8px] text-slate-500 uppercase font-bold block mt-0.5">Kcal</span>
+                              </div>
+                              <div className="text-center bg-cyan-500/[0.02] p-1.5 rounded-lg border border-cyan-500/[0.05]">
+                                <span className="text-xs font-black text-cyan-400 block">{meal.macros.protein}g</span>
+                                <span className="text-[8px] text-cyan-500/70 uppercase font-bold block mt-0.5">Pro</span>
+                              </div>
+                              <div className="text-center bg-yellow-500/[0.02] p-1.5 rounded-lg border border-yellow-500/[0.05]">
+                                <span className="text-xs font-black text-yellow-400 block">{meal.macros.carbs}g</span>
+                                <span className="text-[8px] text-yellow-500/70 uppercase font-bold block mt-0.5">Carb</span>
+                              </div>
+                              <div className="text-center bg-pink-500/[0.02] p-1.5 rounded-lg border border-pink-500/[0.05]">
+                                <span className="text-xs font-black text-pink-400 block">{meal.macros.fat}g</span>
+                                <span className="text-[8px] text-pink-500/70 uppercase font-bold block mt-0.5">Fat</span>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -465,20 +544,33 @@ export function MealPrepPlanner() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {plan.shoppingList.map((category, idx) => (
-                    <div key={idx} className="bg-black/30 border border-white/5 rounded-2xl p-5 space-y-3">
+                    <div key={idx} className="bg-gradient-to-br from-[#1a1a2e]/40 to-[#0e0e1a]/60 border border-white/5 rounded-2xl p-5 space-y-3">
                       <h5 className="text-xs font-black text-cyan-400 uppercase tracking-widest pb-2 border-b border-white/5">
                         {category.category}
                       </h5>
-                      <ul className="space-y-2">
-                        {category.items.map((item, i) => (
-                          <li key={i} className="flex gap-2.5 items-start text-xs font-semibold text-slate-300">
-                            <input 
-                              type="checkbox" 
-                              className="w-4 h-4 rounded border-white/10 bg-black text-purple-500 focus:ring-purple-500/30 shrink-0 mt-0.5" 
-                            />
-                            <span>{item}</span>
-                          </li>
-                        ))}
+                      <ul className="space-y-1.5">
+                        {category.items.map((item, i) => {
+                          const itemKey = `${idx}-${i}`;
+                          const isChecked = !!checkedItems[itemKey];
+                          return (
+                            <li 
+                              key={i} 
+                              onClick={() => setCheckedItems(prev => ({ ...prev, [itemKey]: !prev[itemKey] }))}
+                              className={`flex gap-3 items-center text-xs font-medium cursor-pointer py-1.5 px-2.5 rounded-xl hover:bg-white/[0.02] transition-all select-none ${
+                                isChecked ? 'text-slate-500 line-through' : 'text-slate-300'
+                              }`}
+                            >
+                              <div className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all duration-200 shrink-0 ${
+                                isChecked 
+                                ? 'bg-purple-500 border-purple-500 text-black' 
+                                : 'border-white/20 bg-black/40 text-transparent'
+                              }`}>
+                                <CheckCircle2 className="w-3.5 h-3.5 stroke-[3]" />
+                              </div>
+                              <span>{item}</span>
+                            </li>
+                          );
+                        })}
                       </ul>
                     </div>
                   ))}
@@ -502,15 +594,18 @@ export function MealPrepPlanner() {
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="relative pl-6 border-l-2 border-white/5 space-y-6 ml-3">
                   {plan.prepInstructions.map((instruction, idx) => (
-                    <div key={idx} className="bg-black/30 border border-white/5 rounded-2xl p-4 flex gap-4 items-start">
-                      <div className="w-6 h-6 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">
+                    <div key={idx} className="relative group">
+                      {/* Timeline dot */}
+                      <div className="absolute -left-[35px] top-1 w-6 h-6 rounded-full bg-[#111] border-2 border-purple-500 flex items-center justify-center text-[10px] font-black text-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.3)] group-hover:border-purple-400 group-hover:text-purple-300 transition-all duration-300">
                         {idx + 1}
                       </div>
-                      <p className="text-xs text-slate-300 font-medium leading-relaxed">
-                        {instruction}
-                      </p>
+                      <div className="bg-gradient-to-br from-[#1a1a2e]/40 to-[#0e0e1a]/60 border border-white/5 rounded-2xl p-5 hover:border-purple-500/20 transition-all duration-300">
+                        <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                          {instruction}
+                        </p>
+                      </div>
                     </div>
                   ))}
                 </div>

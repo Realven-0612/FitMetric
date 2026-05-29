@@ -112,58 +112,111 @@ export default function Scanner() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 w-full h-full lg:min-h-[calc(100vh-8rem)] flex flex-col">
-      <div className="flex bg-black/40 p-1.5 rounded-2xl border border-white/5 w-fit self-center lg:self-start">
-        <div className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest bg-cyan-500 text-black shadow-[0_0_20px_rgba(34,211,238,0.3)]">
-          <Fingerprint className="w-4 h-4" /> Composition Scan
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 w-full h-full lg:min-h-[calc(100vh-8rem)] flex flex-col pb-10">
+      <style>{`
+        @keyframes scan-laser {
+          0% { top: 0%; opacity: 0.8; }
+          50% { opacity: 1; }
+          100% { top: 100%; opacity: 0.8; }
+        }
+        @keyframes grid-pulse {
+          0%, 100% { opacity: 0.05; }
+          50% { opacity: 0.2; }
+        }
+        .laser-line {
+          position: absolute;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: linear-gradient(90deg, transparent, #22d3ee, #a855f7, #22d3ee, transparent);
+          box-shadow: 0 0 15px #22d3ee, 0 0 30px #a855f7;
+          animation: scan-laser 3s infinite linear;
+          z-index: 20;
+        }
+        .scan-grid {
+          background-size: 24px 24px;
+          background-image: 
+            linear-gradient(to right, rgba(34, 211, 238, 0.05) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(34, 211, 238, 0.05) 1px, transparent 1px);
+          animation: grid-pulse 3s infinite ease-in-out;
+        }
+      `}</style>
+
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-[#111218]/85 backdrop-blur-md p-6 md:p-8 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-36 h-36 bg-cyan-500/10 rounded-full blur-[60px] pointer-events-none" />
+        <div className="relative z-10 flex items-center gap-4">
+          <div className="relative flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full bg-cyan-500/20 blur-sm animate-ping scale-110" />
+            <div className="relative w-14 h-14 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20 shadow-[0_0_15px_rgba(34,211,238,0.15)]">
+              <Fingerprint className="w-7 h-7 text-cyan-400" />
+            </div>
+          </div>
+          <div>
+            <h1 className="text-xl font-black text-white uppercase tracking-widest">Composition Scan</h1>
+            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">AI Biometric Analysis & Body fat estimate</p>
+          </div>
         </div>
       </div>
 
-      <Card className="bg-white/5 backdrop-blur-md border border-white/10 overflow-hidden shadow-none rounded-[2rem] flex-1 flex flex-col">
+      <Card className="bg-[#111218]/90 backdrop-blur-xl border border-white/5 overflow-hidden shadow-2xl rounded-[2rem] flex-1 flex flex-col">
         <CardContent className="p-0 flex flex-col lg:flex-row h-full overflow-hidden">
           <div className="flex flex-col lg:flex-row w-full h-full">
-             <div className={`p-6 flex-1 flex flex-col justify-center items-center ${analysis ? 'lg:border-r border-white/10 lg:w-1/2' : 'w-full'} transition-all`}>
+             <div className={`p-6 md:p-8 flex-1 flex flex-col justify-center items-center ${analysis ? 'lg:border-r border-white/5 lg:w-1/2' : 'w-full'} transition-all`}>
                 {!image && !useWebcam && (
-                  <div className="w-full max-w-lg aspect-square flex flex-col items-center justify-center border-2 border-dashed border-white/20 rounded-[2rem] bg-slate-900/40 hover:bg-slate-900/60 hover:border-primary/50 transition-all p-8 text-center gap-8 group cursor-pointer relative"
+                  <div className="w-full max-w-lg aspect-square flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-[2rem] bg-black/30 hover:bg-black/50 hover:border-cyan-500/30 transition-all p-8 text-center gap-8 group cursor-pointer relative shadow-inner"
                        onClick={() => fileInputRef.current?.click()}>
                     <div className="relative">
-                      <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl scale-[2.0] group-hover:scale-[2.5] transition-transform duration-500"></div>
-                      <UploadCloud className="w-10 h-10 text-primary relative z-10" />
+                      <div className="absolute inset-0 bg-cyan-500/10 rounded-full blur-3xl scale-[2.0] group-hover:scale-[2.5] transition-transform duration-500"></div>
+                      <div className="w-16 h-16 rounded-2xl bg-cyan-500/5 border border-cyan-500/10 flex items-center justify-center group-hover:border-cyan-500/30 transition-colors">
+                        <UploadCloud className="w-8 h-8 text-cyan-400" />
+                      </div>
                     </div>
                     <div>
-                      <h3 className="font-black text-2xl text-white mb-2 uppercase">Upload Physique</h3>
-                      <p className="text-sm text-slate-400">Drag & drop or click to browse</p>
+                      <h3 className="font-black text-xl text-white mb-2 uppercase tracking-wide">Upload Physique Photo</h3>
+                      <p className="text-xs text-slate-500 font-medium">Drag & drop or click to browse image</p>
                     </div>
-                    <div className="flex gap-4">
-                      <Button onClick={(e) => { e.stopPropagation(); setUseWebcam(true); }} variant="outline" className="rounded-2xl border-white/10 bg-black/50">CAMERA</Button>
-                      <Button className="rounded-2xl bg-cyan-400 text-black font-black">BROWSE</Button>
+                    <div className="flex gap-3 relative z-10">
+                      <Button onClick={(e) => { e.stopPropagation(); setUseWebcam(true); }} variant="outline" className="rounded-xl border-white/5 bg-black/40 text-xs font-black uppercase tracking-widest h-10 px-5 hover:bg-white/10">CAMERA</Button>
+                      <Button className="rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-widest h-10 px-5 transition-all shadow-[0_0_15px_rgba(34,211,238,0.2)]">BROWSE</Button>
                       <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload}/>
                     </div>
                   </div>
                 )}
                 {useWebcam && (
-                  <div className="relative w-full max-w-lg aspect-[3/4] bg-slate-900 rounded-[2rem] overflow-hidden border border-white/10">
+                  <div className="relative w-full max-w-lg aspect-[3/4] bg-black rounded-[2rem] overflow-hidden border border-white/5 shadow-inner">
                     <Webcam audio={false} ref={webcamRef} screenshotFormat="image/jpeg" className="w-full h-full object-cover" />
                     <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-4">
-                      <Button onClick={capture} className="rounded-full w-14 h-14 bg-white text-black"><Camera className="w-5 h-5"/></Button>
-                      <Button onClick={() => setUseWebcam(false)} variant="destructive" className="rounded-full w-14 h-14">X</Button>
+                      <Button onClick={capture} className="rounded-full w-14 h-14 bg-white text-black hover:scale-105 active:scale-95 transition-transform"><Camera className="w-5 h-5"/></Button>
+                      <Button onClick={() => setUseWebcam(false)} variant="destructive" className="rounded-full w-14 h-14 hover:scale-105 active:scale-95 transition-transform">✕</Button>
                     </div>
                   </div>
                 )}
                 {image && (
                    <div className="w-full h-full max-w-md mx-auto flex flex-col justify-center gap-4">
-                      <div className="relative rounded-[2rem] overflow-hidden border border-white/10 aspect-[3/4]">
+                      <div className="relative rounded-[2rem] overflow-hidden border border-white/10 aspect-[3/4] bg-black shadow-2xl">
                         <img src={image} alt="Physique" className="w-full h-full object-cover" />
+                        
+                        {/* Scan grid and laser effect */}
+                        {loading && (
+                          <>
+                            <div className="absolute inset-0 scan-grid z-10" />
+                            <div className="laser-line" />
+                          </>
+                        )}
+
                         {!loading && (
                           <button
                             onClick={() => { setImage(null); setAnalysis(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                            className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/70 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-red-500/80 transition-all z-10"
+                            className="absolute top-4 right-4 w-9 h-9 rounded-xl bg-black/80 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-red-500 hover:border-red-500/30 transition-all z-20"
                           >✕</button>
                         )}
                         {loading && (
-                          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-8 gap-6">
-                             <Fingerprint className="w-20 h-20 text-primary animate-pulse"/>
-                             <div className="text-primary font-mono text-sm tracking-widest font-bold">ANALYZING...</div>
+                          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center p-8 gap-4 z-15">
+                             <div className="w-16 h-16 rounded-full border border-cyan-500/20 bg-cyan-500/10 flex items-center justify-center shadow-[0_0_20px_rgba(34,211,238,0.25)] animate-pulse">
+                               <Fingerprint className="w-8 h-8 text-cyan-400"/>
+                             </div>
+                             <div className="text-cyan-400 font-mono text-xs tracking-widest font-black uppercase animate-pulse mt-2">ANALYZING PHYSIQUE...</div>
                           </div>
                         )}
                       </div>
@@ -172,44 +225,84 @@ export default function Scanner() {
                           <Button
                             variant="outline"
                             onClick={() => fileInputRef.current?.click()}
-                            className="flex-1 h-12 rounded-2xl border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                            className="flex-1 h-12 rounded-xl border-white/5 bg-white/5 text-slate-300 hover:bg-white/10 text-xs font-black uppercase tracking-widest transition-all"
                           >
                             📷 Change Photo
                           </Button>
                           <Button
                             variant="outline"
                             onClick={() => { setImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                            className="flex-1 h-12 rounded-2xl border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                            className="flex-1 h-12 rounded-xl border-red-500/20 bg-red-500/5 text-red-400 hover:bg-red-500/10 text-xs font-black uppercase tracking-widest transition-all"
                           >
                             ✕ Cancel
                           </Button>
                         </div>
                       )}
-                      {!loading && !analysis && <Button onClick={analyzeImage} className="w-full bg-cyan-500 h-14 rounded-2xl font-black">START SCAN</Button>}
+                      {!loading && !analysis && <Button onClick={analyzeImage} className="w-full bg-cyan-500 hover:bg-cyan-400 text-black h-14 rounded-xl font-black uppercase text-xs tracking-widest shadow-[0_0_20px_rgba(34,211,238,0.2)] transition-all">START BIOMETRIC SCAN</Button>}
                    </div>
                 )}
              </div>
              {analysis && (
-               <div className="flex-1 p-8 bg-slate-900/30 overflow-y-auto space-y-8">
-                  <div className="flex items-center gap-3">
-                     <Fingerprint className="w-8 h-8 text-primary shadow-primary"/>
-                     <h2 className="text-2xl font-black text-white uppercase">Scan Report</h2>
+               <div className="flex-1 p-6 md:p-8 bg-[#0e0f14]/80 overflow-y-auto space-y-6 max-h-[85vh] custom-scrollbar">
+                  <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                     <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                        <Fingerprint className="w-5 h-5 shadow-cyan"/>
+                     </div>
+                     <div>
+                        <h2 className="text-xl font-black text-white uppercase tracking-wider">Scan Diagnostics</h2>
+                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">{analysis.physiqueType}</p>
+                     </div>
                   </div>
+
                   <div className="grid grid-cols-2 gap-4">
-                     <Card className="bg-white/5 p-4 rounded-2xl border-white/10">
-                        <p className="text-[10px] text-slate-500 uppercase font-black">Body Fat</p>
-                        <p className="text-3xl font-black text-primary">{String(analysis.bodyFatEstimate).replace('%', '')}%</p>
+                     <Card className="bg-black/40 p-5 rounded-2xl border-white/5 relative overflow-hidden shadow-inner">
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-cyan-500/5 rounded-full blur-xl pointer-events-none" />
+                        <p className="text-[8px] text-slate-500 uppercase font-black tracking-widest mb-1">Body Fat Estimate</p>
+                        <p className="text-3xl font-black text-cyan-400 tracking-tight">{String(analysis.bodyFatEstimate).replace('%', '')}%</p>
+                        <div className="w-full bg-black/60 rounded-full h-1.5 mt-3 border border-white/5 overflow-hidden">
+                           <div className="bg-cyan-400 h-full rounded-full" style={{ width: `${Math.min(100, (parseFloat(analysis.bodyFatEstimate) || 15) * 2.5)}%` }} />
+                        </div>
                      </Card>
-                     <Card className="bg-white/5 p-4 rounded-2xl border-white/10">
-                        <p className="text-[10px] text-slate-500 uppercase font-black">Fitness Score</p>
-                        <p className="text-3xl font-black text-white">{analysis.score}/100</p>
+                     <Card className="bg-black/40 p-5 rounded-2xl border-white/5 relative overflow-hidden shadow-inner">
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-purple-500/5 rounded-full blur-xl pointer-events-none" />
+                        <p className="text-[8px] text-slate-500 uppercase font-black tracking-widest mb-1">Fitness Score</p>
+                        <p className="text-3xl font-black text-purple-400 tracking-tight">{analysis.score}/100</p>
+                        <div className="w-full bg-black/60 rounded-full h-1.5 mt-3 border border-white/5 overflow-hidden">
+                           <div className="bg-purple-500 h-full rounded-full" style={{ width: `${analysis.score}%` }} />
+                        </div>
                      </Card>
                   </div>
-                  <div className="bg-secondary/10 p-6 rounded-2xl border border-secondary/30">
-                     <p className="text-[10px] text-secondary uppercase font-black mb-2 tracking-widest">Recommendation</p>
-                     <p className="text-sm text-slate-300 leading-relaxed">{analysis.recommendation}</p>
+
+                  <div className="bg-black/40 border border-white/5 rounded-2xl p-5 shadow-inner">
+                     <p className="text-[9px] text-cyan-400 uppercase font-black mb-3 tracking-widest">Aesthetic Strengths</p>
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                       {Array.isArray(analysis.strengths) && analysis.strengths.map((str: string, i: number) => (
+                         <div key={i} className="flex gap-2 items-center text-xs text-slate-300 font-semibold bg-white/[0.02] border border-white/5 p-2.5 rounded-xl">
+                           <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0 shadow-[0_0_6px_#22d3ee]" />
+                           <span className="truncate">{str}</span>
+                         </div>
+                       ))}
+                     </div>
                   </div>
-                  <Button onClick={() => {setImage(null); setAnalysis(null);}} className="w-full rounded-2xl border-white/10 bg-white/5 text-slate-400 h-12">NEW SCAN</Button>
+
+                  <div className="bg-black/40 border border-white/5 rounded-2xl p-5 shadow-inner">
+                     <p className="text-[9px] text-purple-400 uppercase font-black mb-3 tracking-widest">Areas to Target</p>
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                       {Array.isArray(analysis.weaknesses) && analysis.weaknesses.map((weak: string, i: number) => (
+                         <div key={i} className="flex gap-2 items-center text-xs text-slate-300 font-semibold bg-white/[0.02] border border-white/5 p-2.5 rounded-xl">
+                           <div className="w-1.5 h-1.5 rounded-full bg-purple-550 shrink-0 shadow-[0_0_6px_#a855f7]" />
+                           <span className="truncate">{weak}</span>
+                         </div>
+                       ))}
+                     </div>
+                  </div>
+
+                  <div className="bg-cyan-500/5 p-5 rounded-2xl border border-cyan-500/20 shadow-inner">
+                     <p className="text-[9px] text-cyan-400 uppercase font-black mb-1.5 tracking-widest">Coach Recommendation</p>
+                     <p className="text-xs text-slate-300 leading-relaxed font-semibold">{analysis.recommendation}</p>
+                  </div>
+                  
+                  <Button onClick={() => {setImage(null); setAnalysis(null);}} className="w-full rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white h-12 font-black uppercase text-[10px] tracking-widest transition-all">NEW SCAN</Button>
                </div>
              )}
           </div>

@@ -887,25 +887,27 @@ export default function Training() {
 
     // Fallback: missing video UI
     return (
-      <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center p-6 text-center bg-black/60 rounded-xl">
-        <Video className="w-10 h-10 text-slate-500 mb-3" />
-        <p className="text-slate-300 text-sm mb-4">
-          Video chưa có sẵn cho bài tập <span className="font-bold text-cyan-400">{translateExercise(exerciseName, language)}</span>.
+      <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center p-6 text-center bg-[#0a0d14]/90 backdrop-blur-md border border-white/5 rounded-2xl shadow-inner">
+        <div className="w-12 h-12 rounded-full bg-slate-500/10 border border-slate-500/20 flex items-center justify-center mb-3">
+          <Video className="w-5 h-5 text-slate-400" />
+        </div>
+        <p className="text-slate-300 text-xs mb-4 font-semibold leading-relaxed max-w-xs">
+          Video chưa có sẵn cho bài tập <span className="font-black text-cyan-400">{translateExercise(exerciseName, language)}</span>.
         </p>
         
         {addingVideoEx === lowerName ? (
-          <div className="flex flex-col sm:flex-row gap-2 w-full max-w-sm">
+          <div className="flex flex-col gap-2 w-full max-w-xs">
             <Input 
               placeholder="Nhập ID Youtube (VD: _FkbD0FhgVE)" 
-              className="bg-black/50 border-white/10 h-9"
+              className="bg-black/40 border-white/10 h-10 rounded-xl text-xs placeholder:text-slate-600 text-white focus:border-cyan-500/40"
               value={missingVideoId}
               onChange={e => setMissingVideoId(e.target.value)}
             />
-            <div className="flex gap-2">
-              <Button size="sm" onClick={() => handleAddCustomVideo(lowerName)} className="bg-cyan-500 hover:bg-cyan-400 text-black h-9">
+            <div className="flex gap-2 w-full">
+              <Button size="sm" onClick={() => handleAddCustomVideo(lowerName)} className="flex-1 bg-cyan-500 hover:bg-cyan-400 text-black h-9 rounded-lg font-black uppercase text-[10px] tracking-wider transition-all">
                 Lưu
               </Button>
-              <Button size="sm" variant="ghost" className="h-9 hover:bg-white/10" onClick={() => {
+              <Button size="sm" variant="ghost" className="flex-1 h-9 hover:bg-white/10 rounded-lg text-slate-400 font-bold uppercase text-[10px] tracking-wider transition-all" onClick={() => {
                 setAddingVideoEx(null);
                 setMissingVideoId('');
               }}>
@@ -917,10 +919,10 @@ export default function Training() {
           <Button 
             variant="outline" 
             size="sm" 
-            className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10"
+            className="border-cyan-500/20 bg-cyan-500/5 text-cyan-400 hover:bg-cyan-500 hover:text-black font-black uppercase tracking-widest text-[9px] h-10 px-4 rounded-xl transition-all shadow-[0_0_15px_rgba(34,211,238,0.05)]"
             onClick={() => setAddingVideoEx(lowerName)}
           >
-            <PlusCircle className="w-4 h-4 mr-2" /> Bổ sung vào Database
+            <PlusCircle className="w-3.5 h-3.5 mr-1.5 shrink-0" /> Bổ sung vào Database
           </Button>
         )}
       </div>
@@ -1001,9 +1003,6 @@ export default function Training() {
     toast.success(t('toast_calendar_exported'));
   };
 
-  const defaultDays = Array.from({ length: 7 }).map(
-    (_, i) => ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i],
-  );
   const currentDayData = plan ? plan.days[selectedDay] : null;
   const isRestDay =
     !currentDayData ||
@@ -1014,48 +1013,50 @@ export default function Training() {
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 max-w-7xl mx-auto px-4 md:px-8 space-y-8">
       {/* History Modal */}
       <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
-        <DialogContent className="bg-[#0a0c10] border-white/5 text-white max-w-2xl w-[95vw] shadow-2xl overflow-y-auto max-h-[85vh]">
-          <DialogHeader>
+        <DialogContent className="bg-[#0c0d12]/95 backdrop-blur-xl border-white/5 text-white max-w-2xl w-[95vw] shadow-2xl overflow-y-auto max-h-[85vh] rounded-[2rem]">
+          <DialogHeader className="border-b border-white/5 pb-4">
             <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 pr-4">
               <div>
-                <h2 className="text-xl font-black uppercase tracking-widest text-cyan-400">Lịch sử tập luyện</h2>
-                <p className="text-xs text-slate-400">Các buổi tập đã hoàn thành trong quá khứ.</p>
+                <h2 className="text-xl font-black uppercase tracking-widest text-cyan-400 flex items-center gap-2">
+                  <Activity className="w-5 h-5" /> Lịch sử tập luyện
+                </h2>
+                <p className="text-xs text-slate-400 mt-1 font-semibold uppercase tracking-wider">Các buổi tập đã hoàn thành trong quá khứ.</p>
               </div>
-              <div className="flex flex-col items-start md:items-end bg-cyan-500/5 p-3 rounded-xl border border-cyan-500/10">
+              <div className="flex flex-col items-start md:items-end bg-cyan-500/5 p-3 rounded-xl border border-cyan-500/10 shadow-inner">
                 <p className="text-[9px] text-cyan-400/80 uppercase font-bold tracking-widest mb-1">Chỉnh sửa số buổi hiện tại ({plan?.completedSessions || 0})</p>
                 <div className="flex items-center gap-2">
                   <Input 
                      type="number" 
                      min="0"
-                     className="w-16 h-8 text-center bg-transparent border-cyan-500/30 text-white focus:border-cyan-400" 
+                     className="w-16 h-8 text-center bg-black/40 border-cyan-500/30 text-white font-black focus:border-cyan-400 rounded-lg" 
                      value={plan?.completedSessions || 0}
                      onChange={(e) => {
                        const val = parseInt(e.target.value);
                        if (!isNaN(val) && val >= 0 && plan) setPlan({ ...plan, completedSessions: val });
                      }}
                    />
-                   <span className="text-xs text-slate-500">/ 14</span>
+                   <span className="text-xs text-slate-500 font-bold">/ 14</span>
                 </div>
               </div>
             </div>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3 pt-4 custom-scrollbar">
             {isLoadingHistory ? (
               <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin text-cyan-500" /></div>
             ) : sessionHistoryList.length === 0 ? (
               <p className="text-sm text-slate-500 text-center py-8">Chưa có lịch sử tập luyện.</p>
             ) : (
               sessionHistoryList.map(session => (
-                <div key={session.id} className="relative p-4 rounded-xl border border-white/5 bg-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 group hover:border-white/10 transition-colors">
+                <div key={session.id} className="relative p-4 rounded-2xl border border-white/5 bg-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 group hover:border-cyan-500/20 transition-all duration-300">
                   <div className="w-full md:flex-1">
-                    <p className="font-bold text-white mb-1">{session.date}</p>
-                    <p className="text-xs text-slate-400">
+                    <p className="font-black text-white text-sm mb-1">{session.date}</p>
+                    <p className="text-xs text-slate-400 font-medium">
                       Tổng khối lượng: <span className="font-bold text-cyan-400">{session.totalVolume || 0}</span> kg
                     </p>
                     {/* Show a mini summary of exercises */}
-                    <div className="mt-2 flex flex-wrap gap-1">
+                    <div className="mt-2 flex flex-wrap gap-1.5">
                       {Object.keys(session.logs || {}).map(ex => (
-                        <span key={ex} className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 truncate max-w-[120px]">
+                        <span key={ex} className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 truncate max-w-[120px]">
                           {ex}
                         </span>
                       ))}
@@ -1065,7 +1066,7 @@ export default function Training() {
                     variant="ghost" 
                     size="icon" 
                     onClick={() => handleDeleteHistory(session.id)}
-                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 shrink-0 self-end md:self-auto"
+                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl shrink-0 self-end md:self-auto transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -1077,20 +1078,25 @@ export default function Training() {
       </Dialog>
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-4">
-        <div>
-          <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tight uppercase">
-            {t('training_protocol')}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-[#111218]/80 backdrop-blur-md p-6 md:p-8 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-36 h-36 bg-cyan-500/10 rounded-full blur-[60px] pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-36 h-36 bg-purple-500/10 rounded-full blur-[60px] pointer-events-none" />
+        <div className="relative z-10">
+          <h1 className="text-3xl lg:text-4xl font-black text-white tracking-tight uppercase">
+            <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-400 bg-clip-text text-transparent">{t('training_protocol')}</span>
           </h1>
-          <p className="text-sm font-medium text-slate-400 mt-2">
+          <p className="text-xs font-semibold text-slate-400 mt-1 uppercase tracking-wider">
             {t('intelligent_plan')}
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-3">
-          <div className="bg-black/50 border border-white/10 rounded-2xl p-4 flex flex-col justify-center">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t('volume_load')}</span>
-            <span className="text-xl font-black text-cyan-400">{calculateVolume().toLocaleString()} <span className="text-xs text-slate-500 italic uppercase">kg</span></span>
+        <div className="flex flex-wrap items-center gap-3 relative z-10">
+          <div className="bg-black/40 border border-white/5 backdrop-blur-md rounded-2xl px-5 py-3 flex flex-col justify-center shadow-inner hover:border-cyan-500/20 transition-all duration-300">
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-0.5">{t('volume_load')}</span>
+            <span className="text-xl font-black text-cyan-400 flex items-baseline gap-1">
+              {calculateVolume().toLocaleString()} 
+              <span className="text-[10px] text-slate-500 font-bold uppercase">kg</span>
+            </span>
           </div>
 
           {plan && (
@@ -1100,38 +1106,40 @@ export default function Training() {
                   render={
                     <Button
                       variant="outline"
-                      className="border-white/10 bg-black/50 text-white hover:bg-white/10 hover:text-white font-bold h-12 px-6 rounded-[1rem] gap-2 flex-1 min-w-[140px]"
+                      className="border-white/5 bg-black/40 text-slate-300 hover:bg-white/10 hover:text-white font-black uppercase tracking-widest text-xs h-12 px-6 rounded-xl gap-2 flex-1 min-w-[140px] transition-all"
                     >
-                      <Calendar className="w-4 h-4" /> {t('export_calendar')}
+                      <Calendar className="w-4 h-4 text-cyan-400" /> {t('export_calendar')}
                     </Button>
                   }
                 />
-                <DialogContent className="bg-[#111111] border-white/10 text-white rounded-[2rem] max-w-md">
+                <DialogContent className="bg-[#0c0d12]/95 backdrop-blur-xl border-white/5 text-white rounded-[2rem] max-w-md shadow-2xl">
                   <DialogHeader>
-                    <DialogTitle className="text-2xl font-black uppercase tracking-tight">{t('sync_plan')}</DialogTitle>
-                    <DialogDescription className="text-slate-400 font-medium">
+                    <DialogTitle className="text-xl font-black uppercase tracking-widest text-cyan-400 flex items-center gap-2">
+                      <Calendar className="w-5 h-5" /> {t('sync_plan')}
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-400 font-medium text-xs">
                       {t('sync_desc')}
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="grid gap-4 py-6">
+                  <div className="grid gap-4 py-4">
                     <Button 
                       onClick={exportToCalendar}
-                      className="w-full h-16 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl flex items-center justify-between px-6 transition-all group"
+                      className="w-full h-16 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl flex items-center justify-between px-6 transition-all group"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400">
+                        <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 shadow-inner">
                           <Activity className="w-5 h-5" />
                         </div>
                         <div className="text-left">
-                          <p className="font-bold text-sm">{t('download_ics')}</p>
-                          <p className="text-xs text-slate-500">{t('fastest_ics')}</p>
+                          <p className="font-black text-xs text-white uppercase tracking-wider">{t('download_ics')}</p>
+                          <p className="text-[10px] text-slate-500 font-medium mt-0.5">{t('fastest_ics')}</p>
                         </div>
                       </div>
                       <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-white transition-colors" />
                     </Button>
 
                     <div className="space-y-3">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-4">{t('google_calendar_manual')}</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">{t('google_calendar_manual')}</p>
                       <div className="max-h-[200px] overflow-y-auto pr-2 space-y-2 custom-scrollbar">
                         {plan.days.map((day, idx) => (
                           <a
@@ -1139,20 +1147,20 @@ export default function Training() {
                             href={getGoogleCalendarUrl(day, idx)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="w-full h-12 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-xl flex items-center justify-between px-4 transition-all"
+                            className="w-full h-12 bg-[#1a1f2c]/50 hover:bg-[#1a1f2c] border border-white/5 rounded-xl flex items-center justify-between px-4 transition-all"
                           >
                             <div className="flex items-center gap-3">
-                              <span className="text-[10px] font-black text-emerald-500 w-10">{day.dayName}</span>
+                              <span className="text-[10px] font-black text-cyan-400 w-10 uppercase">{day.dayName}</span>
                               <span className="text-xs font-bold text-slate-300">{day.focusName}</span>
                             </div>
-                            <ExternalLink className="w-3 h-3 text-emerald-500" />
+                            <ExternalLink className="w-3.5 h-3.5 text-cyan-500" />
                           </a>
                         ))}
                       </div>
                     </div>
                   </div>
-                  <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                    <p className="text-[10px] text-slate-400 leading-relaxed italic">
+                  <div className="bg-black/40 rounded-2xl p-4 border border-white/5 shadow-inner">
+                    <p className="text-[10px] text-slate-400 leading-relaxed italic font-medium">
                       {t('tip_ics')}
                     </p>
                   </div>
@@ -1164,54 +1172,45 @@ export default function Training() {
                   render={
                     <Button
                       variant="outline"
-                      className="border-white/10 bg-black/50 text-white hover:bg-white/10 hover:text-white font-bold h-12 px-6 rounded-[1rem] gap-2 transition-all flex-1 min-w-[160px]"
+                      className="border-white/5 bg-black/40 text-slate-300 hover:bg-white/10 hover:text-white font-black uppercase tracking-widest text-xs h-12 px-6 rounded-xl gap-2 transition-all flex-1 min-w-[160px]"
                     >
-                      <Settings2 className="w-4 h-4" /> {t('customize_plan')}
+                      <Settings2 className="w-4 h-4 text-cyan-400" /> {t('customize_plan')}
                     </Button>
                   }
                 />
-                <DialogContent className="bg-[#0a0c10]/95 backdrop-blur-xl border-white/10 sm:max-w-[425px] rounded-[2rem] shadow-2xl">
+                <DialogContent className="bg-[#0c0d12]/95 backdrop-blur-xl border-white/5 sm:max-w-[425px] rounded-[2rem] shadow-2xl">
                   <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 text-xl font-black text-white uppercase tracking-wider">
-                      <Settings2 className="w-5 h-5 text-cyan-400" /> {t('plan_architect')}
+                    <DialogTitle className="flex items-center gap-2 text-lg font-black text-white uppercase tracking-widest text-cyan-400">
+                      <Settings2 className="w-5 h-5" /> {t('plan_architect')}
                     </DialogTitle>
                     <DialogDescription className="text-slate-400 text-xs">
                       {t('plan_architect_desc')}
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="grid gap-5 py-4">
-                    <div className="grid gap-2">
-                      <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-1.5">
+                      <Label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
                         {t('primary_objective')}
                       </Label>
                       <Select value={goal} onValueChange={setGoal}>
-                        <SelectTrigger className="w-full h-12 rounded-xl border-white/10 bg-black/50 text-white font-medium focus:ring-1 focus:ring-cyan-500/50">
+                        <SelectTrigger className="w-full h-12 rounded-xl border-white/5 bg-black/40 text-white font-semibold focus:ring-1 focus:ring-cyan-500/50">
                           <span>
-                            {goal === "hypertrophy" &&
-                              t('muscle_gain')}
+                            {goal === "hypertrophy" && t('muscle_gain')}
                             {goal === "strength" && t('strength_power')}
                             {goal === "endurance" && t('endurance')}
                             {goal === "fatloss" && t('fat_loss')}
                           </span>
                         </SelectTrigger>
-                        <SelectContent className="bg-[#111111] border-white/10 text-white rounded-xl">
-                          <SelectItem value="hypertrophy">
-                            {t('muscle_gain')}
-                          </SelectItem>
-                          <SelectItem value="strength">
-                            {t('strength_power')}
-                          </SelectItem>
-                          <SelectItem value="endurance">
-                            {t('endurance')}
-                          </SelectItem>
-                          <SelectItem value="fatloss">
-                            {t('fat_loss')}
-                          </SelectItem>
+                        <SelectContent className="bg-[#0c0d12] border-white/10 text-white rounded-xl">
+                          <SelectItem value="hypertrophy" className="focus:bg-white/10 focus:text-white font-bold">{t('muscle_gain')}</SelectItem>
+                          <SelectItem value="strength" className="focus:bg-white/10 focus:text-white font-bold">{t('strength_power')}</SelectItem>
+                          <SelectItem value="endurance" className="focus:bg-white/10 focus:text-white font-bold">{t('endurance')}</SelectItem>
+                          <SelectItem value="fatloss" className="focus:bg-white/10 focus:text-white font-bold">{t('fat_loss')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="grid gap-2">
-                      <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    <div className="grid gap-1.5">
+                      <Label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
                         {t('frequency_days')}
                       </Label>
                       <Input
@@ -1220,56 +1219,50 @@ export default function Training() {
                         max="7"
                         value={frequency}
                         onChange={(e) => setFrequency(e.target.value)}
-                        className="h-12 rounded-xl bg-black/50 border-white/10 text-white font-bold placeholder:text-slate-600"
+                        className="h-12 rounded-xl bg-black/40 border-white/5 text-white font-bold placeholder:text-slate-600 focus:border-cyan-500/50"
                       />
                     </div>
-                    <div className="grid gap-2">
-                      <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    <div className="grid gap-1.5">
+                      <Label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
                         {t('environment')}
                       </Label>
                       <Select value={equipment} onValueChange={setEquipment}>
-                        <SelectTrigger className="w-full h-12 rounded-xl border-white/10 bg-black/50 text-white font-medium focus:ring-1 focus:ring-cyan-500/50">
+                        <SelectTrigger className="w-full h-12 rounded-xl border-white/5 bg-black/40 text-white font-semibold focus:ring-1 focus:ring-cyan-500/50">
                           <span>
                             {equipment === "gym" && t('gym_access')}
                             {equipment === "home" && t('home_access')}
-                            {equipment === "calisthenics" &&
-                              t('calisthenics')}
+                            {equipment === "calisthenics" && t('calisthenics')}
                           </span>
                         </SelectTrigger>
-                        <SelectContent className="bg-[#111111] border-white/10 text-white rounded-xl">
-                          <SelectItem value="gym">{t('gym_access')}</SelectItem>
-                          <SelectItem value="home">
-                            {t('home_access')}
-                          </SelectItem>
-                          <SelectItem value="calisthenics">
-                            {t('calisthenics')}
-                          </SelectItem>
+                        <SelectContent className="bg-[#0c0d12] border-white/10 text-white rounded-xl">
+                          <SelectItem value="gym" className="focus:bg-white/10 focus:text-white font-bold">{t('gym_access')}</SelectItem>
+                          <SelectItem value="home" className="focus:bg-white/10 focus:text-white font-bold">{t('home_access')}</SelectItem>
+                          <SelectItem value="calisthenics" className="focus:bg-white/10 focus:text-white font-bold">{t('calisthenics')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="grid gap-2">
-                      <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    <div className="grid gap-1.5">
+                      <Label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
                         {t('specific_focus')}
                       </Label>
                       <Input
                         value={focus}
                         onChange={(e) => setFocus(e.target.value)}
                         placeholder={t('focus_placeholder')}
-                        className="h-12 rounded-xl bg-black/50 border-white/10 text-white placeholder:text-slate-600 font-medium"
+                        className="h-12 rounded-xl bg-black/40 border-white/5 text-white placeholder:text-slate-600 font-semibold focus:border-cyan-500/50"
                       />
                     </div>
                   </div>
-                  <DialogFooter>
+                  <DialogFooter className="mt-2">
                     <Button
                       onClick={() => handleGenerate(false)}
                       disabled={isGenerating}
                       type="button"
-                      className="w-full h-14 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black font-black uppercase tracking-widest text-sm shadow-[0_0_20px_rgba(34,211,238,0.2)] transition-all"
+                      className="w-full h-12 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black font-black uppercase tracking-widest text-xs shadow-[0_0_20px_rgba(34,211,238,0.2)] transition-all"
                     >
                       {isGenerating ? (
                         <>
-                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />{" "}
-                          {t('synthesizing')}
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t('synthesizing')}
                         </>
                       ) : (
                         t('generate_new_routine')
@@ -1285,7 +1278,7 @@ export default function Training() {
             <Button
               onClick={() => handleGenerate(false)}
               disabled={isGenerating}
-              className="bg-cyan-500 hover:bg-cyan-400 text-black font-black uppercase tracking-widest text-sm h-12 px-8 rounded-[1rem] shadow-[0_0_20px_rgba(34,211,238,0.3)] gap-2"
+              className="bg-cyan-500 hover:bg-cyan-400 text-black font-black uppercase tracking-widest text-xs h-12 px-8 rounded-xl shadow-[0_0_20px_rgba(34,211,238,0.3)] gap-2 transition-all"
             >
               {isGenerating ? (
                 <>
@@ -1303,13 +1296,13 @@ export default function Training() {
 
       {!plan && !isGenerating && (
         <div className="flex flex-col justify-center items-center h-[50vh] text-center border border-white/5 border-dashed rounded-[2rem] bg-black/20 p-8">
-          <div className="w-20 h-20 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-6">
+          <div className="w-20 h-20 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-6 shadow-inner animate-pulse">
             <Zap className="w-8 h-8 text-cyan-400" />
           </div>
-          <h2 className="text-2xl font-black text-white uppercase tracking-wider mb-3">
+          <h2 className="text-xl font-black text-white uppercase tracking-widest mb-3">
             {t('no_protocol')}
           </h2>
-          <p className="text-slate-400 max-w-md mx-auto font-medium">
+          <p className="text-slate-400 max-w-sm mx-auto text-xs font-semibold uppercase tracking-wider leading-relaxed">
             {t('start_journey_desc')}
           </p>
         </div>
@@ -1317,73 +1310,79 @@ export default function Training() {
 
       {isGenerating && !plan && (
         <div className="flex flex-col justify-center items-center h-[50vh]">
-          <Loader2 className="w-10 h-10 text-cyan-400 animate-spin mb-4" />
-          <p className="text-cyan-400 font-bold uppercase tracking-widest animate-pulse">
+          <Loader2 className="w-8 h-8 text-cyan-400 animate-spin mb-4" />
+          <p className="text-cyan-400 font-black uppercase tracking-widest text-xs animate-pulse">
             {t('calculating_volume')}
           </p>
         </div>
       )}
 
       {plan && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card
-            className="relative flex flex-col items-center overflow-hidden rounded-2xl border-white/5 bg-[#0a0c10]/90 p-6 text-center shadow-lg backdrop-blur-xl cursor-pointer group hover:border-cyan-500/20 transition-all"
+            className="relative flex flex-col items-center overflow-hidden rounded-3xl border-white/5 bg-[#111218]/90 p-6 text-center shadow-xl backdrop-blur-xl cursor-pointer group hover:border-cyan-500/30 transition-all duration-300"
             onClick={() => handleOpenHistory()}
           >
+            <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none" />
             <div className="relative z-10 flex flex-col items-center w-full">
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+              <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500">
                 {t('workouts_completed')}
               </p>
-              <div className="flex items-baseline gap-2">
-                <p className="text-4xl font-black text-white">{plan.completedSessions || 0}</p>
-                <span className="text-xs font-medium text-slate-400">/ 14 {t('in_cycle')}</span>
+              <div className="flex items-baseline gap-1.5">
+                <p className="text-4xl font-black text-white group-hover:text-cyan-400 transition-colors">{plan.completedSessions || 0}</p>
+                <span className="text-[10px] font-bold text-slate-400">/ 14 {t('in_cycle')}</span>
               </div>
-              <span className="text-[9px] text-slate-700 group-hover:text-slate-500 mt-1 transition-colors uppercase tracking-widest">
+              <span className="text-[8px] text-slate-500 font-bold uppercase tracking-widest mt-2 group-hover:text-cyan-400/80 transition-colors">
                 Nhấn để xem / chỉnh sửa
               </span>
             </div>
-            <div className="relative z-10 mt-4 flex h-14 w-14 items-center justify-center rounded-full border border-cyan-500/20 bg-cyan-500/10 shadow-[0_0_20px_rgba(34,211,238,0.1)]">
-              <CheckCircle2 className="h-6 w-6 text-cyan-400" />
+            <div className="relative z-10 mt-5 flex h-12 w-12 items-center justify-center rounded-full border border-cyan-500/20 bg-cyan-500/10 shadow-[0_0_20px_rgba(34,211,238,0.15)] group-hover:scale-110 transition-transform">
+              <CheckCircle2 className="h-5 w-5 text-cyan-400" />
             </div>
           </Card>
 
-          <Card className="relative flex flex-col items-center overflow-hidden rounded-2xl border-white/5 bg-[#0a0c10]/90 p-6 text-center shadow-lg backdrop-blur-xl">
+          <Card className="relative flex flex-col items-center overflow-hidden rounded-3xl border-white/5 bg-[#111218]/90 p-6 text-center shadow-xl backdrop-blur-xl group hover:border-purple-500/30 transition-all duration-300">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl pointer-events-none" />
             <div className="relative z-10 flex flex-col items-center">
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+              <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500">
                 {t('total_volume_lifted')}
               </p>
-              <div className="flex items-baseline gap-2">
-                <p className="text-4xl font-black text-white">
+              <div className="flex items-baseline gap-1.5">
+                <p className="text-4xl font-black text-white group-hover:text-purple-400 transition-colors">
                   {(Object.values(exerciseWeights) as number[])
                     .reduce((a: number, b: number) => a + b * 30, 0)
                     .toLocaleString()}
                 </p>
-                <span className="text-xs font-medium text-slate-400">
+                <span className="text-[10px] font-bold text-slate-400">
                   kg est.
                 </span>
               </div>
+              <span className="text-[8px] text-slate-500 font-bold uppercase tracking-widest mt-2">
+                Dựa trên kỷ lục cá nhân
+              </span>
             </div>
-            <div className="relative z-10 mt-6 flex h-14 w-14 items-center justify-center rounded-full border border-purple-500/20 bg-purple-500/10 shadow-[0_0_20px_rgba(112,0,255,0.1)]">
-              <TrendingUp className="h-6 w-6 text-purple-400" />
+            <div className="relative z-10 mt-5 flex h-12 w-12 items-center justify-center rounded-full border border-purple-500/20 bg-purple-500/10 shadow-[0_0_20px_rgba(112,0,255,0.15)] group-hover:scale-110 transition-transform">
+              <TrendingUp className="h-5 w-5 text-purple-400" />
             </div>
           </Card>
 
           <Card
-            className="relative flex flex-col items-center overflow-hidden rounded-2xl border-white/5 bg-[#0a0c10]/90 p-6 text-center shadow-lg backdrop-blur-xl cursor-pointer group hover:border-blue-500/20 transition-all"
+            className="relative flex flex-col items-center overflow-hidden rounded-3xl border-white/5 bg-[#111218]/90 p-6 text-center shadow-xl backdrop-blur-xl cursor-pointer group hover:border-blue-500/30 transition-all duration-300"
             onClick={() => { setEditingWeights({ ...exerciseWeights }); setShowPBModal(true); }}
           >
+            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl pointer-events-none" />
             <div className="relative z-10 flex flex-col items-center">
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+              <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500">
                 {t('personal_bests')}
               </p>
-              <div className="flex items-baseline gap-2">
-                <p className="text-4xl font-black text-white">{Object.keys(exerciseWeights).length}</p>
-                <span className="text-xs font-medium text-slate-400">{t('exercises_tracked')}</span>
+              <div className="flex items-baseline gap-1.5">
+                <p className="text-4xl font-black text-white group-hover:text-blue-400 transition-colors">{Object.keys(exerciseWeights).length}</p>
+                <span className="text-[10px] font-bold text-slate-400">{t('exercises_tracked')}</span>
               </div>
-              <span className="text-[9px] text-slate-700 group-hover:text-slate-500 mt-1 transition-colors uppercase tracking-widest">Nhấn để chỉnh</span>
+              <span className="text-[8px] text-slate-500 font-bold uppercase tracking-widest mt-2 group-hover:text-blue-400/80 transition-colors">Nhấn để xem & chỉnh</span>
             </div>
-            <div className="relative z-10 mt-4 flex h-14 w-14 items-center justify-center rounded-full border border-blue-500/20 bg-blue-500/10 shadow-[0_0_20px_rgba(59,130,246,0.1)]">
-              <Trophy className="h-6 w-6 text-blue-400" />
+            <div className="relative z-10 mt-5 flex h-12 w-12 items-center justify-center rounded-full border border-blue-500/20 bg-blue-500/10 shadow-[0_0_20px_rgba(59,130,246,0.15)] group-hover:scale-110 transition-transform">
+              <Trophy className="h-5 w-5 text-blue-400" />
             </div>
           </Card>
         </div>
@@ -1395,178 +1394,188 @@ export default function Training() {
           <div className="flex flex-col gap-6">
             {/* Day selector */}
             {/* Desktop: scroll ngang */}
-            <div className="hidden sm:flex justify-center gap-3 overflow-x-auto pb-4 pt-2 scrollbar-hide snap-x items-end">
+            <div className="hidden sm:flex justify-between items-center gap-2.5 bg-[#111218]/80 backdrop-blur-md p-3.5 border border-white/5 rounded-[2rem] shadow-xl w-full">
               {plan.days.map((day, idx) => {
                 const isToday = idx === (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
                 const isActive = selectedDay === idx;
                 const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+                const isRest = !day.exercises || day.exercises.length === 0;
+
                 return (
-                  <div key={idx} className="snap-start shrink-0 flex flex-col items-center relative pt-6">
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedDay(idx)}
+                    className={`flex-1 min-w-[70px] h-[80px] rounded-2xl flex flex-col items-center justify-center transition-all duration-300 relative border ${
+                      isActive
+                        ? "bg-gradient-to-br from-cyan-500 to-blue-600 text-black border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.3)] scale-[1.03]"
+                        : "bg-black/30 text-slate-400 border-white/5 hover:bg-white/5 hover:text-white"
+                    }`}
+                  >
                     {isToday && (
-                      <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-cyan-500 text-black text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.5)] leading-tight text-center whitespace-nowrap">
+                      <span className={`absolute -top-1.5 px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest leading-none ${
+                        isActive ? 'bg-white text-black shadow-md' : 'bg-cyan-500 text-black shadow-[0_0_10px_rgba(34,211,238,0.5)]'
+                      }`}>
                         {t('todays_operation')}
-                      </div>
+                      </span>
                     )}
-                    <button
-                      onClick={() => setSelectedDay(idx)}
-                      className={`w-[80px] h-[80px] rounded-3xl flex items-center justify-center font-black transition-all border ${
-                        isActive
-                          ? "bg-cyan-500 text-black border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.25)]"
-                          : "bg-[#111111] text-slate-400 border-white/5 hover:bg-white/10 hover:text-white"
-                      }`}
-                    >
-                      <span className="text-xl">{t(dayKeys[idx])}</span>
-                    </button>
-                  </div>
+                    <span className="text-lg font-black leading-none">{t(dayKeys[idx])}</span>
+                    <span className={`text-[8px] font-bold uppercase tracking-wider mt-1.5 truncate max-w-full px-1 ${isActive ? 'text-black/70' : 'text-slate-500'}`}>
+                      {isRest ? 'Rest' : (day.focusName.slice(0, 10) + (day.focusName.length > 10 ? '..' : ''))}
+                    </span>
+                    {!isRest && (
+                      <div className={`w-1 h-1 rounded-full mt-1 ${isActive ? 'bg-black shadow-md' : 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.6)]'}`} />
+                    )}
+                  </button>
                 );
               })}
             </div>
-            {/* Mobile: 4 trên + 3 dưới căn giữa */}
-            <div className="sm:hidden pt-2 pb-4 space-y-3">
-              <div className="grid grid-cols-4 gap-2 items-end">
+            {/* Mobile day selector */}
+            <div className="sm:hidden bg-[#111218]/80 backdrop-blur-md p-3 border border-white/5 rounded-[2rem] shadow-xl space-y-2">
+              <div className="grid grid-cols-4 gap-2">
                 {plan.days.slice(0, 4).map((day, idx) => {
                   const isToday = idx === (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
                   const isActive = selectedDay === idx;
                   const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+                  const isRest = !day.exercises || day.exercises.length === 0;
                   return (
-                    <div key={idx} className="flex flex-col items-center gap-1">
-                      {isToday ? (
-                        <div className="bg-cyan-500 text-black text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.5)] leading-tight text-center">
-                          <span className="whitespace-pre-line">
-                        {t('todays_operation')}</span>
-                        </div>
-                      ) : (
-                        <div className="h-[16px]"></div>
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedDay(idx)}
+                      className={`h-[70px] rounded-xl flex flex-col items-center justify-center transition-all duration-300 relative border ${
+                        isActive
+                          ? "bg-gradient-to-br from-cyan-500 to-blue-600 text-black border-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.3)] scale-[1.02]"
+                          : "bg-black/30 text-slate-400 border-white/5 hover:bg-white/5 hover:text-white"
+                      }`}
+                    >
+                      {isToday && (
+                        <span className="absolute -top-1 bg-cyan-500 text-black text-[6px] font-black uppercase tracking-widest px-1 py-0.5 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.5)]">
+                          {t('todays_operation')}
+                        </span>
                       )}
-                      <button
-                        onClick={() => setSelectedDay(idx)}
-                        className={`w-full aspect-square rounded-2xl flex items-center justify-center font-black transition-all border ${
-                          isActive
-                            ? "bg-cyan-500 text-black border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.25)]"
-                            : "bg-[#111111]/80 text-slate-400 border-white/5 hover:bg-white/10 hover:text-white"
-                        }`}
-                      >
-                        <span className="text-lg">{t(dayKeys[idx])}</span>
-                      </button>
-                    </div>
+                      <span className="text-base font-black leading-none">{t(dayKeys[idx])}</span>
+                      <span className={`text-[7px] font-bold uppercase tracking-wider mt-1 truncate max-w-full px-1 ${isActive ? 'text-black/75' : 'text-slate-500'}`}>
+                        {isRest ? 'Rest' : 'Train'}
+                      </span>
+                    </button>
                   );
                 })}
               </div>
-              {/* 3 nút cuối căn giữa đều */}
-              <div className="flex justify-center gap-2 items-end">
+              <div className="grid grid-cols-3 gap-2">
                 {plan.days.slice(4).map((day, i) => {
                   const idx = i + 4;
                   const isToday = idx === (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
                   const isActive = selectedDay === idx;
                   const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+                  const isRest = !day.exercises || day.exercises.length === 0;
                   return (
-                    <div key={idx} className="flex flex-col items-center gap-1 w-[calc(25%-6px)]">
-                      {isToday ? (
-                       <div className="bg-cyan-500 text-black text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.5)] leading-tight text-center">
-                        <span className="whitespace-pre-line">
-                       {t('todays_operation')}</span>
-                       </div>
-                      ) : (
-                        <div className="h-[16px]"></div>
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedDay(idx)}
+                      className={`h-[70px] rounded-xl flex flex-col items-center justify-center transition-all duration-300 relative border ${
+                        isActive
+                          ? "bg-gradient-to-br from-cyan-500 to-blue-600 text-black border-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.3)] scale-[1.02]"
+                          : "bg-black/30 text-slate-400 border-white/5 hover:bg-white/5 hover:text-white"
+                      }`}
+                    >
+                      {isToday && (
+                        <span className="absolute -top-1 bg-cyan-500 text-black text-[6px] font-black uppercase tracking-widest px-1 py-0.5 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.5)]">
+                          {t('todays_operation')}
+                        </span>
                       )}
-                      <button
-                        onClick={() => setSelectedDay(idx)}
-                        className={`w-full aspect-square rounded-2xl flex items-center justify-center font-black transition-all border ${
-                          isActive
-                            ? "bg-cyan-500 text-black border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.25)]"
-                            : "bg-[#111111]/80 text-slate-400 border-white/5 hover:bg-white/10 hover:text-white"
-                        }`}
-                      >
-                        <span className="text-lg">{t(dayKeys[idx])}</span>
-                      </button>
-                    </div>
+                      <span className="text-base font-black leading-none">{t(dayKeys[idx])}</span>
+                      <span className={`text-[7px] font-bold uppercase tracking-wider mt-1 truncate max-w-full px-1 ${isActive ? 'text-black/75' : 'text-slate-500'}`}>
+                        {isRest ? 'Rest' : 'Train'}
+                      </span>
+                    </button>
                   );
                 })}
               </div>
             </div>
 
             {/* Protocol View */}
-            <Card className="bg-[#0a0c10]/90 backdrop-blur-xl border-white/5 rounded-[2rem] shadow-2xl overflow-hidden relative min-h-[500px]">
-              <div className="absolute top-0 right-0 p-16 opacity-[0.03] pointer-events-none">
+            <Card className="bg-[#111218]/90 backdrop-blur-xl border border-white/5 rounded-[2rem] shadow-2xl overflow-hidden relative min-h-[500px]">
+              <div className="absolute top-0 right-0 p-16 opacity-[0.02] pointer-events-none">
                 <Trophy className="w-64 h-64 blur-3xl fill-current text-white" />
               </div>
 
               <div className="p-6 md:p-10 relative z-10 w-full">
-                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6 mb-8 w-full">
+                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6 mb-8 w-full border-b border-white/5 pb-6">
                   <div className="w-full lg:flex-1 min-w-0 pr-0 lg:pr-8">
-                    <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-slate-300 font-bold uppercase tracking-wider text-[10px] px-3 py-1.5 rounded-full mb-4">
-                      <Calendar className="w-3 h-3" /> {t(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'][selectedDay] as any)}{" "}
+                    <div className="inline-flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-black uppercase tracking-wider text-[9px] px-3 py-1.5 rounded-full mb-4">
+                      <Calendar className="w-3 h-3 text-cyan-400" /> {t(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'][selectedDay] as any)}{" "}
                       {t('operation')}
                     </div>
-                    <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight md:leading-tight">
+                    <h2 className="text-2xl md:text-4xl font-black text-white tracking-tight leading-tight md:leading-tight">
                       {currentDayData?.focusName}
                     </h2>
                     {currentDayData?.description && (
-                      <p className="text-slate-400 font-medium text-sm md:text-base mt-4 max-w-full leading-relaxed">
+                      <p className="text-slate-400 font-semibold text-xs md:text-sm mt-3 max-w-full leading-relaxed">
                         {currentDayData.description}
                       </p>
                     )}
                   </div>
 
                   {!isRestDay && (
-                    <div className="flex flex-col gap-3 w-full lg:w-auto lg:min-w-[320px] shrink-0">
+                    <div className="flex flex-col gap-3 w-full lg:w-auto lg:min-w-[280px] shrink-0">
                       {hrConnected ? (
-                        <div className="flex w-full items-center justify-between gap-3 bg-red-500/10 border border-red-500/20 px-6 rounded-2xl h-14 hover:shadow-[0_0_20px_rgba(239,68,68,0.2)] transition-all">
+                        <div className="flex w-full items-center justify-between gap-3 bg-red-500/10 border border-red-500/20 px-4 rounded-xl h-12 shadow-[0_0_15px_rgba(239,68,68,0.1)] transition-all">
                           <div className="flex items-center gap-3">
-                            <Activity className="w-5 h-5 text-red-500 animate-pulse shrink-0" />
+                            <Activity className="w-4 h-4 text-red-500 animate-pulse shrink-0" />
                             <div className="flex flex-col">
-                              <span className="text-[10px] font-black text-red-400 uppercase tracking-widest leading-none truncate">{t('heart_rate')}</span>
-                              <span className="text-xl font-black text-white leading-none mt-1 truncate">{heartRate || '--'} <small className="text-[8px] opacity-50">BPM</small></span>
+                              <span className="text-[8px] font-black text-red-400 uppercase tracking-widest leading-none">{t('heart_rate')}</span>
+                              <span className="text-base font-black text-white leading-none mt-1">{heartRate || '--'} <small className="text-[8px] opacity-60">BPM</small></span>
                             </div>
                           </div>
                           <Button 
                             variant="ghost" 
                             size="icon" 
                             onClick={toggleHeartRate}
-                            className="w-10 h-10 rounded-xl hover:bg-red-500/20 text-red-400/70 hover:text-red-400 shrink-0"
+                            className="w-8 h-8 rounded-lg hover:bg-red-500/20 text-red-400/70 hover:text-red-400 shrink-0"
                           >
-                            <Unlink className="w-4 h-4" />
+                            <Unlink className="w-3.5 h-3.5" />
                           </Button>
                         </div>
                       ) : (
                         <Button
                           onClick={toggleHeartRate}
                           variant="outline"
-                          className="w-full border-red-500/30 bg-red-500/5 text-red-400 hover:bg-red-500 hover:text-white font-black uppercase tracking-widest text-xs h-14 px-8 rounded-2xl transition-all hover:shadow-[0_0_20px_rgba(239,68,68,0.4)]"
+                          className="w-full border-red-500/30 bg-red-500/5 text-red-400 hover:bg-red-500 hover:text-white font-black uppercase tracking-widest text-[10px] h-12 px-6 rounded-xl transition-all hover:shadow-[0_0_15px_rgba(239,68,68,0.2)]"
                         >
-                          <Activity className="w-5 h-5 mr-3 shrink-0" />
+                          <Activity className="w-4 h-4 mr-2.5 shrink-0" />
                           <span>{t('connect_hr')}</span>
                         </Button>
                       )}
                       
-                      <Button
-                        onClick={applyAllRecommendedWeights}
-                        variant="outline"
-                        className="w-full border-cyan-500/30 bg-cyan-500/5 text-cyan-400 hover:bg-cyan-500 hover:text-black font-black uppercase tracking-widest text-xs h-14 px-8 rounded-2xl transition-all hover:shadow-[0_0_20px_rgba(34,211,238,0.4)]"
-                      >
-                        <Trophy className="w-5 h-5 mr-3 shrink-0" />
-                        <span>{t('apply_all')}</span>
-                      </Button>
-                      <Button
-                        onClick={markSessionComplete}
-                        className="w-full bg-cyan-500 text-black hover:bg-cyan-400 font-black uppercase tracking-widest text-xs h-14 px-8 rounded-2xl transition-all shadow-[0_0_20px_rgba(34,211,238,0.2)] hover:shadow-[0_0_30px_rgba(34,211,238,0.6)] group"
-                      >
-                        <CheckCircle2 className="w-5 h-5 mr-3 shrink-0 group-hover:scale-110 transition-transform" />
-                        <span>{t('complete_session')}</span>
-                      </Button>
+                      <div className="grid grid-cols-2 gap-2 w-full">
+                        <Button
+                          onClick={applyAllRecommendedWeights}
+                          variant="outline"
+                          className="border-cyan-500/30 bg-cyan-500/5 text-cyan-400 hover:bg-cyan-500 hover:text-black font-black uppercase tracking-widest text-[9px] h-12 px-3 rounded-xl transition-all"
+                        >
+                          <Trophy className="w-3.5 h-3.5 mr-1.5 shrink-0" />
+                          <span>{t('apply_all')}</span>
+                        </Button>
+                        <Button
+                          onClick={markSessionComplete}
+                          className="bg-cyan-500 text-black hover:bg-cyan-400 font-black uppercase tracking-widest text-[9px] h-12 px-3 rounded-xl transition-all shadow-[0_0_15px_rgba(34,211,238,0.2)] group"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 shrink-0 group-hover:scale-110 transition-transform" />
+                          <span>{t('complete_session')}</span>
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
 
                 {isRestDay ? (
-                  <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl bg-black/40 border border-white/5 mx-auto max-w-lg mt-10">
-                    <div className="w-20 h-20 rounded-full border border-white/10 flex items-center justify-center mb-6 bg-[#111] shadow-inner text-slate-500">
-                      <Zap className="w-8 h-8 opacity-50" />
+                  <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl bg-black/30 border border-white/5 mx-auto max-w-md mt-6 shadow-inner">
+                    <div className="w-16 h-16 rounded-full border border-white/10 flex items-center justify-center mb-5 bg-white/5 shadow-inner text-slate-500">
+                      <Zap className="w-6 h-6 opacity-40 text-cyan-400" />
                     </div>
-                    <h3 className="text-white font-black tracking-widest uppercase text-xl mb-3">
+                    <h3 className="text-white font-black tracking-widest uppercase text-base mb-2">
                       {t('active_recovery')}
                     </h3>
-                    <p className="text-slate-400 text-sm max-w-xs mx-auto font-medium">
+                    <p className="text-slate-400 text-xs max-w-xs mx-auto font-medium px-4 leading-relaxed">
                       {t('active_recovery_desc')}
                     </p>
                   </div>
@@ -1574,18 +1583,21 @@ export default function Training() {
                   <div className="grid grid-cols-1 gap-6">
                     {currentDayData?.warmup &&
                       currentDayData.warmup.length > 0 && (
-                        <div className="bg-[#111111]/80 border border-orange-500/20 rounded-[1.5rem] overflow-hidden flex flex-col group shadow-sm mb-2">
-                          <div className="p-5 md:p-6 bg-orange-500/5">
-                            <h3 className="text-orange-400 font-black tracking-widest uppercase text-sm mb-4 flex items-center gap-2">
-                              <Flame className="w-4 h-4" /> {t('dynamic_warmup')}
+                        <div className="bg-gradient-to-br from-orange-500/5 via-black/20 to-transparent border border-orange-500/10 rounded-[1.5rem] overflow-hidden flex flex-col group shadow-md mb-2 transition-all duration-300 hover:border-orange-500/30">
+                          <div className="p-5 md:p-6 bg-orange-500/[0.02]">
+                            <h3 className="text-orange-400 font-black tracking-widest uppercase text-xs mb-4 flex items-center gap-2">
+                              <span className="w-7 h-7 rounded-lg bg-orange-500/15 border border-orange-500/20 flex items-center justify-center text-orange-400 shrink-0">
+                                <Flame className="w-4 h-4 fill-current text-orange-500" />
+                              </span>
+                              {t('dynamic_warmup')}
                             </h3>
-                            <ul className="space-y-2">
+                            <ul className="space-y-3">
                               {currentDayData.warmup.map((wu, i) => (
                                 <li
                                   key={i}
-                                  className="flex gap-3 items-start text-sm text-slate-300 font-medium"
+                                  className="flex gap-3 items-center text-xs text-slate-300 font-semibold"
                                 >
-                                  <div className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 shrink-0"></div>
+                                  <div className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0 shadow-[0_0_8px_rgba(249,115,22,0.8)]"></div>
                                   <span className="leading-relaxed">{wu}</span>
                                 </li>
                               ))}
@@ -1597,31 +1609,31 @@ export default function Training() {
                     {currentDayData?.exercises.map((ex, idx) => (
                       <div
                         key={idx}
-                        className="bg-[#111111] border border-white/5 hover:border-white/10 transition-all rounded-[1.5rem] overflow-hidden flex flex-col group shadow-sm relative"
+                        className="bg-gradient-to-b from-[#16171f] to-[#111218] border border-white/5 hover:border-cyan-500/20 hover:shadow-[0_0_20px_rgba(34,211,238,0.05)] transition-all duration-300 rounded-[1.5rem] overflow-hidden flex flex-col group relative"
                       >
                         <button
                           onClick={() => setActiveVideoIndex(activeVideoIndex === idx ? null : idx)}
-                          className={`absolute top-3 right-3 w-8 h-8 rounded-lg flex items-center justify-center transition-all border z-10 ${
+                          className={`absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center transition-all border z-10 ${
                             activeVideoIndex === idx 
-                              ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30" 
-                              : "bg-white/5 text-slate-500 border-white/10 hover:text-white hover:bg-white/10"
+                              ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.2)]" 
+                              : "bg-white/5 text-slate-400 border-white/10 hover:text-white hover:bg-white/10"
                           }`}
                         >
-                          {activeVideoIndex === idx ? <ChevronUp className="w-3.5 h-3.5" /> : <PlayCircle className="w-3.5 h-3.5" />}
+                          {activeVideoIndex === idx ? <ChevronUp className="w-4 h-4" /> : <Play className="w-3.5 h-3.5 fill-current" />}
                         </button>
-                        <div className="p-4 md:p-5 relative">
-                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-cyan-500/0 group-hover:bg-cyan-500 transition-colors rounded-l-[1.5rem]"></div>
+                        <div className="p-5 md:p-6 relative">
+                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-cyan-500/0 group-hover:bg-cyan-500 transition-all duration-300 rounded-l-[1.5rem]"></div>
                           {/* Header: số thứ tự + tên + tags */}
-                          <div className="flex items-start gap-3 mb-3 pr-10">
-                            <div className="w-10 h-10 rounded-xl bg-black border border-white/10 flex items-center justify-center shadow-inner shrink-0">
+                          <div className="flex items-start gap-3.5 mb-4 pr-10">
+                            <div className="w-10 h-10 rounded-xl bg-black/40 border border-white/5 flex items-center justify-center shadow-inner shrink-0 group-hover:border-cyan-500/20 transition-all duration-300">
                               <span className="text-slate-500 font-black text-sm group-hover:text-cyan-400 transition-colors">{idx + 1}</span>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h3 className="text-white font-black text-base leading-tight mb-1.5">{translateExercise(ex.name, language)}</h3>
+                              <h3 className="text-white font-black text-base leading-tight mb-1.5 group-hover:text-cyan-400/90 transition-colors">{translateExercise(ex.name, language)}</h3>
                               <div className="flex flex-wrap items-center gap-1.5">
                                 <span className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md">{ex.muscle}</span>
                                 {ex.load && (
-                                  <span className="text-[10px] text-slate-300 font-medium flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded-md">
+                                  <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1 bg-black/30 border border-white/5 px-2 py-0.5 rounded-md">
                                     <TrendingUp className="w-2.5 h-2.5 text-cyan-400" />{ex.load}
                                   </span>
                                 )}
@@ -1629,25 +1641,25 @@ export default function Training() {
                             </div>
                           </div>
                           {/* Info grid — luôn 3 cột đều nhau */}
-                          <div className="grid grid-cols-3 gap-1.5 mb-3">
+                          <div className="grid grid-cols-3 gap-2 mb-4">
                             {/* Khối lượng / Số hiệp */}
-                            <div className="bg-black/60 border border-white/5 rounded-lg px-2 py-1.5 flex flex-col gap-0.5 min-w-0">
-                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{t('volume_label')}</span>
-                              <span className="text-white font-black text-[11px] sm:text-xs leading-tight break-words">{formatSets(ex.sets)}</span>
+                            <div className="bg-black/40 border border-white/5 rounded-xl px-3 py-2 flex flex-col gap-0.5 min-w-0">
+                              <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{t('volume_label')}</span>
+                              <span className="text-white font-black text-xs leading-none mt-1 break-words">{formatSets(ex.sets)}</span>
                             </div>
                             {/* Nghỉ */}
-                            <div className="bg-black/60 border border-white/5 rounded-lg px-2 py-1.5 flex flex-col gap-0.5 min-w-0">
-                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{t('rest_label')}</span>
-                              <span className="text-slate-300 font-black text-[11px] sm:text-xs leading-tight break-words">{getExerciseRest(ex, language)}</span>
+                            <div className="bg-black/40 border border-white/5 rounded-xl px-3 py-2 flex flex-col gap-0.5 min-w-0">
+                              <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{t('rest_label')}</span>
+                              <span className="text-slate-300 font-black text-xs leading-none mt-1 break-words">{getExerciseRest(ex, language)}</span>
                             </div>
                             {/* Gợi ý — bấm để apply */}
                             <button
                               onClick={() => applyRecommendedWeight(ex)}
                               disabled={!ex.recommendedWeight}
-                              className="bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 disabled:opacity-30 disabled:cursor-default rounded-lg px-2 py-1.5 flex flex-col gap-0.5 text-left transition-all min-w-0 overflow-hidden"
+                              className="bg-cyan-500/5 border border-cyan-500/10 hover:border-cyan-500/30 hover:bg-cyan-500/10 disabled:opacity-35 disabled:cursor-default rounded-xl px-3 py-2 flex flex-col gap-0.5 text-left transition-all min-w-0 overflow-hidden"
                             >
-                              <span className="text-[9px] font-black text-cyan-500 uppercase tracking-widest">{t('suggested')}</span>
-                              <span className="text-cyan-300 font-black text-[10px] sm:text-xs leading-tight break-words break-all">{ex.recommendedWeight || '—'}</span>
+                              <span className="text-[8px] font-black text-cyan-500 uppercase tracking-widest">{t('suggested')}</span>
+                              <span className="text-cyan-400 font-black text-xs leading-none mt-1 break-words break-all">{ex.recommendedWeight || '—'}</span>
                             </button>
                           </div>
                           
@@ -1715,18 +1727,21 @@ export default function Training() {
 
                     {currentDayData?.cooldown &&
                       currentDayData.cooldown.length > 0 && (
-                        <div className="bg-[#111111]/80 border border-blue-500/20 rounded-[1.5rem] overflow-hidden flex flex-col group shadow-sm mt-2">
-                          <div className="p-5 md:p-6 bg-blue-500/5">
-                            <h3 className="text-blue-400 font-black tracking-widest uppercase text-sm mb-4 flex items-center gap-2">
-                              <Wind className="w-4 h-4" /> {t('static_cooldown')}
+                        <div className="bg-gradient-to-br from-blue-500/5 via-black/20 to-transparent border border-blue-500/10 rounded-[1.5rem] overflow-hidden flex flex-col group shadow-md mt-2 transition-all duration-300 hover:border-blue-500/30">
+                          <div className="p-5 md:p-6 bg-blue-500/[0.02]">
+                            <h3 className="text-blue-400 font-black tracking-widest uppercase text-xs mb-4 flex items-center gap-2">
+                              <span className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                                <Wind className="w-4 h-4 text-blue-400" />
+                              </span>
+                              {t('static_cooldown')}
                             </h3>
-                            <ul className="space-y-2">
+                            <ul className="space-y-3">
                               {currentDayData.cooldown.map((cd, i) => (
                                 <li
                                   key={i}
-                                  className="flex gap-3 items-start text-sm text-slate-300 font-medium"
+                                  className="flex gap-3 items-center text-xs text-slate-300 font-semibold"
                                 >
-                                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0"></div>
+                                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0 shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>
                                   <span className="leading-relaxed">{cd}</span>
                                 </li>
                               ))}
