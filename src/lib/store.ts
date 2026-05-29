@@ -22,6 +22,7 @@ interface TrainingLogs {
     reps: number;
     completed: boolean;
     timestamp: number;
+    rpe?: number;
   }[];
 }
 

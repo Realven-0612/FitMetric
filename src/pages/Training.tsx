@@ -49,6 +49,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useStore } from "../lib/store";
+import { useAuth } from "../components/AuthProvider";
 import { generateAIContent } from "../lib/ai";
 import { AI_MODELS } from "../lib/aiModels";
 import { saveSessionRecord, getSessionHistory, deleteSessionRecord, getCustomVideoLibrary, addCustomVideo } from "../services/firebaseService";
@@ -58,6 +59,7 @@ export interface LoggedSet {
   reps: number;
   completed: boolean;
   timestamp: number;
+  rpe?: number;
 }
 
 export interface TrainingLogs {
@@ -259,6 +261,7 @@ const VIDEO_LIBRARY: Record<string, string> = {
 };
 
 export default function Training() {
+  const { user } = useAuth();
   const { t, language } = useTranslation();
   const { 
     profile, 
@@ -373,6 +376,35 @@ export default function Training() {
   const [heartRate, setHeartRate] = useState<number | null>(null);
   const [hrConnected, setHrConnected] = useState(false);
   const hasTriggeredAutoGenerate = useRef(false);
+  const [latestSessionRpeFeedback, setLatestSessionRpeFeedback] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadLatestSessionRpe = async () => {
+      if (!user) return;
+      try {
+        const history = await getSessionHistory();
+        if (history && history.length > 0) {
+          const latest = history[0];
+          if (latest && latest.logs) {
+            const feedback: any[] = [];
+            Object.entries(latest.logs).forEach(([exName, sets]: [string, any]) => {
+              if (Array.isArray(sets)) {
+                const rpes = sets.map(s => s.rpe).filter(Boolean) as number[];
+                if (rpes.length > 0) {
+                  const avgRpe = rpes.reduce((a, b) => a + b, 0) / rpes.length;
+                  feedback.push({ name: exName, avgRpe: avgRpe.toFixed(1) });
+                }
+              }
+            });
+            setLatestSessionRpeFeedback(feedback);
+          }
+        }
+      } catch (e) {
+        console.error("Error loading latest session RPE:", e);
+      }
+    };
+    loadLatestSessionRpe();
+  }, [user, plan?.completedSessions]);
 
   const toggleHeartRate = async () => {
     if (hrConnected) {
@@ -533,8 +565,8 @@ export default function Training() {
     }
   };
 
-  const logSet = (exName: string, weight: number, reps: number, restSeconds: number = 60) => {
-    storeLogSet(exName, { weight, reps, completed: true, timestamp: Date.now() });
+  const logSet = (exName: string, weight: number, reps: number, restSeconds: number = 60, rpe?: number) => {
+    storeLogSet(exName, { weight, reps, completed: true, timestamp: Date.now(), rpe });
 
     setTimerSeconds(restSeconds);
     setTimerTotal(restSeconds);
@@ -591,6 +623,10 @@ export default function Training() {
           })}`
         : "- Current Weekly Workout Plan: None (generate from scratch)";
 
+      const rpeContext = latestSessionRpeFeedback.length > 0
+        ? `- Recent Workout RPE Feedback (average perceived effort from 1 to 10 for the last session, where RPE 10 is absolute max effort, 9 means 1 rep left in reserve, 8 means 2 reps left, and <7 is light): ${JSON.stringify(latestSessionRpeFeedback)}`
+        : "";
+
       const prompt = `As an elite strength and conditioning coach, generate a highly optimized weekly workout plan.
       ${promptContext}
       - Equipment: ${equipment}
@@ -598,6 +634,7 @@ export default function Training() {
       - Focus/Custom: ${customRules}
       ${currentPlanContext}
       - Current Personal Best Weights: ${JSON.stringify(exerciseWeights)}
+      ${rpeContext}
       - Output Language: ${language === 'vi' ? 'Vietnamese' : 'English'}
       - Allowed Exercises List: ${allowedExercises}
       
@@ -618,7 +655,11 @@ export default function Training() {
          If it's a new exercise, estimate based on the user's weight (e.g. Bench Press often starts around 40-50% bodyweight for beginners, Squat 60-70%).
          If the exercise uses resistance bands (e.g., has "Band" or "Dây kháng lực" in the name), recommend a band tension level (e.g., "Light Band", "Medium Band", "Heavy Band" / "Dây nhẹ", "Dây vừa", "Dây nặng") instead of "Bodyweight".
       8. If Output Language is Vietnamese, MUST translate "to failure" as "đến ngưỡng thất bại" (do NOT use "đến khi không thực hiện được nữa").
-      9. Provide a 'rest' time (e.g. "90s", "2 phút" / "2 min") for each exercise in the 'rest' property based on its intensity. Recommend "3 phút" / "3 min" for heavy compounds, and "90s" or "60s" for isolation lifts.`;
+      9. Provide a 'rest' time (e.g. "90s", "2 phút" / "2 min") for each exercise in the 'rest' property based on its intensity. Recommend "3 phút" / "3 min" for heavy compounds, and "90s" or "60s" for isolation lifts.
+      10. AUTOREGULATION based on Recent Workout RPE Feedback:
+          - If an exercise had a recent average RPE of 9.5 or 10 (Maximal effort/Overtraining risk): you MUST KEEP the recommended weight the same or DECREASE it by 5-10% in the new plan to prevent overtraining and allow recovery. Do NOT apply progressive overload for this exercise.
+          - If an exercise had a recent average RPE of 8 to 9 (Optimal effort): increase weight slightly (2.5% to 5%) for progressive overload.
+          - If an exercise had a recent average RPE of 7 or lower (Too light): increase weight by 5% to 10% to ensure adequate training stimulus.`;
 
       const schema = {
         type: "object",
@@ -1614,10 +1655,10 @@ export default function Training() {
                             exercise={ex} 
                             currentWeight={exerciseWeights[ex.name] || 0}
                             logs={sessionLogs[ex.name] || []}
-                            onLog={(w, r) => {
+                            onLog={(w, r, rpeValue) => {
                               const restStr = getExerciseRest(ex, language);
                               const seconds = parseRestToSeconds(restStr);
-                              logSet(ex.name, w, r, seconds);
+                              logSet(ex.name, w, r, seconds, rpeValue);
                             }}
                             onDelete={(idx) => removeLogSet(ex.name, idx)}
                           />
@@ -1857,12 +1898,13 @@ function SetLogger({ exercise, currentWeight, logs, onLog, onDelete }: {
   exercise: Exercise; 
   currentWeight: number; 
   logs: LoggedSet[]; 
-  onLog: (weight: number, reps: number) => void;
+  onLog: (weight: number, reps: number, rpe?: number) => void;
   onDelete?: (index: number) => void;
 }) {
   const { t } = useTranslation();
   const [weight, setWeight] = useState(currentWeight || 0);
   const [reps, setReps] = useState(10);
+  const [rpe, setRpe] = useState(8);
 
   useEffect(() => {
     if (currentWeight > 0) setWeight(currentWeight);
@@ -1870,10 +1912,10 @@ function SetLogger({ exercise, currentWeight, logs, onLog, onDelete }: {
 
   return (
     <div className="space-y-2">
-      {/* Hàng 1: KG + Reps */}
-      <div className="flex items-center gap-2">
+      {/* Hàng 1: KG + Reps + RPE */}
+      <div className="flex flex-wrap items-center gap-2">
         {/* KG input */}
-        <div className="flex items-center bg-black/60 border border-white/10 rounded-xl h-10 w-[90px] shrink-0 overflow-hidden">
+        <div className="flex items-center bg-black/60 border border-white/10 rounded-xl h-10 w-[85px] shrink-0 overflow-hidden">
           <span className="text-[8px] font-black text-slate-600 uppercase pl-2 shrink-0">KG</span>
           <Input 
             type="number" 
@@ -1887,20 +1929,34 @@ function SetLogger({ exercise, currentWeight, logs, onLog, onDelete }: {
         <div className="flex items-center bg-black/60 border border-white/10 rounded-xl h-10 shrink-0">
           <button 
             onClick={() => setReps(Math.max(1, reps - 1))}
-            className="w-9 h-full flex items-center justify-center text-slate-400 hover:text-white font-bold text-base active:scale-90 transition-transform"
+            className="w-8 h-full flex items-center justify-center text-slate-400 hover:text-white font-bold text-base active:scale-90 transition-transform"
           >−</button>
-          <span className="w-7 text-center text-sm font-black text-white">{reps}</span>
+          <span className="w-6 text-center text-sm font-black text-white">{reps}</span>
           <button 
             onClick={() => setReps(reps + 1)}
-            className="w-9 h-full flex items-center justify-center text-slate-400 hover:text-white font-bold text-base active:scale-90 transition-transform"
+            className="w-8 h-full flex items-center justify-center text-slate-400 hover:text-white font-bold text-base active:scale-90 transition-transform"
           >+</button>
+        </div>
+
+        {/* RPE select */}
+        <div className="flex items-center bg-black/60 border border-white/10 rounded-xl h-10 w-[85px] shrink-0 overflow-hidden relative">
+          <span className="text-[8px] font-black text-cyan-500 uppercase pl-2 shrink-0">RPE</span>
+          <select 
+            value={rpe} 
+            onChange={(e) => setRpe(parseInt(e.target.value))}
+            className="flex-1 h-full bg-transparent border-none text-center text-sm font-black text-white focus:outline-none p-0 pr-2 cursor-pointer appearance-none relative z-10"
+          >
+            {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(v => (
+              <option key={v} value={v} className="bg-[#111111] text-white font-bold">{v}</option>
+            ))}
+          </select>
         </div>
         <div className="flex-1" />
       </div>
       
       {/* Hàng 2: Nút GHI HIỆP full width */}
       <Button 
-        onClick={() => onLog(weight, reps)}
+        onClick={() => onLog(weight, reps, rpe)}
         className="w-full h-10 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-[10px] uppercase tracking-widest rounded-xl shadow-[0_0_15px_rgba(34,211,238,0.15)] hover:shadow-[0_0_20px_rgba(34,211,238,0.35)] transition-all"
       >
         {t('log_set')}
@@ -1915,6 +1971,12 @@ function SetLogger({ exercise, currentWeight, logs, onLog, onDelete }: {
               <span className="text-white">{set.weight}<span className="text-slate-500 text-[8px]">kg</span></span>
               <span className="text-slate-500">×</span>
               <span className="text-cyan-400">{set.reps}</span>
+              {set.rpe && (
+                <>
+                  <span className="text-slate-500">·</span>
+                  <span className="text-purple-400">@RPE {set.rpe}</span>
+                </>
+              )}
               {onDelete && (
                 <button 
                   onClick={() => onDelete(i)} 
