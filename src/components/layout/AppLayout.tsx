@@ -82,7 +82,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 key={item.name}
                 to={item.href}
                 className={({ isActive }) =>
-                  `flex flex-col items-center justify-center gap-1 rounded-xl w-auto min-w-[5.5rem] px-2 h-14 text-[10px] font-bold tracking-wider text-center transition-all duration-300 ${
+                  `flex flex-col items-center justify-center gap-1 rounded-xl w-[7.5rem] px-1 h-14 text-[10px] font-bold tracking-wider text-center transition-all duration-300 ${
                     isActive
                       ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20 scale-95"
                       : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/80"
