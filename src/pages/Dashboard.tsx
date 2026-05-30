@@ -256,36 +256,36 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
         
         {/* Command Center Card */}
-        <Card className="bg-gradient-to-br from-[#1a1c29] to-[#251e30] border-white/5 rounded-[2rem] overflow-hidden shadow-none p-6 lg:p-8 relative">
-           <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none"></div>
-           <div className="absolute bottom-0 left-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-[80px] pointer-events-none"></div>
+        <Card className="bg-card border-border border rounded-3xl overflow-hidden shadow-sm p-6 lg:p-8 relative">
+           <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none"></div>
+           <div className="absolute bottom-0 left-0 w-64 h-64 bg-cyan-500/5 dark:bg-cyan-500/10 rounded-full blur-[80px] pointer-events-none"></div>
            
            <div className="flex flex-col gap-6 relative z-10">
               <div className="flex items-center gap-4">
-                 <div className="p-3 bg-cyan-500/20 rounded-2xl text-cyan-400">
+                 <div className="p-3 bg-cyan-500/10 rounded-2xl text-cyan-500">
                     <Zap className="w-6 h-6" />
                  </div>
                  <div>
-                   <h2 className="text-3xl font-black text-white tracking-tight uppercase">{t('command_center')}</h2>
-                   <p className="text-xs text-emerald-400 font-bold tracking-widest uppercase">{t('online_now')}</p>
+                   <h2 className="text-3xl font-black text-foreground tracking-tight uppercase font-heading">{t('command_center')}</h2>
+                   <p className="text-xs text-emerald-500 font-bold tracking-widest uppercase">{t('online_now')}</p>
                  </div>
               </div>
 
-              <blockquote className="text-lg text-slate-300 font-medium italic mt-2 mb-4">
+              <blockquote className="text-lg text-muted-foreground font-medium italic mt-2 mb-4">
                 "{t('discipline_freedom')}"
               </blockquote>
 
               {/* Metrics Grid */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-auto">
                  {/* KCAL INTAKE */}
-                 <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-4 border border-white/5">
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">
-                       <Flame className="w-3 h-3 text-orange-400" /> {t('calories')}
+                 <div className="bg-muted/40 rounded-2xl p-4 border border-border">
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-2">
+                       <Flame className="w-3 h-3 text-orange-500" /> {t('calories')}
                     </div>
-                    <div className="text-3xl font-black text-white leading-none mb-1">
+                    <div className="text-3xl font-black text-foreground leading-none mb-1 font-heading">
                       {consumedKcal}
                     </div>
-                    <div className="text-xs text-slate-500 font-medium font-mono uppercase flex flex-col gap-1">
+                    <div className="text-xs text-muted-foreground font-medium font-mono uppercase flex flex-col gap-1">
                       <span>/ {targetKcal} {t('total_kcal')}</span>
                       {stravaCalories > 0 && (
                         <div className="flex items-center gap-1.2 text-[#fc4c02] text-[9px] font-black animate-pulse">
@@ -297,27 +297,27 @@ export default function Dashboard() {
                  </div>
 
                  {/* STREAK */}
-                 <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-4 border border-white/5">
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">
+                 <div className="bg-muted/40 rounded-2xl p-4 border border-border">
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-2">
                        <Trophy className="w-3 h-3 text-yellow-500" /> {t('streak')}
                     </div>
-                    <div className="text-3xl font-black text-white leading-none mb-1">
+                    <div className="text-3xl font-black text-foreground leading-none mb-1 font-heading">
                       {streak}
                     </div>
-                    <div className="text-xs text-slate-500 font-medium font-mono uppercase">
+                    <div className="text-xs text-muted-foreground font-medium font-mono uppercase">
                       {t('days_consistent')}
                     </div>
                  </div>
 
                  {/* NEXT OPERATION */}
-                 <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-4 border border-white/5 overflow-hidden flex flex-col justify-center">
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">
-                       <Calendar className="w-3 h-3 text-cyan-400 shrink-0" /> {t('training')}
+                 <div className="bg-muted/40 rounded-2xl p-4 border border-border overflow-hidden flex flex-col justify-center">
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-2">
+                       <Calendar className="w-3 h-3 text-cyan-500 shrink-0" /> {t('training')}
                     </div>
-                    <div className="text-lg sm:text-xl font-bold text-white leading-tight mb-1 truncate">
+                    <div className="text-lg sm:text-xl font-bold text-foreground leading-tight mb-1 truncate">
                       {nextOperation}
                     </div>
-                     <div className="text-xs text-slate-500 font-medium font-mono uppercase">
+                     <div className="text-xs text-muted-foreground font-medium font-mono uppercase">
                        {nextWeightHint 
                          ? `${t('suggested')}: ${nextWeightHint}` 
                          : isRestDayToday 
@@ -327,14 +327,14 @@ export default function Dashboard() {
                  </div>
 
                  {/* CURRENT WEIGHT */}
-                 <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-4 border border-white/5">
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">
-                       <Target className="w-3 h-3 text-indigo-400" /> {t('weight')}
+                 <div className="bg-muted/40 rounded-2xl p-4 border border-border">
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-2">
+                       <Target className="w-3 h-3 text-indigo-500" /> {t('weight')}
                     </div>
-                    <div className="text-xl flex items-baseline gap-1 font-bold text-white leading-tight mb-1">
-                      {weight} <span className="text-sm text-slate-500">kg</span>
+                    <div className="text-xl flex items-baseline gap-1 font-bold text-foreground leading-tight mb-1">
+                      {weight} <span className="text-sm text-muted-foreground">kg</span>
                     </div>
-                    <div className="text-[10px] text-slate-500 font-medium font-mono uppercase">
+                    <div className="text-[10px] text-muted-foreground font-medium font-mono uppercase">
                       {nextWeightHint ? `${t('suggested')}: ${nextWeightHint}` : t('update_stats')}
                     </div>
                  </div>
@@ -343,14 +343,14 @@ export default function Dashboard() {
         </Card>
 
         {/* Motivation Card */}
-        <Card className="bg-[#111111]/80 border-white/5 rounded-[2rem] shadow-none flex flex-col items-start p-6 lg:p-8">
+        <Card className="bg-card border-border border rounded-3xl shadow-sm flex flex-col items-start p-6 lg:p-8">
            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-orange-500/20 text-orange-500 rounded-xl">
+              <div className="p-2 bg-orange-500/10 text-orange-500 rounded-xl">
                  <Zap className="w-4 h-4 fill-current" />
               </div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">{t('todays_motivation')}</h3>
+              <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">{t('todays_motivation')}</h3>
            </div>
-           <p className="text-slate-400 italic font-medium leading-relaxed">
+           <p className="text-muted-foreground italic font-medium leading-relaxed font-sans">
              "{dailyQuote}"
            </p>
         </Card>
@@ -396,112 +396,116 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Weight Progression Card */}
-        <Card className="bg-[#111111]/80 border-white/5 rounded-[2rem] shadow-none flex flex-col p-6 lg:p-8 min-h-[300px]">
+        <Card className="bg-card border-border border rounded-3xl shadow-sm flex flex-col p-6 lg:p-8 min-h-[300px]">
            <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
-                 <div className="text-indigo-400">
+                 <div className="text-indigo-500">
                     <TrendingUp className="w-5 h-5" />
                  </div>
-                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">{t('weight_progression')}</h3>
+                 <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">{t('weight_progression')}</h3>
               </div>
               <Dialog>
-                <DialogTrigger render={
-                  <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white hover:bg-white/5 rounded-full h-8 w-8">
-                    <Settings2 className="w-4 h-4" />
-                  </Button>
-                } />
-                <DialogContent className="bg-[#111111] border-white/10 text-white rounded-[2rem] p-6 max-w-sm">
-                  <DialogHeader>
-                    <DialogTitle className="text-lg font-black uppercase tracking-wider">{t('adjust_weight_history')}</DialogTitle>
-                  </DialogHeader>
-                  <div className="mt-4 max-h-[60vh] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                    {rawWeightHistory.length === 0 ? (
-                      <p className="text-sm text-slate-500 text-center py-4">{t('no_entries_found')}</p>
-                    ) : (
-                      rawWeightHistory.map((item, idx) => (
-                        <div key={idx} className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-2xl border border-white/5">
-                          <div>
-                            <div className="text-white font-bold">{item.value} kg</div>
-                            <div className="text-xs text-slate-500 font-medium">{new Date(item.date).toLocaleDateString()}</div>
-                          </div>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleDeleteWeightRecord(item.date, item.id)}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-8 w-8 rounded-full"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </DialogContent>
+                 <DialogTrigger render={
+                   <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-full h-8 w-8">
+                     <Settings2 className="w-4 h-4" />
+                   </Button>
+                 } />
+                 <DialogContent className="bg-card border border-border text-foreground rounded-3xl p-6 max-w-sm">
+                   <DialogHeader>
+                     <DialogTitle className="text-lg font-black uppercase tracking-wider font-heading">{t('adjust_weight_history')}</DialogTitle>
+                   </DialogHeader>
+                   <div className="mt-4 max-h-[60vh] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                     {rawWeightHistory.length === 0 ? (
+                       <p className="text-sm text-muted-foreground text-center py-4">{t('no_entries_found')}</p>
+                     ) : (
+                       rawWeightHistory.map((item, idx) => (
+                         <div key={idx} className="flex items-center justify-between px-4 py-3 bg-muted/40 rounded-2xl border border-border">
+                           <div>
+                             <div className="text-foreground font-bold">{item.value} kg</div>
+                             <div className="text-xs text-muted-foreground font-medium">{new Date(item.date).toLocaleDateString()}</div>
+                           </div>
+                           <Button 
+                             variant="ghost" 
+                             size="icon" 
+                             onClick={() => handleDeleteWeightRecord(item.date, item.id)}
+                             className="text-red-500 hover:text-red-400 hover:bg-red-500/10 h-8 w-8 rounded-full"
+                           >
+                             <Trash2 className="w-4 h-4" />
+                           </Button>
+                         </div>
+                       ))
+                     )}
+                   </div>
+                 </DialogContent>
               </Dialog>
            </div>
            
            {/* Empty State or Chart */}
            {weightHistoryData.length < 2 ? (
-               <div className="flex-1 flex flex-col items-center justify-center text-slate-500 space-y-4">
-                  <TrendingUp className="w-8 h-8 opacity-20" />
-                  <p className="text-sm font-medium">{t('weight_progression_empty')}</p>
-               </div>
+                <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground space-y-4">
+                   <TrendingUp className="w-8 h-8 opacity-20" />
+                   <p className="text-sm font-medium">{t('weight_progression_empty')}</p>
+                </div>
            ) : (
-               <div className="flex-1 w-full h-[200px] min-h-[200px]">
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                    <AreaChart data={weightHistoryData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-                      <XAxis 
-                        dataKey="name" 
-                        stroke="#555" 
-                        fontSize={10} 
-                        tickLine={false} 
-                        axisLine={false} 
-                        dy={10}
-                      />
-                      <YAxis 
-                        stroke="#555" 
-                        fontSize={10} 
-                        tickLine={false} 
-                        axisLine={false}
-                        domain={['auto', 'auto']}
-                      />
-                      <Area type="monotone" dataKey="weight" stroke="#818cf8" strokeWidth={2} fillOpacity={0.1} fill="#818cf8" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-               </div>
+                <div className="flex-1 w-full h-[200px] min-h-[200px]">
+                   <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                     <AreaChart data={weightHistoryData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" className="opacity-40" vertical={false} />
+                       <XAxis 
+                         dataKey="name" 
+                         stroke="currentColor" 
+                         className="text-muted-foreground opacity-70"
+                         fontSize={10} 
+                         tickLine={false} 
+                         axisLine={false} 
+                         dy={10}
+                       />
+                       <YAxis 
+                         stroke="currentColor" 
+                         className="text-muted-foreground opacity-70"
+                         fontSize={10} 
+                         tickLine={false} 
+                         axisLine={false}
+                         domain={['auto', 'auto']}
+                       />
+                       <Area type="monotone" dataKey="weight" stroke="hsl(var(--chart-2))" strokeWidth={2} fillOpacity={0.06} fill="hsl(var(--chart-2))" />
+                     </AreaChart>
+                   </ResponsiveContainer>
+                </div>
            )}
         </Card>
 
         {/* Consumption Chart Card */}
-        <Card className="bg-[#111111]/80 border-white/5 rounded-[2rem] shadow-none flex flex-col p-6 lg:p-8 min-h-[300px]">
+        <Card className="bg-card border-border border rounded-3xl shadow-sm flex flex-col p-6 lg:p-8 min-h-[300px]">
            <div className="flex items-center gap-3 mb-8">
-              <div className="text-orange-400">
+              <div className="text-orange-500">
                  <Flame className="w-5 h-5" />
               </div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">{t('calories')} ({t('last_7_days')})</h3>
+              <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">{t('calories')} ({t('last_7_days')})</h3>
            </div>
            
            <div className="flex-1 w-full h-[200px] min-h-[200px]">
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <AreaChart data={consumptionData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-                  <XAxis 
-                    dataKey="name" 
-                    stroke="#555" 
-                    fontSize={10} 
-                    tickLine={false} 
-                    axisLine={false} 
-                    dy={10}
-                  />
-                  <YAxis 
-                    stroke="#555" 
-                    fontSize={10} 
-                    tickLine={false} 
-                    axisLine={false}
-                  />
-                  <Area type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={2} fillOpacity={0.1} fill="var(--primary)" />
-                </AreaChart>
+                 <AreaChart data={consumptionData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" className="opacity-40" vertical={false} />
+                   <XAxis 
+                     dataKey="name" 
+                     stroke="currentColor" 
+                     className="text-muted-foreground opacity-70"
+                     fontSize={10} 
+                     tickLine={false} 
+                     axisLine={false} 
+                     dy={10}
+                   />
+                   <YAxis 
+                     stroke="currentColor" 
+                     className="text-muted-foreground opacity-70"
+                     fontSize={10} 
+                     tickLine={false} 
+                     axisLine={false}
+                   />
+                   <Area type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={2} fillOpacity={0.06} fill="var(--primary)" />
+                 </AreaChart>
               </ResponsiveContainer>
            </div>
         </Card>
@@ -509,4 +513,4 @@ export default function Dashboard() {
       </div>
     </div>
   );
-}
+};

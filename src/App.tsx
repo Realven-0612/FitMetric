@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import OnboardingScreen from "./components/OnboardingScreen";
 import ErrorBoundary from "./components/ErrorBoundary";
 import IOSInstallPrompt from "./components/IOSInstallPrompt";
+import { ThemeProvider } from "./components/ThemeProvider";
 
 // Splash screen shown while Firebase resolves auth state
 function SplashScreen() {
@@ -97,24 +98,26 @@ export default function App() {
   return (
     <TranslationProvider>
       <AuthProvider>
-        <BrowserRouter>
-          <AppShell />
-          <Toaster
-            theme="dark"
-            position="top-center"
-            toastOptions={{
-              style: {
-                background: '#1e2330',
-                border: '1px solid rgba(255,255,255,0.15)',
-                color: '#f1f5f9',
-                fontFamily: "'Be Vietnam Pro', sans-serif",
-                fontSize: '13px',
-                borderRadius: '12px',
-              },
-            }}
-          />
-          <IOSInstallPrompt />
-        </BrowserRouter>
+        <ThemeProvider>
+          <BrowserRouter>
+            <AppShell />
+            <Toaster
+              theme="dark"
+              position="top-center"
+              toastOptions={{
+                style: {
+                  background: '#1e2330',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  color: '#f1f5f9',
+                  fontFamily: "'Be Vietnam Pro', sans-serif",
+                  fontSize: '13px',
+                  borderRadius: '12px',
+                },
+              }}
+            />
+            <IOSInstallPrompt />
+          </BrowserRouter>
+        </ThemeProvider>
       </AuthProvider>
     </TranslationProvider>
   );

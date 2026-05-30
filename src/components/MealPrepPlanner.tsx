@@ -335,7 +335,12 @@ export function MealPrepPlanner() {
                 <Label className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{language === 'vi' ? "Chế độ ăn" : "Diet Type"}</Label>
                 <Select value={dietType} onValueChange={setDietType}>
                   <SelectTrigger className="bg-black/50 border-white/10 h-10 rounded-xl text-xs font-semibold text-white">
-                    <SelectValue />
+                    <SelectValue>
+                      {dietType === "standard" && (language === 'vi' ? "Cân bằng tiêu chuẩn" : "Standard Balanced")}
+                      {dietType === "highprotein" && (language === 'vi' ? "Nhiều đạm (High Protein)" : "High Protein")}
+                      {dietType === "lowcarb" && (language === 'vi' ? "Low Carb / Keto" : "Low Carb / Keto")}
+                      {dietType === "vegetarian" && (language === 'vi' ? "Ăn chay (Vegetarian)" : "Vegetarian")}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-[#111] border-white/10 text-white rounded-xl">
                     <SelectItem value="standard">{language === 'vi' ? "Cân bằng tiêu chuẩn" : "Standard Balanced"}</SelectItem>
@@ -350,7 +355,11 @@ export function MealPrepPlanner() {
                 <Label className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{language === 'vi' ? "Nguồn dữ liệu đối chiếu" : "Nutrition database"}</Label>
                 <Select value={databaseRef} onValueChange={setDatabaseRef}>
                   <SelectTrigger className="bg-black/50 border-white/10 h-10 rounded-xl text-xs font-semibold text-white">
-                    <SelectValue />
+                    <SelectValue>
+                      {databaseRef === "nin" && "Viện Dinh dưỡng Quốc gia (NIN) 🇻🇳"}
+                      {databaseRef === "usda" && "USDA Central Database 🇺🇸"}
+                      {databaseRef === "who" && "WHO / FAO Guidelines 🌐"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-[#111] border-white/10 text-white rounded-xl">
                     <SelectItem value="nin">Viện Dinh dưỡng Quốc gia (NIN) 🇻🇳</SelectItem>

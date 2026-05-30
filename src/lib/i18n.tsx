@@ -838,7 +838,7 @@ const translations = {
     toast_body_updated: 'Chỉ số cơ thể đã được cập nhật!',
     toast_food_logged: 'Đã thêm {name} vào nhật ký!',
     toast_redirecting_training: 'Đang chuyển hướng đến trang bài tập...',
-    mealprep: 'Meal Prep',
+    mealprep: 'Chuẩn bị thực đơn',
   }
 };
 

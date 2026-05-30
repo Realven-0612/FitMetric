@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Search, PlayCircle, Star, Dumbbell, Youtube, SlidersHorizontal, Sparkles } from "lucide-react";
@@ -90,40 +90,40 @@ export default function Library() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10 max-w-[1600px] mx-auto">
       
       {/* Cybernetic Console Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 py-4 bg-[#111218]/80 backdrop-blur-md p-6 md:p-8 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden">
-         <div className="absolute top-0 left-0 w-36 h-36 bg-cyan-500/10 rounded-full blur-[60px] pointer-events-none" />
-         <div className="absolute bottom-0 right-0 w-36 h-36 bg-purple-500/10 rounded-full blur-[60px] pointer-events-none" />
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 py-4 bg-card p-6 md:p-8 rounded-3xl border border-border shadow-sm relative overflow-hidden">
+         <div className="absolute top-0 left-0 w-36 h-36 bg-cyan-500/5 dark:bg-cyan-500/10 rounded-full blur-[60px] pointer-events-none" />
+         <div className="absolute bottom-0 right-0 w-36 h-36 bg-purple-500/5 dark:bg-purple-500/10 rounded-full blur-[60px] pointer-events-none" />
          <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-4 w-full justify-between">
             <div>
               <div className="flex items-center gap-3">
-                 <h1 className="text-3xl font-black text-white uppercase tracking-tight flex items-center gap-3">
-                   <Dumbbell className="w-8 h-8 text-cyan-400 animate-pulse" />
+                 <h1 className="text-3xl font-black text-foreground uppercase tracking-tight flex items-center gap-3 font-heading">
+                   <Dumbbell className="w-8 h-8 text-primary animate-pulse" />
                    {t('exercise_library' as any) || "Exercise Library"}
                  </h1>
-                 <div className="bg-cyan-500/10 text-cyan-400 text-[10px] font-black px-2.5 py-1 rounded-md border border-cyan-500/20 flex items-center gap-2 shadow-inner uppercase tracking-wider">
-                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></div>
+                 <div className="bg-primary/10 text-primary text-[10px] font-black px-2.5 py-1 rounded-md border border-primary/20 flex items-center gap-2 shadow-inner uppercase tracking-wider">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
                     {filteredExercises.length} {t('exercises' as any) || "Exercises"}
                  </div>
               </div>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1.5">{t('library_subtitle' as any) || "CYBERNETIC EXERCISE DIRECTORY & VIDEO WORKOUTS"}</p>
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1.5">{t('library_subtitle' as any) || "CYBERNETIC EXERCISE DIRECTORY & VIDEO WORKOUTS"}</p>
             </div>
          </div>
       </div>
 
       {/* Advanced Filtering Deck */}
-      <div className="flex flex-wrap items-end gap-4 bg-[#111218]/90 backdrop-blur-xl p-6 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent" />
+      <div className="flex flex-wrap items-end gap-4 bg-card p-6 rounded-3xl border border-border shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/10 to-transparent" />
         
         <div className="flex-1 min-w-[240px] space-y-2">
-          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1 flex items-center gap-1.5">
-            <Search className="w-3 h-3 text-cyan-500" />
+          <label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest pl-1 flex items-center gap-1.5">
+            <Search className="w-3 h-3 text-primary" />
             {t('search_label')}
           </label>
           <div className="relative group">
-            <Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
+            <Search className="absolute left-4 top-3.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <Input 
               placeholder={t('food_search_placeholder')} 
-              className="pl-11 h-12 rounded-2xl bg-black/40 border-white/5 text-white placeholder:text-slate-700 focus-visible:ring-1 focus-visible:ring-cyan-500/30 focus-visible:border-cyan-500/30 shadow-none font-semibold text-sm transition-all"
+              className="pl-11 h-12 rounded-2xl bg-muted/55 border-border text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary shadow-none font-semibold text-sm transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -131,96 +131,96 @@ export default function Library() {
         </div>
 
         <div className="space-y-2 w-full sm:w-auto">
-          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">{t('muscle_group')}</label>
+          <label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest pl-1">{t('muscle_group')}</label>
           <div className="relative">
             <select 
               value={muscleFilter}
               onChange={(e) => setMuscleFilter(e.target.value)}
-              className="w-full sm:w-40 h-12 rounded-2xl bg-black/40 border border-white/5 text-white px-4 text-sm font-semibold focus:ring-1 focus:ring-cyan-500/30 focus:border-cyan-500/30 outline-none appearance-none cursor-pointer hover:border-white/10 transition-all"
+              className="w-full sm:w-40 h-12 rounded-2xl bg-muted border border-border text-foreground px-4 text-sm font-semibold focus:ring-1 focus:ring-primary focus:border-primary outline-none appearance-none cursor-pointer hover:border-border/85 transition-all"
             >
-              <option value="all" className="bg-[#111218]">{t('all' as any)}</option>
-              <option value="chest" className="bg-[#111218]">{t('chest')}</option>
-              <option value="back" className="bg-[#111218]">{t('back')}</option>
-              <option value="legs" className="bg-[#111218]">{t('legs')}</option>
-              <option value="shoulders" className="bg-[#111218]">{t('shoulders')}</option>
-              <option value="arms" className="bg-[#111218]">{t('arms')}</option>
-              <option value="core" className="bg-[#111218]">{t('core')}</option>
+              <option value="all" className="bg-card text-foreground">{t('all' as any)}</option>
+              <option value="chest" className="bg-card text-foreground">{t('chest')}</option>
+              <option value="back" className="bg-card text-foreground">{t('back')}</option>
+              <option value="legs" className="bg-card text-foreground">{t('legs')}</option>
+              <option value="shoulders" className="bg-card text-foreground">{t('shoulders')}</option>
+              <option value="arms" className="bg-card text-foreground">{t('arms')}</option>
+              <option value="core" className="bg-card text-foreground">{t('core')}</option>
             </select>
-            <div className="absolute right-4 top-4.5 pointer-events-none w-2 h-2 border-r-2 border-b-2 border-slate-500 rotate-45" />
+            <div className="absolute right-4 top-4.5 pointer-events-none w-2 h-2 border-r-2 border-b-2 border-muted-foreground rotate-45" />
           </div>
         </div>
 
         <div className="space-y-2 w-full sm:w-auto">
-          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">{t('environment')}</label>
+          <label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest pl-1">{t('environment')}</label>
           <div className="relative">
             <select 
               value={styleFilter}
               onChange={(e) => setStyleFilter(e.target.value)}
-              className="w-full sm:w-40 h-12 rounded-2xl bg-black/40 border border-white/5 text-white px-4 text-sm font-semibold focus:ring-1 focus:ring-cyan-500/30 focus:border-cyan-500/30 outline-none appearance-none cursor-pointer hover:border-white/10 transition-all"
+              className="w-full sm:w-40 h-12 rounded-2xl bg-muted border border-border text-foreground px-4 text-sm font-semibold focus:ring-1 focus:ring-primary focus:border-primary outline-none appearance-none cursor-pointer hover:border-border/85 transition-all"
             >
-              <option value="all" className="bg-[#111218]">{t('all' as any)}</option>
-              <option value="gym" className="bg-[#111218]">{t('gym')}</option>
-              <option value="calisthenics" className="bg-[#111218]">{t('calisthenics')}</option>
-              <option value="band" className="bg-[#111218]">{t('band')}</option>
+              <option value="all" className="bg-card text-foreground">{t('all' as any)}</option>
+              <option value="gym" className="bg-card text-foreground">{t('gym')}</option>
+              <option value="calisthenics" className="bg-card text-foreground">{t('calisthenics')}</option>
+              <option value="band" className="bg-card text-foreground">{t('band')}</option>
             </select>
-            <div className="absolute right-4 top-4.5 pointer-events-none w-2 h-2 border-r-2 border-b-2 border-slate-500 rotate-45" />
+            <div className="absolute right-4 top-4.5 pointer-events-none w-2 h-2 border-r-2 border-b-2 border-muted-foreground rotate-45" />
           </div>
         </div>
 
         <div className="space-y-2 w-full sm:w-auto">
-          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">{t('difficulty')}</label>
+          <label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest pl-1">{t('difficulty')}</label>
           <div className="relative">
             <select 
               value={diffFilter}
               onChange={(e) => setDiffFilter(e.target.value)}
-              className="w-full sm:w-28 h-12 rounded-2xl bg-black/40 border border-white/5 text-white px-4 text-sm font-semibold focus:ring-1 focus:ring-cyan-500/30 focus:border-cyan-500/30 outline-none appearance-none cursor-pointer hover:border-white/10 transition-all"
+              className="w-full sm:w-28 h-12 rounded-2xl bg-muted border border-border text-foreground px-4 text-sm font-semibold focus:ring-1 focus:ring-primary focus:border-primary outline-none appearance-none cursor-pointer hover:border-border/85 transition-all"
             >
-              <option value="all" className="bg-[#111218]">{t('all' as any)}</option>
-              <option value="1" className="bg-[#111218]">1 ★</option>
-              <option value="2" className="bg-[#111218]">2 ★★</option>
-              <option value="3" className="bg-[#111218]">3 ★★★</option>
-              <option value="4" className="bg-[#111218]">4 ★★★★</option>
-              <option value="5" className="bg-[#111218]">5 ★★★★★</option>
+              <option value="all" className="bg-card text-foreground">{t('all' as any)}</option>
+              <option value="1" className="bg-card text-foreground">1 ★</option>
+              <option value="2" className="bg-card text-foreground">2 ★★</option>
+              <option value="3" className="bg-card text-foreground">3 ★★★</option>
+              <option value="4" className="bg-card text-foreground">4 ★★★★</option>
+              <option value="5" className="bg-card text-foreground">5 ★★★★★</option>
             </select>
-            <div className="absolute right-4 top-4.5 pointer-events-none w-2 h-2 border-r-2 border-b-2 border-slate-500 rotate-45" />
+            <div className="absolute right-4 top-4.5 pointer-events-none w-2 h-2 border-r-2 border-b-2 border-muted-foreground rotate-45" />
           </div>
         </div>
 
         <div className="space-y-2 w-full sm:w-auto">
-          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">{t('effectiveness')}</label>
+          <label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest pl-1">{t('effectiveness')}</label>
           <div className="relative">
             <select 
               value={effFilter}
               onChange={(e) => setEffFilter(e.target.value)}
-              className="w-full sm:w-28 h-12 rounded-2xl bg-black/40 border border-white/5 text-white px-4 text-sm font-semibold focus:ring-1 focus:ring-cyan-500/30 focus:border-cyan-500/30 outline-none appearance-none cursor-pointer hover:border-white/10 transition-all"
+              className="w-full sm:w-28 h-12 rounded-2xl bg-muted border border-border text-foreground px-4 text-sm font-semibold focus:ring-1 focus:ring-primary focus:border-primary outline-none appearance-none cursor-pointer hover:border-border/85 transition-all"
             >
-              <option value="all" className="bg-[#111218]">{t('all' as any)}</option>
-              <option value="1" className="bg-[#111218]">1</option>
-              <option value="2" className="bg-[#111218]">2</option>
-              <option value="3" className="bg-[#111218]">3</option>
-              <option value="4" className="bg-[#111218]">4</option>
-              <option value="5" className="bg-[#111218]">5</option>
+              <option value="all" className="bg-card text-foreground">{t('all' as any)}</option>
+              <option value="1" className="bg-card text-foreground">1</option>
+              <option value="2" className="bg-card text-foreground">2</option>
+              <option value="3" className="bg-card text-foreground">3</option>
+              <option value="4" className="bg-card text-foreground">4</option>
+              <option value="5" className="bg-card text-foreground">5</option>
             </select>
-            <div className="absolute right-4 top-4.5 pointer-events-none w-2 h-2 border-r-2 border-b-2 border-slate-500 rotate-45" />
+            <div className="absolute right-4 top-4.5 pointer-events-none w-2 h-2 border-r-2 border-b-2 border-muted-foreground rotate-45" />
           </div>
         </div>
 
         <div className="space-y-2 w-full sm:w-auto">
-          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1 flex items-center gap-1">
-            <SlidersHorizontal className="w-3 h-3 text-cyan-400" />
+          <label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest pl-1 flex items-center gap-1">
+            <SlidersHorizontal className="w-3 h-3 text-primary" />
             {t('sort_by')}
           </label>
           <div className="relative">
             <select 
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="w-full sm:w-44 h-12 rounded-2xl bg-black/40 border border-white/5 text-white px-4 text-sm font-semibold focus:ring-1 focus:ring-cyan-500/30 focus:border-cyan-500/30 outline-none appearance-none cursor-pointer hover:border-white/10 transition-all"
+              className="w-full sm:w-44 h-12 rounded-2xl bg-muted border border-border text-foreground px-4 text-sm font-semibold focus:ring-1 focus:ring-primary focus:border-primary outline-none appearance-none cursor-pointer hover:border-border/85 transition-all"
             >
-              <option value="effectiveness" className="bg-[#111218]">{t('effectiveness')}</option>
-              <option value="difficulty" className="bg-[#111218]">{t('difficulty')}</option>
-              <option value="name" className="bg-[#111218]">{t('name_label')}</option>
+              <option value="effectiveness" className="bg-card text-foreground">{t('effectiveness')}</option>
+              <option value="difficulty" className="bg-card text-foreground">{t('difficulty')}</option>
+              <option value="name" className="bg-card text-foreground">{t('name_label')}</option>
             </select>
-            <div className="absolute right-4 top-4.5 pointer-events-none w-2 h-2 border-r-2 border-b-2 border-slate-500 rotate-45" />
+            <div className="absolute right-4 top-4.5 pointer-events-none w-2 h-2 border-r-2 border-b-2 border-muted-foreground rotate-45" />
           </div>
         </div>
       </div>
@@ -232,13 +232,13 @@ export default function Library() {
           const isPlaying = playingVideo === videoId;
 
           return (
-            <Card key={i} className="bg-[#111218]/90 backdrop-blur-xl border border-white/5 hover:border-cyan-500/30 hover:shadow-[0_0_25px_rgba(6,182,212,0.15)] transition-all duration-350 overflow-hidden flex flex-col group rounded-[2rem] relative shadow-2xl">
+            <Card key={i} className="bg-card border border-border hover:border-primary/30 transition-all duration-350 overflow-hidden flex flex-col group rounded-3xl relative shadow-sm hover:shadow-md">
               
-              {/* Laser Line Accent */}
-              <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              {/* Line Accent */}
+              <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
               <div 
-                className={`bg-black/40 relative flex items-center justify-center border-b border-white/5 overflow-hidden rounded-t-[2rem] cursor-pointer group/vid transition-all duration-550 ${
+                className={`bg-muted/40 relative flex items-center justify-center border-b border-border overflow-hidden rounded-t-[1.25rem] cursor-pointer group/vid transition-all duration-550 ${
                   isPlaying ? 'h-52 sm:h-64' : 'h-44'
                 }`}
                 onClick={() => !isPlaying && setPlayingVideo(videoId)}
@@ -263,14 +263,14 @@ export default function Library() {
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
-                        className="w-8 h-8 rounded-xl bg-black/80 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/90 transition-colors shadow-lg"
+                        className="w-8 h-8 rounded-xl bg-background/80 backdrop-blur-md border border-border flex items-center justify-center hover:bg-background transition-colors shadow-sm"
                         title="Open on YouTube"
                       >
                         <Youtube className="w-4 h-4 text-red-500" />
                       </a>
                       <button
                         onClick={e => { e.stopPropagation(); setPlayingVideo(null); }}
-                        className="w-8 h-8 rounded-xl bg-black/80 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-red-500/20 hover:text-red-400 text-slate-400 transition-all shadow-lg"
+                        className="w-8 h-8 rounded-xl bg-background/80 backdrop-blur-md border border-border flex items-center justify-center hover:bg-red-500/15 hover:text-red-500 text-muted-foreground transition-all shadow-sm"
                         title="Close Player"
                       >
                         <span className="text-xs font-black">✕</span>
@@ -282,24 +282,24 @@ export default function Library() {
                     <img 
                       src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`} 
                       alt={ex.n}
-                      className="w-full h-full object-cover opacity-50 group-hover:opacity-75 group-hover:scale-105 transition-all duration-700"
+                      className="w-full h-full object-cover opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#111218] via-transparent to-transparent pointer-events-none opacity-85" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent pointer-events-none opacity-85" />
                     
-                    {/* Glowing HUD play trigger */}
-                    <div className="absolute inset-0 flex items-center justify-center opacity-40 group-hover/vid:opacity-100 transition-all duration-300 pointer-events-none">
-                      <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 backdrop-blur-md flex items-center justify-center group-hover:shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all">
-                        <PlayCircle className="w-8 h-8 text-cyan-400 animate-pulse" />
+                    {/* HUD play trigger */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-50 group-hover/vid:opacity-100 transition-all duration-300 pointer-events-none">
+                      <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 backdrop-blur-md flex items-center justify-center group-hover:scale-105 transition-all">
+                        <PlayCircle className="w-8 h-8 text-primary animate-pulse" />
                       </div>
                     </div>
                   </>
                 )}
                 
                 {!isPlaying && (
-                  <span className={`absolute top-4 left-4 px-3 py-1.5 text-[9px] uppercase font-black tracking-widest rounded-xl shadow-lg border backdrop-blur-md ${
-                    ex.l === t('gym') ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400' : 
-                    ex.l === t('band') ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' :
-                    'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
+                  <span className={`absolute top-4 left-4 px-3 py-1.5 text-[9px] uppercase font-black tracking-widest rounded-xl shadow-sm border backdrop-blur-md ${
+                    ex.l === t('gym') ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-550 dark:text-cyan-400' : 
+                    ex.l === t('band') ? 'bg-orange-500/10 border-orange-500/20 text-orange-650 dark:text-orange-400' :
+                    'bg-indigo-500/10 border-indigo-500/20 text-indigo-650 dark:text-indigo-400'
                   }`}>
                     {ex.l}
                   </span>
@@ -308,24 +308,24 @@ export default function Library() {
 
               <CardContent className="p-6 flex-1 flex flex-col">
                 <div className="mb-4">
-                  <h3 className="font-extrabold text-lg text-white leading-snug mb-2 tracking-tight group-hover:text-cyan-400 transition-colors duration-300">{ex.n}</h3>
-                  <div className="inline-flex px-2.5 py-1 bg-white/5 border border-white/5 rounded-lg text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                  <h3 className="font-extrabold text-lg text-foreground leading-snug mb-2 tracking-tight group-hover:text-primary transition-colors duration-300 font-heading">{ex.n}</h3>
+                  <div className="inline-flex px-2.5 py-1 bg-muted border border-border rounded-lg text-[9px] font-black text-muted-foreground uppercase tracking-widest">
                     {ex.m}
                   </div>
                 </div>
                 
                 {/* Visual Stats Gauges */}
-                <div className="grid grid-cols-2 gap-4 mb-5 bg-black/20 p-3 rounded-2xl border border-white/5 shadow-inner">
+                <div className="grid grid-cols-2 gap-4 mb-5 bg-muted/40 p-3 rounded-2xl border border-border shadow-inner">
                   <div>
-                    <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">{t('effectiveness')}:</div>
+                    <div className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5">{t('effectiveness')}:</div>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-black text-white">{ex.e}</span>
+                      <span className="text-sm font-black text-foreground">{ex.e}</span>
                       <div className="flex gap-0.5">
                         {Array.from({ length: 5 }).map((_, idx) => (
                           <div 
                             key={idx} 
                             className={`w-1.5 h-1.5 rounded-full ${
-                              idx < ex.e ? 'bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.5)]' : 'bg-white/10'
+                              idx < ex.e ? 'bg-accent shadow-sm' : 'bg-muted-foreground/20'
                             }`}
                           />
                         ))}
@@ -333,18 +333,18 @@ export default function Library() {
                     </div>
                   </div>
                   <div>
-                    <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 flex items-center justify-between">
+                    <div className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center justify-between">
                       {t('difficulty')}:
-                      <Dumbbell className="w-2.5 h-2.5 text-cyan-400" />
+                      <Dumbbell className="w-2.5 h-2.5 text-primary" />
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-black text-white">{ex.d}</span>
+                      <span className="text-sm font-black text-foreground">{ex.d}</span>
                       <div className="flex gap-0.5">
                         {Array.from({ length: 5 }).map((_, idx) => (
                           <div 
                             key={idx} 
                             className={`w-1.5 h-1.5 rounded-full ${
-                              idx < ex.d ? 'bg-purple-400 shadow-[0_0_4px_rgba(192,132,252,0.5)]' : 'bg-white/10'
+                              idx < ex.d ? 'bg-indigo-500 dark:bg-purple-400 shadow-sm' : 'bg-muted-foreground/20'
                             }`}
                           />
                         ))}
@@ -355,13 +355,13 @@ export default function Library() {
                 
                 {/* Alternative Recommendation HUD Box */}
                 <div className="mt-auto pt-2">
-                  <div className="bg-gradient-to-br from-purple-950/10 to-purple-900/5 border border-purple-500/10 rounded-2xl p-3.5 flex gap-3 items-center">
-                    <div className="w-7 h-7 rounded-xl bg-purple-500/15 flex items-center justify-center shrink-0 border border-purple-500/20">
-                      <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                  <div className="bg-muted border border-border rounded-2xl p-3.5 flex gap-3 items-center">
+                    <div className="w-7 h-7 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
+                      <Sparkles className="w-3.5 h-3.5 text-primary" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest leading-none mb-1">{t('home_alternative')}:</div>
-                      <div className="text-xs font-black text-white truncate">{ex.a}</div>
+                      <div className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1">{t('home_alternative')}:</div>
+                      <div className="text-xs font-black text-foreground truncate">{ex.a}</div>
                     </div>
                   </div>
                 </div>
@@ -373,4 +373,3 @@ export default function Library() {
     </div>
   );
 }
-
