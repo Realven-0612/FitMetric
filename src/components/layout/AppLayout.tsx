@@ -82,14 +82,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 key={item.name}
                 to={item.href}
                 className={({ isActive }) =>
-                  `flex flex-col items-center justify-center gap-1 rounded-xl w-20 h-14 text-[10px] font-bold tracking-wider transition-all duration-300 ${
+                  `flex flex-col items-center justify-center gap-1 rounded-xl w-auto min-w-[5.5rem] px-2 h-14 text-[10px] font-bold tracking-wider text-center transition-all duration-300 ${
                     isActive
                       ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20 scale-95"
                       : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/80"
                   }`
                 }
               >
-                <item.icon className="h-4.5 w-4.5 mb-0.5" />
+                <item.icon className="h-5 w-5 mb-0.5" />
                 {item.name}
               </NavLink>
             ))}
@@ -120,7 +120,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                <button
                  onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
                  className="flex items-center justify-center w-9 h-9 rounded-full bg-muted/40 border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-200"
-                 title={resolvedTheme === "dark" ? t("Switch to Light Mode") : t("Switch to Dark Mode")}
+                 title={resolvedTheme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
                >
                  {resolvedTheme === "dark" ? (
                    <Sun className="h-4 w-4" />
@@ -163,7 +163,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   }`
                 }
               >
-                <item.icon className="h-4.5 w-4.5" />
+                <item.icon className="h-5 w-5" />
                 {item.name}
               </NavLink>
             ))}

@@ -272,7 +272,7 @@ export default function Dashboard() {
               </div>
 
               <blockquote className="text-lg text-muted-foreground font-medium italic mt-2 mb-4">
-                "{t('discipline_freedom')}"
+                {t('discipline_freedom')}
               </blockquote>
 
               {/* Metrics Grid */}
@@ -351,7 +351,7 @@ export default function Dashboard() {
               <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">{t('todays_motivation')}</h3>
            </div>
            <p className="text-muted-foreground italic font-medium leading-relaxed font-sans">
-             "{dailyQuote}"
+             {dailyQuote}
            </p>
         </Card>
       </div>
@@ -364,7 +364,7 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2 text-orange-400 text-xs font-bold uppercase tracking-wider mb-1">
                    <Target className="w-3.5 h-3.5" /> {t('alert_protein_deficit')}
                 </div>
-                <p className="text-sm text-slate-300">
+                <p className="text-sm text-muted-foreground">
                    {t('alert_protein_desc')}
                 </p>
              </div>
@@ -374,7 +374,7 @@ export default function Dashboard() {
                  <div className="flex items-center gap-2 text-blue-400 text-xs font-bold uppercase tracking-wider mb-1">
                     <Target className="w-3.5 h-3.5" /> {t('alert_dehydration')}
                  </div>
-                 <p className="text-sm text-slate-300">
+                 <p className="text-sm text-muted-foreground">
                     {t('alert_dehydration_desc')}
                  </p>
               </div>
@@ -384,8 +384,8 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2 text-[#a855f7] text-xs font-bold uppercase tracking-wider mb-1">
                    <Zap className="w-3.5 h-3.5" /> {t('alert_training_pending')}
                 </div>
-                <p className="text-sm text-slate-300">
-                   {t('alert_training_desc_1')} <span className="font-bold text-white">{nextOperation}</span> {t('alert_training_desc_2')}
+                <p className="text-sm text-muted-foreground">
+                   {t('alert_training_desc_1')} <span className="font-bold text-foreground">{nextOperation}</span> {t('alert_training_desc_2')}
                 </p>
              </div>
            )}
@@ -484,30 +484,37 @@ export default function Dashboard() {
               <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">{t('calories')} ({t('last_7_days')})</h3>
            </div>
            
-           <div className="flex-1 w-full h-[200px] min-h-[200px]">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                 <AreaChart data={consumptionData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" className="opacity-40" vertical={false} />
-                   <XAxis 
-                     dataKey="name" 
-                     stroke="currentColor" 
-                     className="text-muted-foreground opacity-70"
-                     fontSize={10} 
-                     tickLine={false} 
-                     axisLine={false} 
-                     dy={10}
-                   />
-                   <YAxis 
-                     stroke="currentColor" 
-                     className="text-muted-foreground opacity-70"
-                     fontSize={10} 
-                     tickLine={false} 
-                     axisLine={false}
-                   />
-                   <Area type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={2} fillOpacity={0.06} fill="var(--primary)" />
-                 </AreaChart>
-              </ResponsiveContainer>
-           </div>
+           {!consumptionData.some(d => d.value > 0) ? (
+                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground space-y-4">
+                    <Flame className="w-8 h-8 opacity-20 text-orange-500" />
+                    <p className="text-sm font-medium">{t('no_entries_today')}</p>
+                 </div>
+           ) : (
+                 <div className="flex-1 w-full h-[200px] min-h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                       <AreaChart data={consumptionData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" className="opacity-40" vertical={false} />
+                         <XAxis 
+                           dataKey="name" 
+                           stroke="currentColor" 
+                           className="text-muted-foreground opacity-70"
+                           fontSize={10} 
+                           tickLine={false} 
+                           axisLine={false} 
+                           dy={10}
+                         />
+                         <YAxis 
+                           stroke="currentColor" 
+                           className="text-muted-foreground opacity-70"
+                           fontSize={10} 
+                           tickLine={false} 
+                           axisLine={false}
+                         />
+                         <Area type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={2} fillOpacity={0.06} fill="var(--primary)" />
+                       </AreaChart>
+                    </ResponsiveContainer>
+                 </div>
+           )}
         </Card>
 
       </div>
