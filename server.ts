@@ -382,16 +382,34 @@ async function startServer() {
       };
     }
 
-    // --- WATERFALL EXECUTION ---
+    // --- WATERFALL EXECUTION / DIRECT ROUTING ---
     try {
+      // 1. If explicit Gemini model is requested, route directly to Gemini
+      if (model?.includes("gemini")) {
+        const data = await tryGemini();
+        return res.json(data);
+      }
+
+      // 2. If it is a vision request, route to Groq or Gemini (Cerebras has no vision)
+      if (hasImage || model?.includes("vision")) {
+        try {
+          const data = await tryGroq();
+          return res.json(data);
+        } catch (err: any) {
+          console.warn(`[AI Proxy] Vision request failed on Groq, trying Gemini...`, err.message);
+          const data = await tryGemini();
+          return res.json(data);
+        }
+      }
+
+      // 3. Fallback/Standard waterfall for text models: Cerebras -> Groq -> Gemini
       try {
         const data = await tryCerebras();
         return res.json(data);
       } catch (err: any) {
-        if (err.response?.status === 429 || err.message.includes("vision") || err.message.includes("Cerebras key")) {
+        if (err.response?.status === 429 || err.message.includes("Cerebras key")) {
           console.warn(`[AI Proxy] Cerebras skipped/failed (Status ${err.response?.status || err.message}). Fallback to Groq.`);
         } else {
-          // If it's a bad request, don't throw immediately, maybe Groq can handle it.
           console.warn(`[AI Proxy] Cerebras error: ${err.message}. Fallback to Groq.`);
         }
       }
