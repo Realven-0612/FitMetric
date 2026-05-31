@@ -1,4 +1,5 @@
-﻿import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
+import { AI_MODELS } from "../lib/aiModels";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -139,7 +140,7 @@ export function MealPrepPlanner() {
 
   const handleGenerate = async () => {
     if (totalPeople <= 0) {
-      toast.error(vi ? "Can Ã­t nhat 1 nguoi!" : "At least 1 person required!");
+      toast.error(vi ? "Can it nhat 1 nguoi!" : "At least 1 person required!");
       return;
     }
     setLoading(true);
@@ -157,57 +158,77 @@ export function MealPrepPlanner() {
       ? ["Thu Hai", "Thu Ba", "Thu Tu", "Thu Nam", "Thu Sau", "Thu Bay", "Chu Nhat"]
       : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-    const lang = vi ? "Vietnamese" : "English";
-    const langNote = vi
-      ? "All text values MUST be in Vietnamese. No English words."
-      : "All text values MUST be in English. No Vietnamese words.";
+    const langVI = vi;
+    const eatSchema = (a: string, b: string) =>
+      `{"summary":"${a}","dishes":[{"role":"staple","name":"${a}","portion":"${b}"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""}`;
 
-    const makeDayPrompt = (dayName: string, dayIndex: number) =>
-      `You are a Vietnamese nutritionist. Generate a ONE-DAY meal plan.
-Day: ${dayName} (${dayIndex + 1}/7). People: ${totalPeople} (${adults} adults, ${teens} teens, ${children} children, ${seniors} seniors). Diet: ${dietLabel[dietType]}. Reference: ${dbNameMap[databaseRef]}.
-Language: ${lang}. ${langNote}
-
-Rules:
-- breakfast: pho/banh mi/xoi/chao + drink
-- lunch/dinner: com trang(staple) + meat/fish(main) + soup + vegetable
-- snack: fruit/yogurt/nuts
-- portions = total for all ${totalPeople} people
-- Dishes vary daily, no repeats across 7 days
-
-Return ONLY this JSON (no markdown, no extra text, no trailing commas):
-{"dayName":"${dayName}","breakfast":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"drink","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""},"lunch":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"soup","name":"X","portion":"X"},{"role":"vegetable","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""},"dinner":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"soup","name":"X","portion":"X"},{"role":"vegetable","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""},"snack":{"summary":"X","dishes":[{"role":"side","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""}}`;
+    // Build a compact prompt for ONE meal-pair (morning+snack OR lunch+dinner)
+    const makeMealPrompt = (
+      dayName: string,
+      pair: "morning" | "maindishes",
+      dayIndex: number
+    ) => {
+      const ctx = `People:${totalPeople}(${adults}A,${teens}T,${children}C,${seniors}S) Diet:${dietLabel[dietType]} Lang:${langVI ? "VI" : "EN"} Day${dayIndex + 1}`;
+      if (pair === "morning") {
+        return (
+          `Vietnamese nutritionist. ${ctx}.` +
+          ` Output ONLY compact JSON, no markdown, no trailing commas.` +
+          ` Generate breakfast+snack for "${dayName}".` +
+          ` breakfast: 1 quick dish(pho/banh mi/xoi/chao/com tam) + drink. snack: fruit/yogurt/nuts.` +
+          ` Portions=total for all ${totalPeople} people. Keep names short.` +
+          ` Return: {"breakfast":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"drink","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""},"snack":{"summary":"X","dishes":[{"role":"side","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""}}`
+        );
+      } else {
+        return (
+          `Vietnamese nutritionist. ${ctx}.` +
+          ` Output ONLY compact JSON, no markdown, no trailing commas.` +
+          ` Generate lunch+dinner for "${dayName}".` +
+          ` Both meals: com trang(staple)+meat/fish(main)+soup+vegetable. Portions=total for ${totalPeople} people. Keep names short.` +
+          ` Return: {"lunch":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"soup","name":"X","portion":"X"},{"role":"vegetable","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""},"dinner":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"soup","name":"X","portion":"X"},{"role":"vegetable","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""}}`
+        );
+      }
+    };
 
     const shoppingPrompt =
-      `Generate a Vietnamese weekly shopping list and meal prep tips for ${totalPeople} people, ${dietLabel[dietType]} diet. Language: ${lang}. ${langNote}
-Return ONLY JSON (no markdown, no trailing commas):
-{"shoppingList":[{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]}],"prepInstructions":["X","X","X","X"]}`;
+      `Vietnamese shopping list for ${totalPeople} people, ${dietLabel[dietType]} diet, ${langVI ? "Vietnamese" : "English"} language. ` +
+      `Return ONLY JSON no markdown: {"shoppingList":[{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]}],"prepInstructions":["X","X","X","X"]}`;
+
+    const parseClean = (res: unknown): unknown => {
+      const text = ((res as {text?: string}).text || res) as string;
+      let clean = text.replace(/```json|```/g, "").trim();
+      clean = clean.replace(/,\s*([\]}])/g, "$1");
+      return JSON.parse(clean);
+    };
 
     try {
-      const [shoppingResult, ...dayResults] = await Promise.all([
-        generateAIContent(shoppingPrompt),
-        ...dayNames.map((dayName, i) => generateAIContent(makeDayPrompt(dayName, i))),
-      ]);
+      // Use Gemini Flash for Meal Prep — it has a larger output window than Cerebras/llama
+      const MEAL_MODEL = AI_MODELS.GEMINI_FLASH_LITE;
+      const calls = [
+        generateAIContent(shoppingPrompt, undefined, MEAL_MODEL),
+        ...dayNames.map((d, i) => generateAIContent(makeMealPrompt(d, "morning", i), undefined, MEAL_MODEL)),
+        ...dayNames.map((d, i) => generateAIContent(makeMealPrompt(d, "maindishes", i), undefined, MEAL_MODEL)),
+      ];
 
-      const weeklyPlan: DayPlan[] = dayResults.map((res, i) => {
-        const text = (res.text || res) as string;
-        let clean = text.replace(/```json|```/g, "").trim();
-        clean = clean.replace(/,\s*([\]}])/g, "$1");
-        const day = JSON.parse(clean);
+      const results = await Promise.all(calls);
+      const [shoppingResult, ...rest] = results;
+      const morningResults = rest.slice(0, 7);
+      const mainResults   = rest.slice(7, 14);
+
+      const weeklyPlan: DayPlan[] = dayNames.map((dayName, i) => {
+        const morning = parseClean(morningResults[i]) as {breakfast: VietnameseMeal; snack: VietnameseMeal};
+        const main    = parseClean(mainResults[i])    as {lunch: VietnameseMeal; dinner: VietnameseMeal};
         return {
-          dayName: dayNames[i],
+          dayName,
           meals: {
-            breakfast: day.breakfast,
-            lunch:     day.lunch,
-            dinner:    day.dinner,
-            snack:     day.snack,
+            breakfast: morning.breakfast,
+            lunch:     main.lunch,
+            dinner:    main.dinner,
+            snack:     morning.snack,
           },
         };
       });
 
-      const shoppingText = (shoppingResult.text || shoppingResult) as string;
-      let cleanShopping = shoppingText.replace(/```json|```/g, "").trim();
-      cleanShopping = cleanShopping.replace(/,\s*([\]}])/g, "$1");
-      const shoppingData = JSON.parse(cleanShopping);
+      const shoppingData = parseClean(shoppingResult) as {shoppingList: ShoppingCategory[]; prepInstructions: string[]};
 
       setPlan({
         weeklyPlan,
@@ -224,6 +245,7 @@ Return ONLY JSON (no markdown, no trailing commas):
       setLoading(false);
     }
   };
+
 
   // â”€â”€ Stepper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
