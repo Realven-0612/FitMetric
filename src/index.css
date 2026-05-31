@@ -1,13 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --font-heading: 'Geist Sans', var(--font-sans);
-  --font-sans: 'Be Vietnam Pro', sans-serif;
+  --font-heading: 'Be Vietnam Pro', sans-serif;
+  --font-sans: 'Inter', 'Be Vietnam Pro', sans-serif;
   --font-mono: "JetBrains Mono", monospace;
   --color-sidebar-ring: hsl(var(--sidebar-ring));
   --color-sidebar-border: hsl(var(--sidebar-border));
@@ -154,3 +153,12 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ── Typography: Be Vietnam Pro (headings) + Inter (body) ───────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Be Vietnam Pro', sans-serif;
+}
+
+body, p, span, div, input, button, label, select, textarea, li, td, th, a {
+  font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
+}
