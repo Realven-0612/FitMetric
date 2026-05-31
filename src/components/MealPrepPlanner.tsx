@@ -27,13 +27,13 @@ import { generateAIContent } from "../lib/ai";
 import { useTranslation } from "../lib/i18n";
 import { toast } from "sonner";
 
-// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Types ─────────────────────────────────────────────────────────────────
 
-/** Má»™t bá»¯a Äƒn kiá»ƒu Viá»‡t: cÆ¡m + nhiá»u mÃ³n */
+/** Một bữa ăn kiểu Việt: cơm + nhiều món */
 interface VietnameseMeal {
-  /** TÃªn tÃ³m táº¯t cá»§a bá»¯a (VD: "Phá»Ÿ bÃ² + XÃ´i") */
+  /** Tên tóm tắt của bữa (VD: "Phở bò + Xôi") */
   summary: string;
-  /** Danh sÃ¡ch cÃ¡c mÃ³n trong bá»¯a */
+  /** Danh sách các món trong bữa */
   dishes: {
     role: "staple" | "main" | "soup" | "vegetable" | "side" | "drink";
     name: string;
@@ -64,29 +64,29 @@ interface MealPrepPlan {
   prepInstructions: string[];
 }
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 const ROLE_LABEL: Record<string, { vi: string; en: string; icon: string }> = {
-  staple:    { vi: "Tinh bá»™t",   en: "Staple",    icon: "ðŸš" },
-  main:      { vi: "MÃ³n máº·n",    en: "Main dish",  icon: "ðŸ–" },
-  soup:      { vi: "Canh / SÃºp", en: "Soup",       icon: "ðŸ¥£" },
-  vegetable: { vi: "Rau",        en: "Veggies",    icon: "ðŸ¥¬" },
-  side:      { vi: "TrÃ¡ng miá»‡ng",en: "Side / Dessert", icon: "ðŸŠ" },
-  drink:     { vi: "Äá»“ uá»‘ng",    en: "Drink",      icon: "ðŸ¥¤" },
+  staple:    { vi: "Tinh bột",   en: "Staple",    icon: "🍚" },
+  main:      { vi: "Món mặn",    en: "Main dish",  icon: "🍖" },
+  soup:      { vi: "Canh / Súp", en: "Soup",       icon: "🥣" },
+  vegetable: { vi: "Rau",        en: "Veggies",    icon: "🥬" },
+  side:      { vi: "Tráng miệng",en: "Side / Dessert", icon: "🍊" },
+  drink:     { vi: "Đồ uống",    en: "Drink",      icon: "🥤" },
 };
 
 function roleIcon(role: string) {
-  return ROLE_LABEL[role]?.icon ?? "ðŸ½ï¸";
+  return ROLE_LABEL[role]?.icon ?? "🍽️";
 }
 function roleLabel(role: string, lang: string) {
   return lang === "vi" ? ROLE_LABEL[role]?.vi ?? role : ROLE_LABEL[role]?.en ?? role;
 }
 
 const MEAL_META = {
-  breakfast: { icon: "ðŸŒ…", color: "amber",  vi: "Bá»¯a sÃ¡ng",       en: "Breakfast" },
-  lunch:     { icon: "â˜€ï¸", color: "cyan",   vi: "Bá»¯a trÆ°a",       en: "Lunch"     },
-  dinner:    { icon: "ðŸŒ™", color: "indigo", vi: "Bá»¯a tá»‘i",         en: "Dinner"    },
-  snack:     { icon: "ðŸŽ", color: "rose",   vi: "Bá»¯a phá»¥",         en: "Snack"     },
+  breakfast: { icon: "🌅", color: "amber",  vi: "Bữa sáng",       en: "Breakfast" },
+  lunch:     { icon: "☀️", color: "cyan",   vi: "Bữa trưa",       en: "Lunch"     },
+  dinner:    { icon: "🌙", color: "indigo", vi: "Bữa tối",         en: "Dinner"    },
+  snack:     { icon: "🍎", color: "rose",   vi: "Bữa phụ",         en: "Snack"     },
 };
 
 const COLOR_MAP: Record<string, string> = {
@@ -96,13 +96,13 @@ const COLOR_MAP: Record<string, string> = {
   rose:   "text-rose-400 bg-rose-500/10 border-rose-500/20",
 };
 
-// â”€â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Component ──────────────────────────────────────────────────────────────
 
 export function MealPrepPlanner() {
   const { language } = useTranslation();
   const vi = language === "vi";
 
-  // Reset plan khi Ä‘á»•i ngÃ´n ngá»¯ Ä‘á»ƒ trÃ¡nh hiá»ƒn thá»‹ ná»™i dung sai ngÃ´n ngá»¯
+  // Reset plan khi đổi ngôn ngữ để tránh hiển thị nội dung sai ngôn ngữ
   const prevLangRef = useRef(language);
   useEffect(() => {
     if (prevLangRef.current !== language) {
@@ -131,78 +131,61 @@ export function MealPrepPlanner() {
   const totalPeople = adults + teens + children + seniors;
 
   const dbNameMap: Record<string, string> = {
-    nin:  "Viá»‡n Dinh dÆ°á»¡ng Quá»‘c gia Viá»‡t Nam (NIN)",
+    nin:  "Viện Dinh dưỡng Quốc gia Việt Nam (NIN)",
     usda: "USDA FoodData Central",
     who:  "WHO / FAO Guidelines",
   };
 
-  // â”€â”€ Generate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Generate ──────────────────────────────────────────────────────────────
 
   const handleGenerate = async () => {
     if (totalPeople <= 0) {
-      toast.error(vi ? "Can it nhat 1 nguoi!" : "At least 1 person required!");
+      toast.error(vi ? "Cần ít nhất 1 người!" : "At least 1 person required!");
       return;
     }
     setLoading(true);
     setPlan(null);
     setCheckedItems({});
 
+    // Dùng Gemini Flash vì có output window lớn hơn Cerebras (8192 vs ~2048 tokens)
+    const MEAL_MODEL = AI_MODELS.GEMINI_FLASH_LITE;
+
     const dietLabel: Record<string, string> = {
-      standard:    vi ? "Can bang tieu chuan" : "Standard Balanced",
-      highprotein: vi ? "Nhieu dam" : "High Protein",
-      lowcarb:     vi ? "It tinh bot / Keto" : "Low Carb / Keto",
-      vegetarian:  vi ? "An chay" : "Vegetarian",
+      standard:    vi ? "Cân bằng tiêu chuẩn" : "Standard Balanced",
+      highprotein: vi ? "Nhiều đạm" : "High Protein",
+      lowcarb:     vi ? "Ít tinh bột / Keto" : "Low Carb / Keto",
+      vegetarian:  vi ? "Ăn chay" : "Vegetarian",
     };
 
     const dayNames = vi
-      ? ["Thu Hai", "Thu Ba", "Thu Tu", "Thu Nam", "Thu Sau", "Thu Bay", "Chu Nhat"]
+      ? ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"]
       : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-    const langVI = vi;
-    const eatSchema = (a: string, b: string) =>
-      `{"summary":"${a}","dishes":[{"role":"staple","name":"${a}","portion":"${b}"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""}`;
-
-    // Build a compact prompt for ONE meal-pair (morning+snack OR lunch+dinner)
-    const makeMealPrompt = (
-      dayName: string,
-      pair: "morning" | "maindishes",
-      dayIndex: number
-    ) => {
-      const ctx = `People:${totalPeople}(${adults}A,${teens}T,${children}C,${seniors}S) Diet:${dietLabel[dietType]} Lang:${langVI ? "VI" : "EN"} Day${dayIndex + 1}`;
+    // Prompt gọn cho 1 cặp bữa (sáng+phụ hoặc trưa+tối) để tránh cắt cụt token
+    const makeMealPrompt = (dayName: string, pair: "morning" | "maindishes", dayIdx: number) => {
+      const ctx = `People:${totalPeople}(${adults} adults,${teens} teens,${children} children,${seniors} seniors) Diet:${dietLabel[dietType]} Ref:${dbNameMap[databaseRef]} Lang:${vi ? "Vietnamese" : "English"} Day${dayIdx + 1}/7`;
       if (pair === "morning") {
-        return (
-          `Vietnamese nutritionist. ${ctx}.` +
-          ` Output ONLY compact JSON, no markdown, no trailing commas.` +
-          ` Generate breakfast+snack for "${dayName}".` +
-          ` breakfast: 1 quick dish(pho/banh mi/xoi/chao/com tam) + drink. snack: fruit/yogurt/nuts.` +
-          ` Portions=total for all ${totalPeople} people. Keep names short.` +
-          ` Return: {"breakfast":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"drink","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""},"snack":{"summary":"X","dishes":[{"role":"side","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""}}`
-        );
+        return `Vietnamese nutritionist. ${ctx}. Output ONLY JSON no markdown no trailing commas.
+Generate breakfast+snack for "${dayName}". breakfast=1 quick dish(pho/banh mi/xoi/chao)+drink. snack=fruit/yogurt/nuts. Portions=total for ${totalPeople} people. Keep dish names under 25 chars.
+Return: {"breakfast":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"drink","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""},"snack":{"summary":"X","dishes":[{"role":"side","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""}}`;
       } else {
-        return (
-          `Vietnamese nutritionist. ${ctx}.` +
-          ` Output ONLY compact JSON, no markdown, no trailing commas.` +
-          ` Generate lunch+dinner for "${dayName}".` +
-          ` Both meals: com trang(staple)+meat/fish(main)+soup+vegetable. Portions=total for ${totalPeople} people. Keep names short.` +
-          ` Return: {"lunch":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"soup","name":"X","portion":"X"},{"role":"vegetable","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""},"dinner":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"soup","name":"X","portion":"X"},{"role":"vegetable","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""}}`
-        );
+        return `Vietnamese nutritionist. ${ctx}. Output ONLY JSON no markdown no trailing commas.
+Generate lunch+dinner for "${dayName}". Both=com trang(staple)+meat/fish(main)+soup+vegetable. Portions=total for ${totalPeople} people. Keep dish names under 25 chars. Vary dishes daily.
+Return: {"lunch":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"soup","name":"X","portion":"X"},{"role":"vegetable","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""},"dinner":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"soup","name":"X","portion":"X"},{"role":"vegetable","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""}}`;
       }
     };
 
-    const shoppingPrompt =
-      `Vietnamese shopping list for ${totalPeople} people, ${dietLabel[dietType]} diet, ${langVI ? "Vietnamese" : "English"} language. ` +
-      `Return ONLY JSON no markdown: {"shoppingList":[{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]}],"prepInstructions":["X","X","X","X"]}`;
+    const shoppingPrompt = `Vietnamese shopping list for ${totalPeople} people, ${dietLabel[dietType]} diet, ${vi ? "Vietnamese" : "English"} language. Output ONLY JSON no markdown: {"shoppingList":[{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]}],"prepInstructions":["X","X","X","X"]}`;
 
     const parseClean = (res: unknown): unknown => {
-      const text = ((res as {text?: string}).text || res) as string;
+      const text = ((res as { text?: string }).text || res) as string;
       let clean = text.replace(/```json|```/g, "").trim();
       clean = clean.replace(/,\s*([\]}])/g, "$1");
       return JSON.parse(clean);
     };
 
     try {
-      // Use Gemini Flash for Meal Prep — it has a larger output window than Cerebras/llama
-      const MEAL_MODEL = AI_MODELS.GEMINI_FLASH_LITE;
+      // 15 calls song song: 7 morning + 7 maindishes + 1 shopping
       const calls = [
         generateAIContent(shoppingPrompt, undefined, MEAL_MODEL),
         ...dayNames.map((d, i) => generateAIContent(makeMealPrompt(d, "morning", i), undefined, MEAL_MODEL)),
@@ -215,8 +198,8 @@ export function MealPrepPlanner() {
       const mainResults   = rest.slice(7, 14);
 
       const weeklyPlan: DayPlan[] = dayNames.map((dayName, i) => {
-        const morning = parseClean(morningResults[i]) as {breakfast: VietnameseMeal; snack: VietnameseMeal};
-        const main    = parseClean(mainResults[i])    as {lunch: VietnameseMeal; dinner: VietnameseMeal};
+        const morning = parseClean(morningResults[i]) as { breakfast: VietnameseMeal; snack: VietnameseMeal };
+        const main    = parseClean(mainResults[i])    as { lunch: VietnameseMeal; dinner: VietnameseMeal };
         return {
           dayName,
           meals: {
@@ -228,7 +211,7 @@ export function MealPrepPlanner() {
         };
       });
 
-      const shoppingData = parseClean(shoppingResult) as {shoppingList: ShoppingCategory[]; prepInstructions: string[]};
+      const shoppingData = parseClean(shoppingResult) as { shoppingList: ShoppingCategory[]; prepInstructions: string[] };
 
       setPlan({
         weeklyPlan,
@@ -237,17 +220,17 @@ export function MealPrepPlanner() {
       });
       setSelectedDayIdx(0);
       setActiveSubTab("menu");
-      toast.success(vi ? "Da lap thuc don 1 tuan theo chuan bua com Viet!" : "Weekly meal plan ready!");
+      toast.success(vi ? "Đã lập thực đơn 1 tuần theo chuẩn bữa cơm Việt!" : "Weekly meal plan ready!");
     } catch (e) {
       console.error(e);
-      toast.error(vi ? "Khong the tao thuc don. Vui long thu lai." : "Failed to generate. Please try again.");
+      toast.error(vi ? "Không thể tạo thực đơn. Vui lòng thử lại." : "Failed to generate. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  // ── Stepper ───────────────────────────────────────────────────────────────
 
-  // â”€â”€ Stepper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function Stepper({ value, onChange, max = 15 }: { value: number; onChange: (n: number) => void; max?: number }) {
     return (
@@ -271,7 +254,7 @@ export function MealPrepPlanner() {
     );
   }
 
-  // â”€â”€ Meal card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Meal card ─────────────────────────────────────────────────────────────
 
   function MealCard({ mealType, meal }: { mealType: string; meal: VietnameseMeal }) {
     const meta = MEAL_META[mealType as keyof typeof MEAL_META];
@@ -311,7 +294,7 @@ export function MealPrepPlanner() {
           </h5>
           {meal.note && (
             <p className="text-[10px] text-purple-400/70 italic mt-1 font-medium">
-              ðŸ’¡ {meal.note}
+              💡 {meal.note}
             </p>
           )}
         </div>
@@ -340,15 +323,15 @@ export function MealPrepPlanner() {
             <div className="grid grid-cols-3 gap-2">
               <div className="text-center">
                 <span className="text-[11px] font-black text-cyan-400 block">{meal.macros.protein}g</span>
-                <span className="text-[8px] text-slate-600 uppercase font-bold">{vi ? "Äáº¡m" : "Protein"}</span>
+                <span className="text-[8px] text-slate-600 uppercase font-bold">{vi ? "Đạm" : "Protein"}</span>
               </div>
               <div className="text-center">
                 <span className="text-[11px] font-black text-yellow-400 block">{meal.macros.carbs}g</span>
-                <span className="text-[8px] text-slate-600 uppercase font-bold">{vi ? "Tinh bá»™t" : "Carbs"}</span>
+                <span className="text-[8px] text-slate-600 uppercase font-bold">{vi ? "Tinh bột" : "Carbs"}</span>
               </div>
               <div className="text-center">
                 <span className="text-[11px] font-black text-pink-400 block">{meal.macros.fat}g</span>
-                <span className="text-[8px] text-slate-600 uppercase font-bold">{vi ? "BÃ©o" : "Fat"}</span>
+                <span className="text-[8px] text-slate-600 uppercase font-bold">{vi ? "Béo" : "Fat"}</span>
               </div>
             </div>
           </div>
@@ -357,12 +340,12 @@ export function MealPrepPlanner() {
     );
   }
 
-  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-6">
 
-      {/* â”€â”€ Config card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Config card ─────────────────────────────────────────────────── */}
       <Card className="bg-[#111111]/80 border-white/5 rounded-[2rem] p-6 lg:p-8 shadow-xl">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 border-b border-white/5 pb-5">
           <div className="flex items-center gap-3">
@@ -371,10 +354,10 @@ export function MealPrepPlanner() {
             </div>
             <div>
               <h3 className="text-lg font-black text-white uppercase tracking-wider">
-                {vi ? "Láº­p thá»±c Ä‘Æ¡n 1 tuáº§n" : "Weekly Meal Prep Planner"}
+                {vi ? "Lập thực đơn 1 tuần" : "Weekly Meal Prep Planner"}
               </h3>
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
-                {vi ? "Theo chuáº©n bá»¯a cÆ¡m gia Ä‘Ã¬nh Viá»‡t â€¢ TÃ­nh cho cáº£ nhÃ³m" : "Vietnamese family-style â€¢ Scaled for your group"}
+                {vi ? "Theo chuẩn bữa cơm gia đình Việt • Tính cho cả nhóm" : "Vietnamese family-style • Scaled for your group"}
               </p>
             </div>
           </div>
@@ -385,9 +368,9 @@ export function MealPrepPlanner() {
             className="w-full lg:w-auto h-12 bg-purple-500 hover:bg-purple-400 text-black font-black uppercase text-xs tracking-widest px-8 rounded-xl shadow-[0_0_20px_rgba(168,85,247,0.35)] transition-all shrink-0"
           >
             {loading ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{vi ? "Äang láº­p thá»±c Ä‘Æ¡nâ€¦" : "Planningâ€¦"}</>
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{vi ? "Đang lập thực đơn…" : "Planning…"}</>
             ) : (
-              <><Sparkles className="w-4 h-4 mr-2" />{vi ? "Láº­p thá»±c Ä‘Æ¡n" : "Generate Plan"}</>
+              <><Sparkles className="w-4 h-4 mr-2" />{vi ? "Lập thực đơn" : "Generate Plan"}</>
             )}
           </Button>
         </div>
@@ -398,14 +381,14 @@ export function MealPrepPlanner() {
           <div className="md:col-span-2 bg-black/20 p-5 rounded-2xl border border-white/5 space-y-4">
             <h4 className="text-[10px] text-purple-400 font-black uppercase tracking-widest flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5" />
-              {vi ? "ThÃ nh viÃªn gia Ä‘Ã¬nh / nhÃ³m" : "Group Members"}
+              {vi ? "Thành viên gia đình / nhóm" : "Group Members"}
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {([
-                { label: vi ? "NgÆ°á»i lá»›n" : "Adults",   value: adults,   set: setAdults },
-                { label: vi ? "Thanh thiáº¿u niÃªn" : "Teens",    value: teens,    set: setTeens },
-                { label: vi ? "Tráº» em" : "Children", value: children, set: setChildren },
-                { label: vi ? "Cao tuá»•i" : "Seniors",  value: seniors,  set: setSeniors },
+                { label: vi ? "Người lớn" : "Adults",   value: adults,   set: setAdults },
+                { label: vi ? "Thanh thiếu niên" : "Teens",    value: teens,    set: setTeens },
+                { label: vi ? "Trẻ em" : "Children", value: children, set: setChildren },
+                { label: vi ? "Cao tuổi" : "Seniors",  value: seniors,  set: setSeniors },
               ] as const).map(({ label, value, set }) => (
                 <div key={label} className="bg-black/40 border border-white/5 p-3 rounded-2xl flex flex-col items-center">
                   <Label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider text-center leading-tight">{label}</Label>
@@ -415,9 +398,9 @@ export function MealPrepPlanner() {
             </div>
             {/* Total badge */}
             <div className="flex items-center gap-2 pt-1">
-              <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">{vi ? "Tá»•ng cá»™ng:" : "Total:"}</span>
+              <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">{vi ? "Tổng cộng:" : "Total:"}</span>
               <span className="text-xs font-black text-purple-300 bg-purple-500/10 border border-purple-500/20 px-3 py-0.5 rounded-full">
-                {totalPeople} {vi ? "ngÆ°á»i" : "people"}
+                {totalPeople} {vi ? "người" : "people"}
               </span>
             </div>
           </div>
@@ -426,46 +409,46 @@ export function MealPrepPlanner() {
           <div className="bg-black/20 p-5 rounded-2xl border border-white/5 space-y-4">
             <h4 className="text-[10px] text-purple-400 font-black uppercase tracking-widest flex items-center gap-1.5">
               <Heart className="w-3.5 h-3.5" />
-              {vi ? "Cháº¿ Ä‘á»™ Äƒn & Nguá»“n tham chiáº¿u" : "Diet & Reference"}
+              {vi ? "Chế độ ăn & Nguồn tham chiếu" : "Diet & Reference"}
             </h4>
             <div className="space-y-3">
               <div className="space-y-1.5">
                 <Label className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
-                  {vi ? "Cháº¿ Ä‘á»™ Äƒn" : "Diet type"}
+                  {vi ? "Chế độ ăn" : "Diet type"}
                 </Label>
                 <Select value={dietType} onValueChange={setDietType}>
                   <SelectTrigger className="bg-black/50 border-white/10 h-10 rounded-xl text-xs font-semibold text-white">
                     <SelectValue>
-                      {dietType === "standard"    && (vi ? "CÃ¢n báº±ng tiÃªu chuáº©n" : "Standard Balanced")}
-                      {dietType === "highprotein" && (vi ? "Nhiá»u Ä‘áº¡m"            : "High Protein")}
-                      {dietType === "lowcarb"     && (vi ? "Ãt tinh bá»™t / Keto"  : "Low Carb / Keto")}
-                      {dietType === "vegetarian"  && (vi ? "Ä‚n chay"             : "Vegetarian")}
+                      {dietType === "standard"    && (vi ? "Cân bằng tiêu chuẩn" : "Standard Balanced")}
+                      {dietType === "highprotein" && (vi ? "Nhiều đạm"            : "High Protein")}
+                      {dietType === "lowcarb"     && (vi ? "Ít tinh bột / Keto"  : "Low Carb / Keto")}
+                      {dietType === "vegetarian"  && (vi ? "Ăn chay"             : "Vegetarian")}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-[#111] border-white/10 text-white rounded-xl">
-                    <SelectItem value="standard"   >{vi ? "CÃ¢n báº±ng tiÃªu chuáº©n" : "Standard Balanced"}</SelectItem>
-                    <SelectItem value="highprotein">{vi ? "Nhiá»u Ä‘áº¡m"            : "High Protein"}</SelectItem>
-                    <SelectItem value="lowcarb"    >{vi ? "Ãt tinh bá»™t / Keto"  : "Low Carb / Keto"}</SelectItem>
-                    <SelectItem value="vegetarian" >{vi ? "Ä‚n chay"             : "Vegetarian"}</SelectItem>
+                    <SelectItem value="standard"   >{vi ? "Cân bằng tiêu chuẩn" : "Standard Balanced"}</SelectItem>
+                    <SelectItem value="highprotein">{vi ? "Nhiều đạm"            : "High Protein"}</SelectItem>
+                    <SelectItem value="lowcarb"    >{vi ? "Ít tinh bột / Keto"  : "Low Carb / Keto"}</SelectItem>
+                    <SelectItem value="vegetarian" >{vi ? "Ăn chay"             : "Vegetarian"}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
-                  {vi ? "Nguá»“n dá»¯ liá»‡u dinh dÆ°á»¡ng" : "Nutrition database"}
+                  {vi ? "Nguồn dữ liệu dinh dưỡng" : "Nutrition database"}
                 </Label>
                 <Select value={databaseRef} onValueChange={setDatabaseRef}>
                   <SelectTrigger className="bg-black/50 border-white/10 h-10 rounded-xl text-xs font-semibold text-white">
                     <SelectValue>
-                      {databaseRef === "nin"  && "Viá»‡n Dinh dÆ°á»¡ng Quá»‘c gia (NIN) ðŸ‡»ðŸ‡³"}
-                      {databaseRef === "usda" && "USDA FoodData Central ðŸ‡ºðŸ‡¸"}
-                      {databaseRef === "who"  && "WHO / FAO Guidelines ðŸŒ"}
+                      {databaseRef === "nin"  && "Viện Dinh dưỡng Quốc gia (NIN) 🇻🇳"}
+                      {databaseRef === "usda" && "USDA FoodData Central 🇺🇸"}
+                      {databaseRef === "who"  && "WHO / FAO Guidelines 🌐"}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-[#111] border-white/10 text-white rounded-xl">
-                    <SelectItem value="nin" >Viá»‡n Dinh dÆ°á»¡ng Quá»‘c gia (NIN) ðŸ‡»ðŸ‡³</SelectItem>
-                    <SelectItem value="usda">USDA FoodData Central ðŸ‡ºðŸ‡¸</SelectItem>
-                    <SelectItem value="who" >WHO / FAO Guidelines ðŸŒ</SelectItem>
+                    <SelectItem value="nin" >Viện Dinh dưỡng Quốc gia (NIN) 🇻🇳</SelectItem>
+                    <SelectItem value="usda">USDA FoodData Central 🇺🇸</SelectItem>
+                    <SelectItem value="who" >WHO / FAO Guidelines 🌐</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -474,7 +457,7 @@ export function MealPrepPlanner() {
         </div>
       </Card>
 
-      {/* â”€â”€ Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Loading ──────────────────────────────────────────────────────── */}
       {loading && (
         <Card className="bg-[#111111]/80 border-white/5 rounded-[2rem] p-16 text-center flex flex-col items-center justify-center min-h-[300px]">
           <div className="relative mb-6">
@@ -482,29 +465,29 @@ export function MealPrepPlanner() {
             <div className="absolute inset-0 rounded-full bg-purple-500/10 animate-ping" />
           </div>
           <h3 className="text-white font-black uppercase tracking-widest text-sm mb-2">
-            {vi ? "Äang láº­p thá»±c Ä‘Æ¡n bá»¯a cÆ¡m Viá»‡tâ€¦" : "Building your Vietnamese meal planâ€¦"}
+            {vi ? "Đang lập thực đơn bữa cơm Việt…" : "Building your Vietnamese meal plan…"}
           </h3>
           <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
             {vi
-              ? `TÃ­nh toÃ¡n cÆ¡m + mÃ³n máº·n + canh + rau cho ${totalPeople} ngÆ°á»i theo chuáº©n dinh dÆ°á»¡ng ${dbNameMap[databaseRef]}â€¦`
-              : `Calculating full Vietnamese meals for ${totalPeople} people against ${dbNameMap[databaseRef]} standardsâ€¦`}
+              ? `Tính toán cơm + món mặn + canh + rau cho ${totalPeople} người theo chuẩn dinh dưỡng ${dbNameMap[databaseRef]}…`
+              : `Calculating full Vietnamese meals for ${totalPeople} people against ${dbNameMap[databaseRef]} standards…`}
           </p>
         </Card>
       )}
 
-      {/* â”€â”€ Plan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Plan ─────────────────────────────────────────────────────────── */}
       {plan && (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 animate-in fade-in duration-500">
 
-          {/* â”€â”€ Left: tabs + content â”€â”€â”€ */}
+          {/* ── Left: tabs + content ─── */}
           <div className="space-y-5">
 
             {/* Sub-tabs */}
             <div className="flex gap-1.5 bg-[#161622]/80 border border-white/5 p-1.5 rounded-2xl shadow-inner">
               {([
-                { id: "menu",     icon: <Calendar   className="w-3.5 h-3.5" />, vi: "Thá»±c Ä‘Æ¡n hÃ ng ngÃ y",  en: "Daily Menu"   },
-                { id: "shopping", icon: <ShoppingCart className="w-3.5 h-3.5" />, vi: "Danh sÃ¡ch Ä‘i chá»£", en: "Shopping List" },
-                { id: "guide",    icon: <BookOpen   className="w-3.5 h-3.5" />, vi: "HÆ°á»›ng dáº«n sÆ¡ cháº¿",   en: "Prep Guide"   },
+                { id: "menu",     icon: <Calendar   className="w-3.5 h-3.5" />, vi: "Thực đơn hàng ngày",  en: "Daily Menu"   },
+                { id: "shopping", icon: <ShoppingCart className="w-3.5 h-3.5" />, vi: "Danh sách đi chợ", en: "Shopping List" },
+                { id: "guide",    icon: <BookOpen   className="w-3.5 h-3.5" />, vi: "Hướng dẫn sơ chế",   en: "Prep Guide"   },
               ] as const).map(tab => (
                 <button
                   key={tab.id}
@@ -521,7 +504,7 @@ export function MealPrepPlanner() {
               ))}
             </div>
 
-            {/* â”€ MENU TAB â”€ */}
+            {/* ─ MENU TAB ─ */}
             {activeSubTab === "menu" && (
               <div className="space-y-5">
                 {/* Day selector */}
@@ -552,7 +535,7 @@ export function MealPrepPlanner() {
                       {plan.weeklyPlan[selectedDayIdx].dayName}
                     </div>
                     <h4 className="text-base font-black text-white uppercase tracking-wide">
-                      {vi ? "Thá»±c Ä‘Æ¡n trong ngÃ y" : "Day Menu"}
+                      {vi ? "Thực đơn trong ngày" : "Day Menu"}
                     </h4>
                   </div>
 
@@ -565,7 +548,7 @@ export function MealPrepPlanner() {
               </div>
             )}
 
-            {/* â”€ SHOPPING TAB â”€ */}
+            {/* ─ SHOPPING TAB ─ */}
             {activeSubTab === "shopping" && (
               <Card className="bg-[#111]/80 border-white/5 rounded-[2rem] p-6 lg:p-8 space-y-6">
                 <div className="flex items-center gap-3 pb-4 border-b border-white/5">
@@ -574,12 +557,12 @@ export function MealPrepPlanner() {
                   </div>
                   <div>
                     <h4 className="text-base font-black text-white uppercase tracking-wider">
-                      {vi ? "Danh sÃ¡ch Ä‘i chá»£ cáº£ tuáº§n" : "Weekly Shopping List"}
+                      {vi ? "Danh sách đi chợ cả tuần" : "Weekly Shopping List"}
                     </h4>
                     <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
                       {vi
-                        ? `NguyÃªn liá»‡u cho ${totalPeople} ngÆ°á»i â€¢ 7 ngÃ y`
-                        : `Ingredients for ${totalPeople} people â€¢ 7 days`}
+                        ? `Nguyên liệu cho ${totalPeople} người • 7 ngày`
+                        : `Ingredients for ${totalPeople} people • 7 days`}
                     </p>
                   </div>
                 </div>
@@ -617,7 +600,7 @@ export function MealPrepPlanner() {
               </Card>
             )}
 
-            {/* â”€ GUIDE TAB â”€ */}
+            {/* ─ GUIDE TAB ─ */}
             {activeSubTab === "guide" && (
               <Card className="bg-[#111]/80 border-white/5 rounded-[2rem] p-6 lg:p-8 space-y-6">
                 <div className="flex items-center gap-3 pb-4 border-b border-white/5">
@@ -626,10 +609,10 @@ export function MealPrepPlanner() {
                   </div>
                   <div>
                     <h4 className="text-base font-black text-white uppercase tracking-wider">
-                      {vi ? "Máº¹o sÆ¡ cháº¿ & báº£o quáº£n" : "Prep & Storage Tips"}
+                      {vi ? "Mẹo sơ chế & bảo quản" : "Prep & Storage Tips"}
                     </h4>
                     <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
-                      {vi ? "Tiáº¿t kiá»‡m thá»i gian náº¥u nÆ°á»›ng cáº£ tuáº§n" : "Save time cooking all week"}
+                      {vi ? "Tiết kiệm thời gian nấu nướng cả tuần" : "Save time cooking all week"}
                     </p>
                   </div>
                 </div>
@@ -649,7 +632,7 @@ export function MealPrepPlanner() {
             )}
           </div>
 
-          {/* â”€â”€ Right: summary sidebar â”€â”€â”€ */}
+          {/* ── Right: summary sidebar ─── */}
           <div className="space-y-5">
             <Card className="bg-[#111]/90 border-white/5 rounded-[2rem] p-6 space-y-5 relative overflow-hidden">
               <div className="absolute top-0 right-0 p-10 opacity-[0.03] pointer-events-none">
@@ -662,10 +645,10 @@ export function MealPrepPlanner() {
                 </div>
                 <div>
                   <h4 className="text-xs font-black text-white uppercase tracking-widest">
-                    {vi ? "Tá»•ng káº¿ hoáº¡ch 1 tuáº§n" : "Weekly Summary"}
+                    {vi ? "Tổng kế hoạch 1 tuần" : "Weekly Summary"}
                   </h4>
                   <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">
-                    {vi ? "Tá»•ng cho cáº£ nhÃ³m" : "Whole group total"}
+                    {vi ? "Tổng cho cả nhóm" : "Whole group total"}
                   </p>
                 </div>
               </div>
@@ -683,10 +666,10 @@ export function MealPrepPlanner() {
                 return (
                   <div className="relative z-10 space-y-3">
                     {[
-                      { label: vi ? "Tá»•ng nÄƒng lÆ°á»£ng" : "Total Calories",  value: `${totalKcal.toLocaleString()} kcal`, color: "text-white"      },
-                      { label: vi ? "Cháº¥t Ä‘áº¡m"         : "Protein",         value: `${totalPro.toLocaleString()}g`,       color: "text-cyan-400"   },
-                      { label: vi ? "Tinh bá»™t"          : "Carbohydrates",   value: `${totalCarbs.toLocaleString()}g`,     color: "text-yellow-400" },
-                      { label: vi ? "Cháº¥t bÃ©o"          : "Fats",            value: `${totalFat.toLocaleString()}g`,       color: "text-pink-400"   },
+                      { label: vi ? "Tổng năng lượng" : "Total Calories",  value: `${totalKcal.toLocaleString()} kcal`, color: "text-white"      },
+                      { label: vi ? "Chất đạm"         : "Protein",         value: `${totalPro.toLocaleString()}g`,       color: "text-cyan-400"   },
+                      { label: vi ? "Tinh bột"          : "Carbohydrates",   value: `${totalCarbs.toLocaleString()}g`,     color: "text-yellow-400" },
+                      { label: vi ? "Chất béo"          : "Fats",            value: `${totalFat.toLocaleString()}g`,       color: "text-pink-400"   },
                     ].map(row => (
                       <div key={row.label} className="bg-black/40 border border-white/5 rounded-2xl p-4 flex justify-between items-center">
                         <span className="text-xs font-bold text-slate-400">{row.label}</span>
@@ -697,11 +680,11 @@ export function MealPrepPlanner() {
                     <div className="bg-purple-500/5 border border-purple-500/10 rounded-2xl p-4 mt-2">
                       <p className="text-[10px] text-purple-400 font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        {vi ? "ÄÃ£ Ä‘á»‘i chiáº¿u chuáº©n dinh dÆ°á»¡ng" : "Nutrition-verified"}
+                        {vi ? "Đã đối chiếu chuẩn dinh dưỡng" : "Nutrition-verified"}
                       </p>
                       <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
                         {vi
-                          ? `Thá»±c Ä‘Æ¡n Ä‘Æ°á»£c tÃ­nh theo chuáº©n "${dbNameMap[databaseRef]}", Ä‘iá»u chá»‰nh theo nhÃ¢n kháº©u há»c ${totalPeople} ngÆ°á»i.`
+                          ? `Thực đơn được tính theo chuẩn "${dbNameMap[databaseRef]}", điều chỉnh theo nhân khẩu học ${totalPeople} người.`
                           : `Portions calculated against "${dbNameMap[databaseRef]}" guidelines, scaled for ${totalPeople} people.`}
                       </p>
                     </div>
@@ -709,7 +692,7 @@ export function MealPrepPlanner() {
                     {/* Vietnamese meal structure legend */}
                     <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 space-y-2">
                       <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-2">
-                        {vi ? "Cáº¥u trÃºc mÃ¢m cÆ¡m Viá»‡t" : "Vietnamese meal structure"}
+                        {vi ? "Cấu trúc mâm cơm Việt" : "Vietnamese meal structure"}
                       </p>
                       {Object.entries(ROLE_LABEL).map(([role, meta]) => (
                         <div key={role} className="flex items-center gap-2 text-[10px]">
