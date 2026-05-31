@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -26,13 +26,13 @@ import { generateAIContent } from "../lib/ai";
 import { useTranslation } from "../lib/i18n";
 import { toast } from "sonner";
 
-// ─── Types ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-/** Một bữa ăn kiểu Việt: cơm + nhiều món */
+/** Má»™t bá»¯a Äƒn kiá»ƒu Viá»‡t: cÆ¡m + nhiá»u mÃ³n */
 interface VietnameseMeal {
-  /** Tên tóm tắt của bữa (VD: "Phở bò + Xôi") */
+  /** TÃªn tÃ³m táº¯t cá»§a bá»¯a (VD: "Phá»Ÿ bÃ² + XÃ´i") */
   summary: string;
-  /** Danh sách các món trong bữa */
+  /** Danh sÃ¡ch cÃ¡c mÃ³n trong bá»¯a */
   dishes: {
     role: "staple" | "main" | "soup" | "vegetable" | "side" | "drink";
     name: string;
@@ -63,29 +63,29 @@ interface MealPrepPlan {
   prepInstructions: string[];
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const ROLE_LABEL: Record<string, { vi: string; en: string; icon: string }> = {
-  staple:    { vi: "Tinh bột",   en: "Staple",    icon: "🍚" },
-  main:      { vi: "Món mặn",    en: "Main dish",  icon: "🍖" },
-  soup:      { vi: "Canh / Súp", en: "Soup",       icon: "🥣" },
-  vegetable: { vi: "Rau",        en: "Veggies",    icon: "🥬" },
-  side:      { vi: "Tráng miệng",en: "Side / Dessert", icon: "🍊" },
-  drink:     { vi: "Đồ uống",    en: "Drink",      icon: "🥤" },
+  staple:    { vi: "Tinh bá»™t",   en: "Staple",    icon: "ðŸš" },
+  main:      { vi: "MÃ³n máº·n",    en: "Main dish",  icon: "ðŸ–" },
+  soup:      { vi: "Canh / SÃºp", en: "Soup",       icon: "ðŸ¥£" },
+  vegetable: { vi: "Rau",        en: "Veggies",    icon: "ðŸ¥¬" },
+  side:      { vi: "TrÃ¡ng miá»‡ng",en: "Side / Dessert", icon: "ðŸŠ" },
+  drink:     { vi: "Äá»“ uá»‘ng",    en: "Drink",      icon: "ðŸ¥¤" },
 };
 
 function roleIcon(role: string) {
-  return ROLE_LABEL[role]?.icon ?? "🍽️";
+  return ROLE_LABEL[role]?.icon ?? "ðŸ½ï¸";
 }
 function roleLabel(role: string, lang: string) {
   return lang === "vi" ? ROLE_LABEL[role]?.vi ?? role : ROLE_LABEL[role]?.en ?? role;
 }
 
 const MEAL_META = {
-  breakfast: { icon: "🌅", color: "amber",  vi: "Bữa sáng",       en: "Breakfast" },
-  lunch:     { icon: "☀️", color: "cyan",   vi: "Bữa trưa",       en: "Lunch"     },
-  dinner:    { icon: "🌙", color: "indigo", vi: "Bữa tối",         en: "Dinner"    },
-  snack:     { icon: "🍎", color: "rose",   vi: "Bữa phụ",         en: "Snack"     },
+  breakfast: { icon: "ðŸŒ…", color: "amber",  vi: "Bá»¯a sÃ¡ng",       en: "Breakfast" },
+  lunch:     { icon: "â˜€ï¸", color: "cyan",   vi: "Bá»¯a trÆ°a",       en: "Lunch"     },
+  dinner:    { icon: "ðŸŒ™", color: "indigo", vi: "Bá»¯a tá»‘i",         en: "Dinner"    },
+  snack:     { icon: "ðŸŽ", color: "rose",   vi: "Bá»¯a phá»¥",         en: "Snack"     },
 };
 
 const COLOR_MAP: Record<string, string> = {
@@ -95,13 +95,13 @@ const COLOR_MAP: Record<string, string> = {
   rose:   "text-rose-400 bg-rose-500/10 border-rose-500/20",
 };
 
-// ─── Component ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function MealPrepPlanner() {
   const { language } = useTranslation();
   const vi = language === "vi";
 
-  // Reset plan khi đổi ngôn ngữ để tránh hiển thị nội dung sai ngôn ngữ
+  // Reset plan khi Ä‘á»•i ngÃ´n ngá»¯ Ä‘á»ƒ trÃ¡nh hiá»ƒn thá»‹ ná»™i dung sai ngÃ´n ngá»¯
   const prevLangRef = useRef(language);
   useEffect(() => {
     if (prevLangRef.current !== language) {
@@ -130,16 +130,16 @@ export function MealPrepPlanner() {
   const totalPeople = adults + teens + children + seniors;
 
   const dbNameMap: Record<string, string> = {
-    nin:  "Viện Dinh dưỡng Quốc gia Việt Nam (NIN)",
+    nin:  "Viá»‡n Dinh dÆ°á»¡ng Quá»‘c gia Viá»‡t Nam (NIN)",
     usda: "USDA FoodData Central",
     who:  "WHO / FAO Guidelines",
   };
 
-  // ── Generate ──────────────────────────────────────────────────────────────
+  // â”€â”€ Generate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const handleGenerate = async () => {
     if (totalPeople <= 0) {
-      toast.error(vi ? "Cần ít nhất 1 người!" : "At least 1 person required!");
+      toast.error(vi ? "Can Ã­t nhat 1 nguoi!" : "At least 1 person required!");
       return;
     }
     setLoading(true);
@@ -147,111 +147,85 @@ export function MealPrepPlanner() {
     setCheckedItems({});
 
     const dietLabel: Record<string, string> = {
-      standard:    vi ? "Cân bằng tiêu chuẩn" : "Standard Balanced",
-      highprotein: vi ? "Nhiều đạm" : "High Protein",
-      lowcarb:     vi ? "Ít tinh bột / Keto" : "Low Carb / Keto",
-      vegetarian:  vi ? "Ăn chay" : "Vegetarian",
+      standard:    vi ? "Can bang tieu chuan" : "Standard Balanced",
+      highprotein: vi ? "Nhieu dam" : "High Protein",
+      lowcarb:     vi ? "It tinh bot / Keto" : "Low Carb / Keto",
+      vegetarian:  vi ? "An chay" : "Vegetarian",
     };
 
-    const prompt = `
-Bạn là chuyên gia dinh dưỡng và đầu bếp Việt Nam chuyên nghiệp.
-Hãy lập thực đơn Meal Prep 1 tuần (Thứ Hai → Chủ Nhật) theo đúng cấu trúc bữa cơm gia đình Việt Nam cho:
-- Tổng ${totalPeople} người: ${adults} người lớn, ${teens} thanh thiếu niên, ${children} trẻ em, ${seniors} người cao tuổi
-- Chế độ ăn: ${dietLabel[dietType]}
-- Cơ sở dữ liệu đối chiếu: ${dbNameMap[databaseRef]}
-- Ngôn ngữ đầu ra BẮT BUỘC: ${vi ? "TIẾNG VIỆT HOÀN TOÀN — tuyệt đối không dùng từ tiếng Anh" : "ENGLISH ONLY — do not use any Vietnamese words"}
+    const dayNames = vi
+      ? ["Thu Hai", "Thu Ba", "Thu Tu", "Thu Nam", "Thu Sau", "Thu Bay", "Chu Nhat"]
+      : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-NGUYÊN TẮC CẤU TRÚC BỮA ĂN VIỆT:
-• Bữa sáng: 1 món ăn nhanh (phở, bún, bánh mì, xôi, cháo...) + đồ uống
-• Bữa trưa & tối: BẮT BUỘC gồm: cơm trắng (staple) + 1-2 món mặn (thịt/cá/tôm) + 1 món canh/súp + 1 món rau.
-• Bữa phụ: Trái cây, sữa, hạt, bánh nhẹ, sữa chua v.v.
+    const lang = vi ? "Vietnamese" : "English";
+    const langNote = vi
+      ? "All text values MUST be in Vietnamese. No English words."
+      : "All text values MUST be in English. No Vietnamese words.";
 
-YÊU CẦU ĐỊNH DẠNG JSON (VÔ CÙNG QUAN TRỌNG):
-1. Trả về DUY NHẤT 1 JSON hợp lệ, không có markdown, không bọc trong khối code, không có văn bản giải thích nào khác.
-2. Tất cả KEY phải được đặt trong dấu ngoặc kép (VD: "weeklyPlan" không phải weeklyPlan).
-3. KHÔNG ĐƯỢC CÓ DẤU PHẨY THỪA (trailing commas) ở cuối array hoặc object.
-4. KHÔNG ĐƯỢC CẮT CỤT. Phải trả về đủ 7 ngày, đủ đóng ngoặc } ở cuối.
+    const makeDayPrompt = (dayName: string, dayIndex: number) =>
+      `You are a Vietnamese nutritionist. Generate a ONE-DAY meal plan.
+Day: ${dayName} (${dayIndex + 1}/7). People: ${totalPeople} (${adults} adults, ${teens} teens, ${children} children, ${seniors} seniors). Diet: ${dietLabel[dietType]}. Reference: ${dbNameMap[databaseRef]}.
+Language: ${lang}. ${langNote}
 
-Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ là ví dụ cho 1 ngày, bạn phải sinh ra đủ 7 ngày từ Thứ Hai đến Chủ Nhật):
-{
-  "weeklyPlan": [
-    {
-      "dayName": "${vi ? "Thứ Hai" : "Monday"}",
-      "meals": {
-        "breakfast": {
-          "summary": "Phở bò tái + Trà đá",
-          "dishes": [
-            { "role": "staple", "name": "Bánh phở", "portion": "800g tổng" },
-            { "role": "main",   "name": "Thịt bò tái", "portion": "320g tổng" },
-            { "role": "drink",  "name": "Trà đá chanh", "portion": "4 ly" }
-          ],
-          "macros": { "kcal": 1800, "protein": 100, "carbs": 200, "fat": 40 },
-          "note": "Sơ chế nước dùng trước 1 ngày"
-        },
-        "lunch": {
-          "summary": "Cơm + Gà kho gừng + Canh bí đỏ + Rau muống xào tỏi",
-          "dishes": [
-            { "role": "staple",    "name": "Cơm trắng",        "portion": "600g gạo" },
-            { "role": "main",      "name": "Gà kho gừng",      "portion": "600g thịt gà" },
-            { "role": "soup",      "name": "Canh bí đỏ nấu tôm", "portion": "800ml" },
-            { "role": "vegetable", "name": "Rau muống xào tỏi", "portion": "400g" }
-          ],
-          "macros": { "kcal": 2400, "protein": 140, "carbs": 280, "fat": 55 },
-          "note": "Có thể nấu canh & kho từ tối hôm trước"
-        },
-        "dinner": {
-          "summary": "Cơm + Cá basa sốt cà + Canh chua + Đậu hũ chiên",
-          "dishes": [
-            { "role": "staple",    "name": "Cơm trắng",         "portion": "500g gạo" },
-            { "role": "main",      "name": "Cá basa sốt cà chua", "portion": "600g" },
-            { "role": "soup",      "name": "Canh chua cá",       "portion": "800ml" },
-            { "role": "vegetable", "name": "Đậu hũ chiên sả",    "portion": "300g" }
-          ],
-          "macros": { "kcal": 2200, "protein": 130, "carbs": 240, "fat": 50 },
-          "note": ""
-        },
-        "snack": {
-          "summary": "Sữa chua + Trái cây tươi",
-          "dishes": [
-            { "role": "side",  "name": "Sữa chua ít đường", "portion": "4 hộp" },
-            { "role": "side",  "name": "Xoài + chuối",       "portion": "600g" }
-          ],
-          "macros": { "kcal": 600, "protein": 25, "carbs": 90, "fat": 12 },
-          "note": ""
-        }
-      }
-    }
-  ],
-  "shoppingList": [
-    { "category": "Thịt & Hải sản", "items": ["2kg ức gà phi lê", "1.5kg cá basa"] }
-  ],
-  "prepInstructions": [
-    "Thứ Bảy: vo gạo, phân chia từng túi",
-    "Thịt/cá: ướp gia vị trước 1 ngày"
-  ]
-}`;
+Rules:
+- breakfast: pho/banh mi/xoi/chao + drink
+- lunch/dinner: com trang(staple) + meat/fish(main) + soup + vegetable
+- snack: fruit/yogurt/nuts
+- portions = total for all ${totalPeople} people
+- Dishes vary daily, no repeats across 7 days
+
+Return ONLY this JSON (no markdown, no extra text, no trailing commas):
+{"dayName":"${dayName}","breakfast":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"drink","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""},"lunch":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"soup","name":"X","portion":"X"},{"role":"vegetable","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""},"dinner":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"soup","name":"X","portion":"X"},{"role":"vegetable","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""},"snack":{"summary":"X","dishes":[{"role":"side","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""}}`;
+
+    const shoppingPrompt =
+      `Generate a Vietnamese weekly shopping list and meal prep tips for ${totalPeople} people, ${dietLabel[dietType]} diet. Language: ${lang}. ${langNote}
+Return ONLY JSON (no markdown, no trailing commas):
+{"shoppingList":[{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]}],"prepInstructions":["X","X","X","X"]}`;
 
     try {
-      const response = await generateAIContent(prompt);
-      const text = response.text || response;
-      let cleanJson = text.replace(/```json|```/g, "").trim();
-      // Loại bỏ dấu phẩy thừa (trailing commas) thường gặp ở LLM để tránh lỗi parse
-      cleanJson = cleanJson.replace(/,\s*([\]}])/g, '$1');
-      
-      const parsed: MealPrepPlan = JSON.parse(cleanJson);
-      setPlan(parsed);
+      const [shoppingResult, ...dayResults] = await Promise.all([
+        generateAIContent(shoppingPrompt),
+        ...dayNames.map((dayName, i) => generateAIContent(makeDayPrompt(dayName, i))),
+      ]);
+
+      const weeklyPlan: DayPlan[] = dayResults.map((res, i) => {
+        const text = (res.text || res) as string;
+        let clean = text.replace(/```json|```/g, "").trim();
+        clean = clean.replace(/,\s*([\]}])/g, "$1");
+        const day = JSON.parse(clean);
+        return {
+          dayName: dayNames[i],
+          meals: {
+            breakfast: day.breakfast,
+            lunch:     day.lunch,
+            dinner:    day.dinner,
+            snack:     day.snack,
+          },
+        };
+      });
+
+      const shoppingText = (shoppingResult.text || shoppingResult) as string;
+      let cleanShopping = shoppingText.replace(/```json|```/g, "").trim();
+      cleanShopping = cleanShopping.replace(/,\s*([\]}])/g, "$1");
+      const shoppingData = JSON.parse(cleanShopping);
+
+      setPlan({
+        weeklyPlan,
+        shoppingList:     shoppingData.shoppingList    ?? [],
+        prepInstructions: shoppingData.prepInstructions ?? [],
+      });
       setSelectedDayIdx(0);
       setActiveSubTab("menu");
-      toast.success(vi ? "Đã lập thực đơn 1 tuần theo chuẩn bữa cơm Việt!" : "Weekly meal plan ready!");
+      toast.success(vi ? "Da lap thuc don 1 tuan theo chuan bua com Viet!" : "Weekly meal plan ready!");
     } catch (e) {
       console.error(e);
-      toast.error(vi ? "Không thể tạo thực đơn. Vui lòng thử lại." : "Failed to generate. Please try again.");
+      toast.error(vi ? "Khong the tao thuc don. Vui long thu lai." : "Failed to generate. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  // ── Stepper ───────────────────────────────────────────────────────────────
+  // â”€â”€ Stepper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function Stepper({ value, onChange, max = 15 }: { value: number; onChange: (n: number) => void; max?: number }) {
     return (
@@ -275,7 +249,7 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
     );
   }
 
-  // ── Meal card ─────────────────────────────────────────────────────────────
+  // â”€â”€ Meal card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function MealCard({ mealType, meal }: { mealType: string; meal: VietnameseMeal }) {
     const meta = MEAL_META[mealType as keyof typeof MEAL_META];
@@ -315,7 +289,7 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
           </h5>
           {meal.note && (
             <p className="text-[10px] text-purple-400/70 italic mt-1 font-medium">
-              💡 {meal.note}
+              ðŸ’¡ {meal.note}
             </p>
           )}
         </div>
@@ -344,15 +318,15 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
             <div className="grid grid-cols-3 gap-2">
               <div className="text-center">
                 <span className="text-[11px] font-black text-cyan-400 block">{meal.macros.protein}g</span>
-                <span className="text-[8px] text-slate-600 uppercase font-bold">{vi ? "Đạm" : "Protein"}</span>
+                <span className="text-[8px] text-slate-600 uppercase font-bold">{vi ? "Äáº¡m" : "Protein"}</span>
               </div>
               <div className="text-center">
                 <span className="text-[11px] font-black text-yellow-400 block">{meal.macros.carbs}g</span>
-                <span className="text-[8px] text-slate-600 uppercase font-bold">{vi ? "Tinh bột" : "Carbs"}</span>
+                <span className="text-[8px] text-slate-600 uppercase font-bold">{vi ? "Tinh bá»™t" : "Carbs"}</span>
               </div>
               <div className="text-center">
                 <span className="text-[11px] font-black text-pink-400 block">{meal.macros.fat}g</span>
-                <span className="text-[8px] text-slate-600 uppercase font-bold">{vi ? "Béo" : "Fat"}</span>
+                <span className="text-[8px] text-slate-600 uppercase font-bold">{vi ? "BÃ©o" : "Fat"}</span>
               </div>
             </div>
           </div>
@@ -361,12 +335,12 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
     );
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   return (
     <div className="space-y-6">
 
-      {/* ── Config card ─────────────────────────────────────────────────── */}
+      {/* â”€â”€ Config card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <Card className="bg-[#111111]/80 border-white/5 rounded-[2rem] p-6 lg:p-8 shadow-xl">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 border-b border-white/5 pb-5">
           <div className="flex items-center gap-3">
@@ -375,10 +349,10 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
             </div>
             <div>
               <h3 className="text-lg font-black text-white uppercase tracking-wider">
-                {vi ? "Lập thực đơn 1 tuần" : "Weekly Meal Prep Planner"}
+                {vi ? "Láº­p thá»±c Ä‘Æ¡n 1 tuáº§n" : "Weekly Meal Prep Planner"}
               </h3>
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
-                {vi ? "Theo chuẩn bữa cơm gia đình Việt • Tính cho cả nhóm" : "Vietnamese family-style • Scaled for your group"}
+                {vi ? "Theo chuáº©n bá»¯a cÆ¡m gia Ä‘Ã¬nh Viá»‡t â€¢ TÃ­nh cho cáº£ nhÃ³m" : "Vietnamese family-style â€¢ Scaled for your group"}
               </p>
             </div>
           </div>
@@ -389,9 +363,9 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
             className="w-full lg:w-auto h-12 bg-purple-500 hover:bg-purple-400 text-black font-black uppercase text-xs tracking-widest px-8 rounded-xl shadow-[0_0_20px_rgba(168,85,247,0.35)] transition-all shrink-0"
           >
             {loading ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{vi ? "Đang lập thực đơn…" : "Planning…"}</>
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{vi ? "Äang láº­p thá»±c Ä‘Æ¡nâ€¦" : "Planningâ€¦"}</>
             ) : (
-              <><Sparkles className="w-4 h-4 mr-2" />{vi ? "Lập thực đơn" : "Generate Plan"}</>
+              <><Sparkles className="w-4 h-4 mr-2" />{vi ? "Láº­p thá»±c Ä‘Æ¡n" : "Generate Plan"}</>
             )}
           </Button>
         </div>
@@ -402,14 +376,14 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
           <div className="md:col-span-2 bg-black/20 p-5 rounded-2xl border border-white/5 space-y-4">
             <h4 className="text-[10px] text-purple-400 font-black uppercase tracking-widest flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5" />
-              {vi ? "Thành viên gia đình / nhóm" : "Group Members"}
+              {vi ? "ThÃ nh viÃªn gia Ä‘Ã¬nh / nhÃ³m" : "Group Members"}
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {([
-                { label: vi ? "Người lớn" : "Adults",   value: adults,   set: setAdults },
-                { label: vi ? "Thanh thiếu niên" : "Teens",    value: teens,    set: setTeens },
-                { label: vi ? "Trẻ em" : "Children", value: children, set: setChildren },
-                { label: vi ? "Cao tuổi" : "Seniors",  value: seniors,  set: setSeniors },
+                { label: vi ? "NgÆ°á»i lá»›n" : "Adults",   value: adults,   set: setAdults },
+                { label: vi ? "Thanh thiáº¿u niÃªn" : "Teens",    value: teens,    set: setTeens },
+                { label: vi ? "Tráº» em" : "Children", value: children, set: setChildren },
+                { label: vi ? "Cao tuá»•i" : "Seniors",  value: seniors,  set: setSeniors },
               ] as const).map(({ label, value, set }) => (
                 <div key={label} className="bg-black/40 border border-white/5 p-3 rounded-2xl flex flex-col items-center">
                   <Label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider text-center leading-tight">{label}</Label>
@@ -419,9 +393,9 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
             </div>
             {/* Total badge */}
             <div className="flex items-center gap-2 pt-1">
-              <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">{vi ? "Tổng cộng:" : "Total:"}</span>
+              <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">{vi ? "Tá»•ng cá»™ng:" : "Total:"}</span>
               <span className="text-xs font-black text-purple-300 bg-purple-500/10 border border-purple-500/20 px-3 py-0.5 rounded-full">
-                {totalPeople} {vi ? "người" : "people"}
+                {totalPeople} {vi ? "ngÆ°á»i" : "people"}
               </span>
             </div>
           </div>
@@ -430,46 +404,46 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
           <div className="bg-black/20 p-5 rounded-2xl border border-white/5 space-y-4">
             <h4 className="text-[10px] text-purple-400 font-black uppercase tracking-widest flex items-center gap-1.5">
               <Heart className="w-3.5 h-3.5" />
-              {vi ? "Chế độ ăn & Nguồn tham chiếu" : "Diet & Reference"}
+              {vi ? "Cháº¿ Ä‘á»™ Äƒn & Nguá»“n tham chiáº¿u" : "Diet & Reference"}
             </h4>
             <div className="space-y-3">
               <div className="space-y-1.5">
                 <Label className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
-                  {vi ? "Chế độ ăn" : "Diet type"}
+                  {vi ? "Cháº¿ Ä‘á»™ Äƒn" : "Diet type"}
                 </Label>
                 <Select value={dietType} onValueChange={setDietType}>
                   <SelectTrigger className="bg-black/50 border-white/10 h-10 rounded-xl text-xs font-semibold text-white">
                     <SelectValue>
-                      {dietType === "standard"    && (vi ? "Cân bằng tiêu chuẩn" : "Standard Balanced")}
-                      {dietType === "highprotein" && (vi ? "Nhiều đạm"            : "High Protein")}
-                      {dietType === "lowcarb"     && (vi ? "Ít tinh bột / Keto"  : "Low Carb / Keto")}
-                      {dietType === "vegetarian"  && (vi ? "Ăn chay"             : "Vegetarian")}
+                      {dietType === "standard"    && (vi ? "CÃ¢n báº±ng tiÃªu chuáº©n" : "Standard Balanced")}
+                      {dietType === "highprotein" && (vi ? "Nhiá»u Ä‘áº¡m"            : "High Protein")}
+                      {dietType === "lowcarb"     && (vi ? "Ãt tinh bá»™t / Keto"  : "Low Carb / Keto")}
+                      {dietType === "vegetarian"  && (vi ? "Ä‚n chay"             : "Vegetarian")}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-[#111] border-white/10 text-white rounded-xl">
-                    <SelectItem value="standard"   >{vi ? "Cân bằng tiêu chuẩn" : "Standard Balanced"}</SelectItem>
-                    <SelectItem value="highprotein">{vi ? "Nhiều đạm"            : "High Protein"}</SelectItem>
-                    <SelectItem value="lowcarb"    >{vi ? "Ít tinh bột / Keto"  : "Low Carb / Keto"}</SelectItem>
-                    <SelectItem value="vegetarian" >{vi ? "Ăn chay"             : "Vegetarian"}</SelectItem>
+                    <SelectItem value="standard"   >{vi ? "CÃ¢n báº±ng tiÃªu chuáº©n" : "Standard Balanced"}</SelectItem>
+                    <SelectItem value="highprotein">{vi ? "Nhiá»u Ä‘áº¡m"            : "High Protein"}</SelectItem>
+                    <SelectItem value="lowcarb"    >{vi ? "Ãt tinh bá»™t / Keto"  : "Low Carb / Keto"}</SelectItem>
+                    <SelectItem value="vegetarian" >{vi ? "Ä‚n chay"             : "Vegetarian"}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
-                  {vi ? "Nguồn dữ liệu dinh dưỡng" : "Nutrition database"}
+                  {vi ? "Nguá»“n dá»¯ liá»‡u dinh dÆ°á»¡ng" : "Nutrition database"}
                 </Label>
                 <Select value={databaseRef} onValueChange={setDatabaseRef}>
                   <SelectTrigger className="bg-black/50 border-white/10 h-10 rounded-xl text-xs font-semibold text-white">
                     <SelectValue>
-                      {databaseRef === "nin"  && "Viện Dinh dưỡng Quốc gia (NIN) 🇻🇳"}
-                      {databaseRef === "usda" && "USDA FoodData Central 🇺🇸"}
-                      {databaseRef === "who"  && "WHO / FAO Guidelines 🌐"}
+                      {databaseRef === "nin"  && "Viá»‡n Dinh dÆ°á»¡ng Quá»‘c gia (NIN) ðŸ‡»ðŸ‡³"}
+                      {databaseRef === "usda" && "USDA FoodData Central ðŸ‡ºðŸ‡¸"}
+                      {databaseRef === "who"  && "WHO / FAO Guidelines ðŸŒ"}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-[#111] border-white/10 text-white rounded-xl">
-                    <SelectItem value="nin" >Viện Dinh dưỡng Quốc gia (NIN) 🇻🇳</SelectItem>
-                    <SelectItem value="usda">USDA FoodData Central 🇺🇸</SelectItem>
-                    <SelectItem value="who" >WHO / FAO Guidelines 🌐</SelectItem>
+                    <SelectItem value="nin" >Viá»‡n Dinh dÆ°á»¡ng Quá»‘c gia (NIN) ðŸ‡»ðŸ‡³</SelectItem>
+                    <SelectItem value="usda">USDA FoodData Central ðŸ‡ºðŸ‡¸</SelectItem>
+                    <SelectItem value="who" >WHO / FAO Guidelines ðŸŒ</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -478,7 +452,7 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
         </div>
       </Card>
 
-      {/* ── Loading ──────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {loading && (
         <Card className="bg-[#111111]/80 border-white/5 rounded-[2rem] p-16 text-center flex flex-col items-center justify-center min-h-[300px]">
           <div className="relative mb-6">
@@ -486,29 +460,29 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
             <div className="absolute inset-0 rounded-full bg-purple-500/10 animate-ping" />
           </div>
           <h3 className="text-white font-black uppercase tracking-widest text-sm mb-2">
-            {vi ? "Đang lập thực đơn bữa cơm Việt…" : "Building your Vietnamese meal plan…"}
+            {vi ? "Äang láº­p thá»±c Ä‘Æ¡n bá»¯a cÆ¡m Viá»‡tâ€¦" : "Building your Vietnamese meal planâ€¦"}
           </h3>
           <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
             {vi
-              ? `Tính toán cơm + món mặn + canh + rau cho ${totalPeople} người theo chuẩn dinh dưỡng ${dbNameMap[databaseRef]}…`
-              : `Calculating full Vietnamese meals for ${totalPeople} people against ${dbNameMap[databaseRef]} standards…`}
+              ? `TÃ­nh toÃ¡n cÆ¡m + mÃ³n máº·n + canh + rau cho ${totalPeople} ngÆ°á»i theo chuáº©n dinh dÆ°á»¡ng ${dbNameMap[databaseRef]}â€¦`
+              : `Calculating full Vietnamese meals for ${totalPeople} people against ${dbNameMap[databaseRef]} standardsâ€¦`}
           </p>
         </Card>
       )}
 
-      {/* ── Plan ─────────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Plan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {plan && (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 animate-in fade-in duration-500">
 
-          {/* ── Left: tabs + content ─── */}
+          {/* â”€â”€ Left: tabs + content â”€â”€â”€ */}
           <div className="space-y-5">
 
             {/* Sub-tabs */}
             <div className="flex gap-1.5 bg-[#161622]/80 border border-white/5 p-1.5 rounded-2xl shadow-inner">
               {([
-                { id: "menu",     icon: <Calendar   className="w-3.5 h-3.5" />, vi: "Thực đơn hàng ngày",  en: "Daily Menu"   },
-                { id: "shopping", icon: <ShoppingCart className="w-3.5 h-3.5" />, vi: "Danh sách đi chợ", en: "Shopping List" },
-                { id: "guide",    icon: <BookOpen   className="w-3.5 h-3.5" />, vi: "Hướng dẫn sơ chế",   en: "Prep Guide"   },
+                { id: "menu",     icon: <Calendar   className="w-3.5 h-3.5" />, vi: "Thá»±c Ä‘Æ¡n hÃ ng ngÃ y",  en: "Daily Menu"   },
+                { id: "shopping", icon: <ShoppingCart className="w-3.5 h-3.5" />, vi: "Danh sÃ¡ch Ä‘i chá»£", en: "Shopping List" },
+                { id: "guide",    icon: <BookOpen   className="w-3.5 h-3.5" />, vi: "HÆ°á»›ng dáº«n sÆ¡ cháº¿",   en: "Prep Guide"   },
               ] as const).map(tab => (
                 <button
                   key={tab.id}
@@ -525,7 +499,7 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
               ))}
             </div>
 
-            {/* ─ MENU TAB ─ */}
+            {/* â”€ MENU TAB â”€ */}
             {activeSubTab === "menu" && (
               <div className="space-y-5">
                 {/* Day selector */}
@@ -556,7 +530,7 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
                       {plan.weeklyPlan[selectedDayIdx].dayName}
                     </div>
                     <h4 className="text-base font-black text-white uppercase tracking-wide">
-                      {vi ? "Thực đơn trong ngày" : "Day Menu"}
+                      {vi ? "Thá»±c Ä‘Æ¡n trong ngÃ y" : "Day Menu"}
                     </h4>
                   </div>
 
@@ -569,7 +543,7 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
               </div>
             )}
 
-            {/* ─ SHOPPING TAB ─ */}
+            {/* â”€ SHOPPING TAB â”€ */}
             {activeSubTab === "shopping" && (
               <Card className="bg-[#111]/80 border-white/5 rounded-[2rem] p-6 lg:p-8 space-y-6">
                 <div className="flex items-center gap-3 pb-4 border-b border-white/5">
@@ -578,12 +552,12 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
                   </div>
                   <div>
                     <h4 className="text-base font-black text-white uppercase tracking-wider">
-                      {vi ? "Danh sách đi chợ cả tuần" : "Weekly Shopping List"}
+                      {vi ? "Danh sÃ¡ch Ä‘i chá»£ cáº£ tuáº§n" : "Weekly Shopping List"}
                     </h4>
                     <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
                       {vi
-                        ? `Nguyên liệu cho ${totalPeople} người • 7 ngày`
-                        : `Ingredients for ${totalPeople} people • 7 days`}
+                        ? `NguyÃªn liá»‡u cho ${totalPeople} ngÆ°á»i â€¢ 7 ngÃ y`
+                        : `Ingredients for ${totalPeople} people â€¢ 7 days`}
                     </p>
                   </div>
                 </div>
@@ -621,7 +595,7 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
               </Card>
             )}
 
-            {/* ─ GUIDE TAB ─ */}
+            {/* â”€ GUIDE TAB â”€ */}
             {activeSubTab === "guide" && (
               <Card className="bg-[#111]/80 border-white/5 rounded-[2rem] p-6 lg:p-8 space-y-6">
                 <div className="flex items-center gap-3 pb-4 border-b border-white/5">
@@ -630,10 +604,10 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
                   </div>
                   <div>
                     <h4 className="text-base font-black text-white uppercase tracking-wider">
-                      {vi ? "Mẹo sơ chế & bảo quản" : "Prep & Storage Tips"}
+                      {vi ? "Máº¹o sÆ¡ cháº¿ & báº£o quáº£n" : "Prep & Storage Tips"}
                     </h4>
                     <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
-                      {vi ? "Tiết kiệm thời gian nấu nướng cả tuần" : "Save time cooking all week"}
+                      {vi ? "Tiáº¿t kiá»‡m thá»i gian náº¥u nÆ°á»›ng cáº£ tuáº§n" : "Save time cooking all week"}
                     </p>
                   </div>
                 </div>
@@ -653,7 +627,7 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
             )}
           </div>
 
-          {/* ── Right: summary sidebar ─── */}
+          {/* â”€â”€ Right: summary sidebar â”€â”€â”€ */}
           <div className="space-y-5">
             <Card className="bg-[#111]/90 border-white/5 rounded-[2rem] p-6 space-y-5 relative overflow-hidden">
               <div className="absolute top-0 right-0 p-10 opacity-[0.03] pointer-events-none">
@@ -666,10 +640,10 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
                 </div>
                 <div>
                   <h4 className="text-xs font-black text-white uppercase tracking-widest">
-                    {vi ? "Tổng kế hoạch 1 tuần" : "Weekly Summary"}
+                    {vi ? "Tá»•ng káº¿ hoáº¡ch 1 tuáº§n" : "Weekly Summary"}
                   </h4>
                   <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">
-                    {vi ? "Tổng cho cả nhóm" : "Whole group total"}
+                    {vi ? "Tá»•ng cho cáº£ nhÃ³m" : "Whole group total"}
                   </p>
                 </div>
               </div>
@@ -687,10 +661,10 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
                 return (
                   <div className="relative z-10 space-y-3">
                     {[
-                      { label: vi ? "Tổng năng lượng" : "Total Calories",  value: `${totalKcal.toLocaleString()} kcal`, color: "text-white"      },
-                      { label: vi ? "Chất đạm"         : "Protein",         value: `${totalPro.toLocaleString()}g`,       color: "text-cyan-400"   },
-                      { label: vi ? "Tinh bột"          : "Carbohydrates",   value: `${totalCarbs.toLocaleString()}g`,     color: "text-yellow-400" },
-                      { label: vi ? "Chất béo"          : "Fats",            value: `${totalFat.toLocaleString()}g`,       color: "text-pink-400"   },
+                      { label: vi ? "Tá»•ng nÄƒng lÆ°á»£ng" : "Total Calories",  value: `${totalKcal.toLocaleString()} kcal`, color: "text-white"      },
+                      { label: vi ? "Cháº¥t Ä‘áº¡m"         : "Protein",         value: `${totalPro.toLocaleString()}g`,       color: "text-cyan-400"   },
+                      { label: vi ? "Tinh bá»™t"          : "Carbohydrates",   value: `${totalCarbs.toLocaleString()}g`,     color: "text-yellow-400" },
+                      { label: vi ? "Cháº¥t bÃ©o"          : "Fats",            value: `${totalFat.toLocaleString()}g`,       color: "text-pink-400"   },
                     ].map(row => (
                       <div key={row.label} className="bg-black/40 border border-white/5 rounded-2xl p-4 flex justify-between items-center">
                         <span className="text-xs font-bold text-slate-400">{row.label}</span>
@@ -701,11 +675,11 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
                     <div className="bg-purple-500/5 border border-purple-500/10 rounded-2xl p-4 mt-2">
                       <p className="text-[10px] text-purple-400 font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        {vi ? "Đã đối chiếu chuẩn dinh dưỡng" : "Nutrition-verified"}
+                        {vi ? "ÄÃ£ Ä‘á»‘i chiáº¿u chuáº©n dinh dÆ°á»¡ng" : "Nutrition-verified"}
                       </p>
                       <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
                         {vi
-                          ? `Thực đơn được tính theo chuẩn "${dbNameMap[databaseRef]}", điều chỉnh theo nhân khẩu học ${totalPeople} người.`
+                          ? `Thá»±c Ä‘Æ¡n Ä‘Æ°á»£c tÃ­nh theo chuáº©n "${dbNameMap[databaseRef]}", Ä‘iá»u chá»‰nh theo nhÃ¢n kháº©u há»c ${totalPeople} ngÆ°á»i.`
                           : `Portions calculated against "${dbNameMap[databaseRef]}" guidelines, scaled for ${totalPeople} people.`}
                       </p>
                     </div>
@@ -713,7 +687,7 @@ Cấu trúc JSON bắt buộc phải tuân theo định dạng sau (đây chỉ 
                     {/* Vietnamese meal structure legend */}
                     <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 space-y-2">
                       <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-2">
-                        {vi ? "Cấu trúc mâm cơm Việt" : "Vietnamese meal structure"}
+                        {vi ? "Cáº¥u trÃºc mÃ¢m cÆ¡m Viá»‡t" : "Vietnamese meal structure"}
                       </p>
                       {Object.entries(ROLE_LABEL).map(([role, meta]) => (
                         <div key={role} className="flex items-center gap-2 text-[10px]">
