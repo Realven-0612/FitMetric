@@ -165,17 +165,11 @@ export function MealPrepPlanner() {
     const makeMealPrompt = (dayName: string, pair: "morning" | "maindishes", dayIdx: number) => {
       const ctx = `People:${totalPeople}(${adults} adults,${teens} teens,${children} children,${seniors} seniors) Diet:${dietLabel[dietType]} Ref:${dbNameMap[databaseRef]} Lang:${vi ? "Vietnamese" : "English"} Day${dayIdx + 1}/7`;
       if (pair === "morning") {
-        return `Vietnamese nutritionist. ${ctx}. Output ONLY JSON no markdown no trailing commas.
-Generate breakfast+snack for "${dayName}". breakfast=1 quick dish(pho/banh mi/xoi/chao)+drink. snack=fruit/yogurt/nuts. Portions=total for ${totalPeople} people. Keep dish names under 25 chars.
-Return: {"breakfast":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"drink","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""},"snack":{"summary":"X","dishes":[{"role":"side","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""}}`;
+        return `Vietnamese nutritionist. ${ctx}. Output ONLY JSON no markdown no trailing commas.\r\nGenerate breakfast+snack for "${dayName}". breakfast=1 quick dish(pho/banh mi/xoi/chao)+drink. snack=fruit/yogurt/nuts. Portions=total for ${totalPeople} people. Keep dish names under 25 chars.\r\nReturn: {"breakfast":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"drink","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""},"snack":{"summary":"X","dishes":[{"role":"side","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""}}`;
       } else {
-        return `Vietnamese nutritionist. ${ctx}. Output ONLY JSON no markdown no trailing commas.
-Generate lunch+dinner for "${dayName}". Both=com trang(staple)+meat/fish(main)+soup+vegetable. Portions=total for ${totalPeople} people. Keep dish names under 25 chars. Vary dishes daily.
-Return: {"lunch":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"soup","name":"X","portion":"X"},{"role":"vegetable","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""},"dinner":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"soup","name":"X","portion":"X"},{"role":"vegetable","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""}}`;
+        return `Vietnamese nutritionist. ${ctx}. Output ONLY JSON no markdown no trailing commas.\r\nGenerate lunch+dinner for "${dayName}". Both=com trang(staple)+meat/fish(main)+soup+vegetable. Portions=total for ${totalPeople} people. Keep dish names under 25 chars. Vary dishes daily.\r\nReturn: {"lunch":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"soup","name":"X","portion":"X"},{"role":"vegetable","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""},"dinner":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":"X"},{"role":"main","name":"X","portion":"X"},{"role":"soup","name":"X","portion":"X"},{"role":"vegetable","name":"X","portion":"X"}],"macros":{"kcal":0,"protein":0,"carbs":0,"fat":0},"note":""}}`;
       }
     };
-
-    const shoppingPrompt = `Vietnamese shopping list for ${totalPeople} people, ${dietLabel[dietType]} diet, ${vi ? "Vietnamese" : "English"} language. Output ONLY JSON no markdown: {"shoppingList":[{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]}],"prepInstructions":["X","X","X","X"]}`;
 
     const parseClean = (res: unknown): unknown => {
       const text = ((res as { text?: string }).text || res) as string;
@@ -185,18 +179,17 @@ Return: {"lunch":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":
     };
 
     try {
-      // 15 calls song song: 7 morning + 7 maindishes + 1 shopping
-      const calls = [
-        generateAIContent(shoppingPrompt, undefined, MEAL_MODEL),
+      // ── Bước 1: Generate 14 bữa song song (7 morning + 7 maindishes) ──────
+      const mealCalls = [
         ...dayNames.map((d, i) => generateAIContent(makeMealPrompt(d, "morning", i), undefined, MEAL_MODEL)),
         ...dayNames.map((d, i) => generateAIContent(makeMealPrompt(d, "maindishes", i), undefined, MEAL_MODEL)),
       ];
 
-      const results = await Promise.all(calls);
-      const [shoppingResult, ...rest] = results;
-      const morningResults = rest.slice(0, 7);
-      const mainResults   = rest.slice(7, 14);
+      const mealResults = await Promise.all(mealCalls);
+      const morningResults = mealResults.slice(0, 7);
+      const mainResults   = mealResults.slice(7, 14);
 
+      // ── Bước 2: Parse thực đơn ───────────────────────────────────────────
       const weeklyPlan: DayPlan[] = dayNames.map((dayName, i) => {
         const morning = parseClean(morningResults[i]) as { breakfast: VietnameseMeal; snack: VietnameseMeal };
         const main    = parseClean(mainResults[i])    as { lunch: VietnameseMeal; dinner: VietnameseMeal };
@@ -211,6 +204,21 @@ Return: {"lunch":{"summary":"X","dishes":[{"role":"staple","name":"X","portion":
         };
       });
 
+      // ── Bước 3: Extract tên món từ thực đơn thực tế → generate shopping list ──
+      const allDishes: string[] = weeklyPlan.flatMap(day =>
+        Object.values(day.meals).flatMap(meal =>
+          (meal?.dishes ?? []).map((d) => d.name).filter(Boolean)
+        )
+      );
+      const uniqueDishes = [...new Set(allDishes)].join(", ");
+
+      const shoppingPrompt = `Vietnamese nutritionist. You are generating a grocery shopping list for ${totalPeople} people for 1 week.
+The weekly meal plan contains these dishes: ${uniqueDishes}.
+Generate a complete, accurate shopping list based ONLY on these exact dishes. Group items by category.
+Language: ${vi ? "Vietnamese" : "English"}. Output ONLY JSON no markdown:
+{"shoppingList":[{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]},{"category":"X","items":["X","X"]}],"prepInstructions":["X","X","X","X"]}`;
+
+      const shoppingResult = await generateAIContent(shoppingPrompt, undefined, MEAL_MODEL);
       const shoppingData = parseClean(shoppingResult) as { shoppingList: ShoppingCategory[]; prepInstructions: string[] };
 
       setPlan({
